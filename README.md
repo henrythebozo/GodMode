@@ -148,6 +148,14 @@ If you want to build from source, you will need to clone the repo and open the p
    npm run start # to run in development, locally
    ```
 
+   To build your own installable Mac app (unsigned, current architecture only —
+   no Apple developer account needed):
+
+   ```bash
+   npm run package-mac-local
+   # output: release/build/GodMode-<version>-arm64.dmg (or x64 on Intel)
+   ```
+
 2. Generate binaries:
 
    ```bash

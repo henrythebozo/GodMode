@@ -14,6 +14,7 @@
 		"lint": "cross-env NODE_ENV=development eslint . --ext .js,.jsx,.ts,.tsx",
 		"package": "npm run package-mac && npm run package-lin && npm run package-win",
 		"package-mac": "ts-node ./scripts/scripts/clean.js dist && npm run build && electron-builder build --mac --publish never",
+		"package-mac-local": "ts-node ./scripts/scripts/clean.js dist && npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder build --mac dmg --publish never",
 		"package-lin": "ts-node ./scripts/scripts/clean.js dist && npm run build && electron-builder build --linux --publish never",
 		"package-win": "ts-node ./scripts/scripts/clean.js dist && npm run build && electron-builder build --win --x64  --publish never",
 		"rebuild": "electron-rebuild --parallel --types prod,dev,optional --module-dir release/app",

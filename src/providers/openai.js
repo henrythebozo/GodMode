@@ -5,59 +5,27 @@ class OpenAI extends Provider {
 	static fullName = 'OpenAI ChatGPT';
 	static shortName = 'ChatGPT';
 
-	static url = 'https://chat.openai.com/?model=gpt-4-code-interpreter'; // TODO - let people switch
+	static url = 'https://chatgpt.com/';
 
-	static handleInput(input) {
-		const fullName = this.fullName;
-		this.getWebview().executeJavaScript(`{
-        var inputElement = document.querySelector('#prompt-textarea');
-        if (inputElement) {
-          const inputEvent = new Event('input', { bubbles: true });
-          inputElement.value = \`${input}\`; // must be escaped backticks to support multiline
-          inputElement.dispatchEvent(inputEvent);
-        }
-      }`);
-	}
+	// #prompt-textarea is a ProseMirror contenteditable div in the current UI
+	static inputSelectors = [
+		'#prompt-textarea',
+		'div[contenteditable="true"].ProseMirror',
+		'textarea[data-testid="prompt-textarea"]',
+	];
 
-	static handleSubmit() {
-		this.getWebview().executeJavaScript(`{
-        // var btn = document.querySelector("textarea[placeholder*='Send a message']+button"); // this one broke recently .. note that they add another div (for the file upload) in code interpreter mode
-        var btn = document.querySelector('button[data-testid="send-button"]');
-        if (btn) {
-            btn.focus();
-            btn.disabled = false;
-            btn.click();
-        }
-    }
-      `);
-	}
+	static submitSelectors = [
+		'button[data-testid="composer-submit-button"]',
+		'button[data-testid="send-button"]',
+		'button[aria-label*="Send"]',
+	];
 
 	static handleCss() {
 		this.getWebview().addEventListener('dom-ready', () => {
-			// hide message below text input, sidebar, suggestions on new chat
 			this.getWebview().insertCSS(`
         body {
           scrollbar-width: none;
         }
-        .text-xs.text-center {
-            opacity: 0;
-            height: 0;
-            margin-bottom: -10px;
-          }
-
-          [class*="shared__Wrapper"] {
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            margin-top: 15vh;
-          }
-
-          [class*="shared__Wrapper"] h3 {
-            margin-top: -40px;
-            font-size: 20px;
-          }
-
-
         `);
 		});
 	}
