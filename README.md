@@ -19,7 +19,9 @@ GPT, Claude, Gemini, Grok, DeepSeek and 300+ other models side by side, with
 streaming responses. Your key is stored only in your browser.
 
 To host it free with GitHub Pages: repo **Settings → Pages → Deploy from a
-branch → `main` / `docs`**. Or just open the file locally in any browser.
+branch → `main` / `docs`**. Or run it on localhost with `npm run web`
+(no install needed — plain Node) and open `http://localhost:8741`; the
+command also prints a Wi-Fi address you can open from your phone.
 
 ## Installation
 
