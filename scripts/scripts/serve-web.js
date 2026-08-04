@@ -19,6 +19,7 @@ const PROXY_HOSTS = {
 	moonshot: 'api.moonshot.ai',
 	perplexity: 'api.perplexity.ai',
 	anthropic: 'api.anthropic.com',
+	openai: 'api.openai.com',
 };
 const DROP_HEADERS = ['host', 'origin', 'referer', 'connection'];
 
@@ -58,7 +59,7 @@ const server = http.createServer((req, res) => {
 		res.writeHead(200, { 'Content-Type': 'text/plain' });
 		return res.end('pong');
 	}
-	const proxyMatch = urlPath.match(/^\/proxy\/(moonshot|perplexity|anthropic)(\/.*)$/);
+	const proxyMatch = urlPath.match(/^\/proxy\/(moonshot|perplexity|anthropic|openai)(\/.*)$/);
 	if (proxyMatch) return proxy(req, res, proxyMatch[1], proxyMatch[2]);
 	let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
 	if (!file.startsWith(ROOT)) {

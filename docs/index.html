@@ -437,10 +437,11 @@
 		<summary style="font-size:13px;color:var(--dim);cursor:pointer">Direct API keys (optional)</summary>
 		<p>
 			Have your own vendor keys? Add them and use models named
-			<code>claude:…</code>, <code>kimi:…</code>, <code>pplx:…</code> from the model
-			dropdown. Claude works everywhere; Kimi &amp; Perplexity block browsers, so they
-			need the local server (<code>npm run web</code>).
+			<code>gpt:…</code>, <code>claude:…</code>, <code>kimi:…</code>, <code>pplx:…</code>
+			from the model dropdown. ChatGPT &amp; Claude work everywhere; Kimi &amp;
+			Perplexity block browsers, so they need the local server (<code>npm run web</code>).
 		</p>
+		<input type="password" id="oaiKeyInput" placeholder="OpenAI (ChatGPT) key — sk-…" autocomplete="off" />
 		<input type="password" id="anthKeyInput" placeholder="Anthropic (Claude) key — sk-ant-…" autocomplete="off" />
 		<input type="password" id="kimiKeyInput" placeholder="Moonshot (Kimi) key — sk-…" autocomplete="off" />
 		<input type="password" id="pplxKeyInput" placeholder="Perplexity key — pplx-…" autocomplete="off" />
@@ -459,6 +460,8 @@ const COUNCIL_UID = '__council';
 const store = {
 	get key() { return localStorage.getItem('godmode.key') || ''; },
 	set key(v) { localStorage.setItem('godmode.key', v); },
+	get oaiKey() { return localStorage.getItem('godmode.key.openai') || ''; },
+	set oaiKey(v) { localStorage.setItem('godmode.key.openai', v); },
 	get anthKey() { return localStorage.getItem('godmode.key.anthropic') || ''; },
 	set anthKey(v) { localStorage.setItem('godmode.key.anthropic', v); },
 	get kimiKey() { return localStorage.getItem('godmode.key.kimi') || ''; },
@@ -504,19 +507,21 @@ const VENDORS = {
 	nvidia: ['#76b900', 'N'],
 };
 const DIRECT_VENDORS = {
+	gpt: VENDORS.openai,
 	claude: VENDORS.anthropic,
 	kimi: VENDORS.moonshotai,
 	pplx: VENDORS.perplexity,
 };
+const DIRECT_RE = /^(gpt|claude|kimi|pplx):/;
 function vendorInfo(modelId) {
-	const direct = (modelId || '').match(/^(claude|kimi|pplx):/);
+	const direct = (modelId || '').match(DIRECT_RE);
 	if (direct) return DIRECT_VENDORS[direct[1]];
 	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
 	return VENDORS[prefix] || ['#666a75', (prefix[0] || '?').toUpperCase()];
 }
 function shortName(modelId) {
 	const id = modelId || '';
-	if (/^(claude|kimi|pplx):/.test(id)) return id.split(':')[1].replace(/[-_]/g, ' ');
+	if (DIRECT_RE.test(id)) return id.split(':')[1].replace(/[-_]/g, ' ');
 	const tail = id.split('/')[1] || id || '?';
 	return tail.replace(/[-_]/g, ' ');
 }
@@ -531,7 +536,7 @@ function shortName(modelId) {
  */
 let hasProxy = false;
 function backendFor(modelId) {
-	const m = (modelId || '').match(/^(claude|kimi|pplx):(.*)$/);
+	const m = (modelId || '').match(/^(gpt|claude|kimi|pplx):(.*)$/);
 	if (!m) {
 		if (!store.key) throw new Error('Add your OpenRouter API key in ⚙︎ Settings');
 		return {
@@ -542,6 +547,16 @@ function backendFor(modelId) {
 		};
 	}
 	const [, vendor, model] = m;
+	if (vendor === 'gpt') {
+		if (!store.oaiKey) throw new Error('Add your OpenAI (ChatGPT) API key in ⚙︎ Settings');
+		// OpenAI allows browser calls; prefer the local proxy when available
+		return {
+			kind: 'openai',
+			url: hasProxy ? '/proxy/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions',
+			model,
+			headers: { Authorization: 'Bearer ' + store.oaiKey, 'Content-Type': 'application/json' },
+		};
+	}
 	if (vendor === 'claude') {
 		if (!store.anthKey) throw new Error('Add your Anthropic (Claude) API key in ⚙︎ Settings');
 		return {
@@ -1010,22 +1025,24 @@ document.getElementById('newChatBtn').addEventListener('click', () => {
 /* ----------------------------- settings ----------------------------- */
 const settingsEl = document.getElementById('settings');
 const keyInput = document.getElementById('keyInput');
+const oaiKeyInput = document.getElementById('oaiKeyInput');
 const anthKeyInput = document.getElementById('anthKeyInput');
 const kimiKeyInput = document.getElementById('kimiKeyInput');
 const pplxKeyInput = document.getElementById('pplxKeyInput');
 const enterToSendEl = document.getElementById('enterToSend');
 
 function anyKey() {
-	return store.key || store.anthKey || store.kimiKey || store.pplxKey;
+	return store.key || store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey;
 }
 
 function openSettings() {
 	keyInput.value = store.key;
+	oaiKeyInput.value = store.oaiKey;
 	anthKeyInput.value = store.anthKey;
 	kimiKeyInput.value = store.kimiKey;
 	pplxKeyInput.value = store.pplxKey;
 	enterToSendEl.checked = store.enterToSend;
-	if (store.anthKey || store.kimiKey || store.pplxKey) {
+	if (store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey) {
 		document.getElementById('directKeys').open = true;
 	}
 	if (!settingsEl.open) settingsEl.showModal();
@@ -1033,6 +1050,7 @@ function openSettings() {
 document.getElementById('keyBtn').addEventListener('click', openSettings);
 document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	store.key = keyInput.value.trim();
+	store.oaiKey = oaiKeyInput.value.trim();
 	store.anthKey = anthKeyInput.value.trim();
 	store.kimiKey = kimiKeyInput.value.trim();
 	store.pplxKey = pplxKeyInput.value.trim();
@@ -1085,6 +1103,16 @@ function rebuildDatalist() {
 // vendor offers one, with sensible fallbacks when offline.
 async function loadDirectModels() {
 	directSuggestions.clear();
+	if (store.oaiKey) {
+		['gpt:gpt-5.2', 'gpt:gpt-5.1', 'gpt:gpt-4o', 'gpt:gpt-4o-mini'].forEach((s) => directSuggestions.add(s));
+		try {
+			const url = hasProxy ? '/proxy/openai/v1/models' : 'https://api.openai.com/v1/models';
+			const res = await fetch(url, { headers: { Authorization: 'Bearer ' + store.oaiKey } });
+			(await res.json()).data?.forEach((m) => {
+				if (/^(gpt-|o\d|chatgpt)/.test(m.id)) directSuggestions.add('gpt:' + m.id);
+			});
+		} catch {}
+	}
 	if (store.anthKey) {
 		['claude:claude-opus-5', 'claude:claude-sonnet-5', 'claude:claude-haiku-4-5'].forEach((s) => directSuggestions.add(s));
 		try {
