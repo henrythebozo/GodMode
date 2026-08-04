@@ -29,7 +29,12 @@ function proxy(req, res, vendor, upstreamPath) {
 		if (!DROP_HEADERS.includes(k.toLowerCase())) headers[k] = v;
 	}
 	const up = https.request(
-		{ host: PROXY_HOSTS[vendor], path: upstreamPath, method: req.method, headers },
+		{
+			host: PROXY_HOSTS[vendor],
+			path: upstreamPath,
+			method: req.method,
+			headers,
+		},
 		(upRes) => {
 			res.writeHead(upRes.statusCode, upRes.headers);
 			upRes.pipe(res);
@@ -37,7 +42,9 @@ function proxy(req, res, vendor, upstreamPath) {
 	);
 	up.on('error', (e) => {
 		res.writeHead(502, { 'Content-Type': 'application/json' });
-		res.end(JSON.stringify({ error: { message: 'proxy error: ' + e.message } }));
+		res.end(
+			JSON.stringify({ error: { message: 'proxy error: ' + e.message } }),
+		);
 	});
 	req.pipe(up);
 }
@@ -59,9 +66,13 @@ const server = http.createServer((req, res) => {
 		res.writeHead(200, { 'Content-Type': 'text/plain' });
 		return res.end('pong');
 	}
-	const proxyMatch = urlPath.match(/^\/proxy\/(moonshot|perplexity|anthropic|openai)(\/.*)$/);
+	const proxyMatch = urlPath.match(
+		/^\/proxy\/(moonshot|perplexity|anthropic|openai)(\/.*)$/,
+	);
 	if (proxyMatch) return proxy(req, res, proxyMatch[1], proxyMatch[2]);
-	let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
+	let file = path.normalize(
+		path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath),
+	);
 	if (!file.startsWith(ROOT)) {
 		res.writeHead(403);
 		return res.end('forbidden');
