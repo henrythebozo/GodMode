@@ -2,211 +2,264 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>GodMode Web — one prompt, every AI</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐣</text></svg>" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>GodMode — one prompt, every AI</title>
+<meta name="theme-color" content="#0e0e16" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GodMode" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
 <style>
 	:root {
-		--bg: #0d0d12;
-		--bg-pane: #15151c;
-		--bg-raised: #1b1b24;
-		--bg-input: #1e1e28;
-		--border: #272733;
-		--border-soft: #20202b;
-		--text: #ececf2;
-		--text-dim: #9494a4;
-		--accent: #f5c542;
-		--accent-2: #f08c3c;
-		--accent-text: #201700;
-		--user-bubble: #262634;
-		--err: #ff8080;
-		--code-bg: #0a0a0f;
-		--shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-	}
-	@media (prefers-color-scheme: light) {
-		:root {
-			--bg: #f3f3f7;
-			--bg-pane: #ffffff;
-			--bg-raised: #fafafc;
-			--bg-input: #ffffff;
-			--border: #dcdce4;
-			--border-soft: #e8e8ee;
-			--text: #1a1a22;
-			--text-dim: #6c6c7a;
-			--user-bubble: #efeff5;
-			--err: #c0392b;
-			--code-bg: #f1f1f5;
-			--shadow: 0 8px 28px rgba(30, 30, 60, 0.12);
-		}
+		--bg: #0e0e16;
+		--bg-glow: radial-gradient(120% 90% at 15% 0%, #1b1b2c 0%, #12121c 45%, #0e0e16 100%);
+		--panel: #16161f;
+		--panel-2: #1c1c29;
+		--border: #262636;
+		--border-soft: #20202e;
+		--text: #ecebf6;
+		--dim: #8d8da2;
+		--vio-1: #7c5cfc;
+		--vio-2: #c44cf0;
+		--grad: linear-gradient(120deg, var(--vio-1), var(--vio-2));
+		--glow: 0 0 22px rgba(124, 92, 252, 0.35);
+		--user-bubble: linear-gradient(120deg, rgba(124, 92, 252, 0.22), rgba(196, 76, 240, 0.16));
+		--err: #ff8095;
+		--ok: #3ddc97;
+		--code-bg: #0a0a12;
+		--shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 	}
 	* { box-sizing: border-box; margin: 0; }
-	html, body { height: 100%; }
+	html, body { height: 100dvh; }
 	body {
-		background: var(--bg);
+		background: var(--bg-glow) fixed, var(--bg);
 		color: var(--text);
 		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 		display: flex;
-		flex-direction: column;
 		overscroll-behavior: none;
 		-webkit-font-smoothing: antialiased;
 	}
 
-	/* ------------------------------ header ------------------------------ */
-	header {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 9px 14px;
-		border-bottom: 1px solid var(--border);
+	/* ------------------------------ sidebar ------------------------------ */
+	aside {
+		width: 248px;
 		flex: none;
+		display: flex;
+		flex-direction: column;
+		border-right: 1px solid var(--border-soft);
+		background: rgba(22, 22, 31, 0.6);
+		padding: calc(14px + env(safe-area-inset-top)) 12px 14px;
+		gap: 12px;
+		min-height: 0;
 	}
-	header .logo {
+	.rail-top { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+	.logo {
 		font-weight: 800;
-		font-size: 17.5px;
+		font-size: 15.5px;
 		letter-spacing: -0.3px;
-		white-space: nowrap;
 		display: flex;
 		align-items: center;
-		gap: 7px;
+		gap: 6px;
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
 	}
-	header .logo .grad {
-		background: linear-gradient(100deg, var(--accent), var(--accent-2));
+	.logo .grad {
+		background: var(--grad);
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
 	}
-	header .spacer { flex: 1; }
 	.iconbtn {
-		background: var(--bg-raised);
+		background: var(--panel-2);
 		border: 1px solid var(--border);
-		color: var(--text);
-		border-radius: 999px;
-		padding: 6px 13px;
-		font-size: 13px;
-		font-weight: 600;
+		color: var(--dim);
+		border-radius: 10px;
+		width: 32px;
+		height: 32px;
+		font-size: 14px;
 		cursor: pointer;
-		white-space: nowrap;
-		transition: border-color 0.15s, background 0.15s;
-	}
-	.iconbtn:hover { border-color: var(--text-dim); }
-	.iconbtn.active {
-		background: linear-gradient(100deg, var(--accent), var(--accent-2));
-		color: var(--accent-text);
-		border-color: transparent;
-	}
-
-	/* ------------------------------- panes ------------------------------ */
-	main {
-		flex: 1;
-		display: flex;
-		gap: 10px;
-		padding: 10px;
-		overflow-x: auto;
-		min-height: 0;
-	}
-	.pane {
-		background: var(--bg-pane);
-		border: 1px solid var(--border-soft);
-		border-radius: 14px;
-		flex: 1 1 0;
-		min-width: 300px;
-		display: flex;
-		flex-direction: column;
-		min-height: 0;
-		overflow: hidden;
-	}
-	.pane-head {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-		padding: 8px 10px;
-		border-bottom: 1px solid var(--border-soft);
-		flex: none;
-	}
-	.avatar {
-		width: 26px;
-		height: 26px;
-		border-radius: 8px;
 		flex: none;
 		display: grid;
 		place-items: center;
-		font-size: 12.5px;
+		transition: color 0.15s, border-color 0.15s, background 0.15s;
+	}
+	.iconbtn:hover { color: var(--text); border-color: var(--dim); }
+	.iconbtn.active {
+		background: var(--grad);
+		color: #fff;
+		border-color: transparent;
+		box-shadow: var(--glow);
+	}
+
+	nav {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		overflow-y: auto;
+		min-height: 0;
+		padding: 2px;
+	}
+	.entry {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 9px 10px;
+		border-radius: 13px;
+		border: 1px solid transparent;
+		cursor: pointer;
+		user-select: none;
+		transition: background 0.15s, border-color 0.15s;
+		flex: none;
+	}
+	.entry:hover { background: var(--panel-2); }
+	.entry.active {
+		background: linear-gradient(120deg, rgba(124, 92, 252, 0.28), rgba(196, 76, 240, 0.18));
+		border-color: rgba(140, 92, 252, 0.45);
+		box-shadow: var(--glow);
+	}
+	.avatar {
+		width: 30px;
+		height: 30px;
+		border-radius: 10px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 13.5px;
 		font-weight: 800;
 		color: #fff;
 		background: #666;
 	}
-	.pane-head input {
+	.rinfo { min-width: 0; flex: 1; }
+	.rname {
+		font-size: 13.5px;
+		font-weight: 700;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.rstatus {
+		font-size: 11px;
+		color: var(--dim);
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.entry.working .rstatus { color: var(--vio-2); }
+	.entry.working .rstatus::before {
+		content: "●";
+		margin-right: 5px;
+		animation: pulse 1s ease-in-out infinite;
+	}
+	@keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+	.entry.done .rstatus { color: var(--ok); }
+	.entry.error .rstatus { color: var(--err); }
+	.entry.add {
+		color: var(--dim);
+		justify-content: center;
+		border: 1px dashed var(--border);
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.entry.add:hover { color: var(--text); border-color: var(--dim); background: none; }
+
+	/* ------------------------------- main ------------------------------- */
+	#mainCol {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		min-height: 0;
+	}
+	#mainHead {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+		border-bottom: 1px solid var(--border-soft);
+		flex: none;
+	}
+	#mainHead .avatar { box-shadow: var(--glow); }
+	#headModel {
 		flex: 1;
 		min-width: 0;
 		background: transparent;
 		border: 1px solid transparent;
 		color: var(--text);
-		border-radius: 7px;
-		padding: 5px 7px;
-		font-size: 12.5px;
+		border-radius: 9px;
+		padding: 6px 9px;
+		font-size: 13px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		transition: border-color 0.15s, background 0.15s;
 	}
-	.pane-head input:hover { border-color: var(--border); }
-	.pane-head input:focus { outline: none; border-color: var(--accent); background: var(--bg-input); }
-	.pane-head button {
-		background: none;
-		border: none;
-		color: var(--text-dim);
-		font-size: 14px;
-		cursor: pointer;
-		padding: 3px 6px;
-		border-radius: 7px;
-		flex: none;
+	#headModel:hover { border-color: var(--border); }
+	#headModel:focus { outline: none; border-color: var(--vio-1); background: var(--panel); }
+	#headTag {
+		font-size: 10.5px;
+		font-weight: 700;
+		letter-spacing: 0.4px;
+		text-transform: uppercase;
+		color: var(--vio-2);
+		display: none;
 	}
-	.pane-head button:hover { color: var(--text); background: var(--user-bubble); }
 
-	.pane-body {
+	#threads { flex: 1; min-height: 0; display: flex; }
+	.thread {
+		display: none;
 		flex: 1;
-		overflow-y: auto;
-		padding: 13px;
-		display: flex;
 		flex-direction: column;
-		gap: 11px;
-		min-height: 0;
+		gap: 12px;
+		overflow-y: auto;
+		padding: 16px clamp(14px, 4vw, 60px);
 		scroll-behavior: smooth;
+		min-height: 0;
 	}
-	.msg { max-width: 100%; overflow-wrap: break-word; }
+	.thread.active { display: flex; }
+	.msg { max-width: 100%; overflow-wrap: break-word; font-size: 14.5px; }
 	.msg.user {
 		background: var(--user-bubble);
-		border-radius: 14px 14px 4px 14px;
-		padding: 8px 13px;
+		border: 1px solid rgba(140, 92, 252, 0.3);
+		border-radius: 16px 16px 5px 16px;
+		padding: 9px 14px;
 		align-self: flex-end;
-		max-width: 88%;
+		max-width: 86%;
 		white-space: pre-wrap;
-		font-size: 14.5px;
 	}
-	.msg.assistant { align-self: stretch; font-size: 14.5px; }
-	.msg.assistant.streaming .cursor,
-	.council-body .streaming .cursor { display: inline; }
-	.cursor {
-		display: none;
-		color: var(--accent);
-		animation: blink 1s step-end infinite;
+	.msg.assistant {
+		align-self: stretch;
+		background: var(--panel);
+		border: 1px solid var(--border-soft);
+		border-radius: 16px;
+		padding: 12px 15px;
+		box-shadow: var(--shadow);
 	}
-	@keyframes blink { 50% { opacity: 0; } }
+	.cursor { display: none; color: var(--vio-2); animation: pulse 1s step-end infinite; }
+	.streaming .cursor { display: inline; }
 	.meta {
-		font-size: 11.5px;
-		color: var(--text-dim);
-		margin-top: 3px;
+		font-size: 11px;
+		color: var(--dim);
+		margin-top: 5px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 	.msg .error { color: var(--err); font-size: 13.5px; white-space: pre-wrap; }
 	.placeholder {
-		color: var(--text-dim);
+		color: var(--dim);
 		font-size: 13px;
 		margin: auto;
 		text-align: center;
 		padding: 20px;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		max-width: 420px;
+		line-height: 1.7;
 	}
+	.placeholder b { color: var(--text); }
 
-	/* minimal markdown styles */
+	/* markdown */
 	.md h1, .md h2, .md h3 { margin: 10px 0 4px; line-height: 1.25; }
 	.md h1 { font-size: 1.22em; } .md h2 { font-size: 1.12em; } .md h3 { font-size: 1.04em; }
 	.md p { margin: 6px 0; }
@@ -227,188 +280,157 @@
 		border-radius: 5px;
 		padding: 1px 5px;
 	}
-	.md a { color: var(--accent); }
-	.md blockquote { border-left: 3px solid var(--border); margin: 6px 0; padding-left: 10px; color: var(--text-dim); }
+	.md a { color: var(--vio-2); }
+	.md blockquote { border-left: 3px solid var(--vio-1); margin: 6px 0; padding-left: 10px; color: var(--dim); }
 
-	/* ------------------------------ council ----------------------------- */
-	#council {
-		display: none;
-		flex: none;
-		margin: 0 10px 10px;
-		border-radius: 14px;
-		padding: 1.5px;
-		background: linear-gradient(100deg, var(--accent), var(--accent-2));
-		box-shadow: var(--shadow);
-		max-height: 42vh;
-	}
-	#council.visible { display: flex; }
-	.council-inner {
-		background: var(--bg-pane);
-		border-radius: 12.5px;
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-		min-height: 0;
-	}
-	.council-head {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 8px 12px;
-		border-bottom: 1px solid var(--border-soft);
-		flex: none;
-	}
-	.council-head .title { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
-	.council-head input {
-		flex: 1;
-		min-width: 0;
-		background: transparent;
-		border: 1px solid transparent;
-		color: var(--text);
-		border-radius: 7px;
-		padding: 4px 7px;
-		font-size: 12.5px;
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-	}
-	.council-head input:hover { border-color: var(--border); }
-	.council-head input:focus { outline: none; border-color: var(--accent); background: var(--bg-input); }
-	.council-body {
-		overflow-y: auto;
-		padding: 12px 14px;
-		font-size: 14.5px;
-		min-height: 52px;
-	}
-	.council-body .hint { color: var(--text-dim); font-size: 13px; }
-
-	/* ------------------------------ footer ------------------------------ */
+	/* ------------------------------ composer ----------------------------- */
 	footer {
 		flex: none;
-		padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+		padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
 		display: flex;
-		gap: 9px;
+		gap: 10px;
 		align-items: flex-end;
 	}
 	footer textarea {
 		flex: 1;
 		resize: none;
-		background: var(--bg-input);
+		background: var(--panel);
 		border: 1px solid var(--border);
 		color: var(--text);
-		border-radius: 14px;
-		padding: 11px 14px;
+		border-radius: 16px;
+		padding: 12px 15px;
 		font: inherit;
-		max-height: 40vh;
+		max-height: 38dvh;
 		box-shadow: var(--shadow);
 	}
-	footer textarea:focus { outline: none; border-color: var(--accent); }
+	footer textarea:focus { outline: none; border-color: var(--vio-1); box-shadow: var(--glow); }
+	footer textarea::placeholder { color: var(--dim); }
 	.send {
-		background: linear-gradient(120deg, var(--accent), var(--accent-2));
-		color: var(--accent-text);
+		background: var(--grad);
+		color: #fff;
 		border: none;
-		border-radius: 14px;
-		width: 47px;
-		height: 47px;
+		border-radius: 50%;
+		width: 48px;
+		height: 48px;
 		font-size: 19px;
 		cursor: pointer;
 		flex: none;
-		box-shadow: var(--shadow);
+		box-shadow: var(--glow);
 		transition: filter 0.15s;
 	}
-	.send:hover { filter: brightness(1.08); }
-	.send.stop { background: var(--err); color: #fff; }
+	.send:hover { filter: brightness(1.1); }
+	.send.stop { background: var(--err); box-shadow: none; }
 
-	/* ------------------------------ dialog ------------------------------ */
+	/* ------------------------------- dialog ------------------------------ */
 	dialog {
-		background: var(--bg-pane);
+		background: var(--panel);
 		color: var(--text);
 		border: 1px solid var(--border);
-		border-radius: 16px;
+		border-radius: 18px;
 		padding: 24px;
 		max-width: 440px;
 		width: calc(100vw - 40px);
 		box-shadow: var(--shadow);
 	}
-	dialog::backdrop { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(3px); }
+	dialog::backdrop { background: rgba(5, 5, 12, 0.65); backdrop-filter: blur(4px); }
 	dialog h2 { font-size: 17px; margin-bottom: 4px; }
-	dialog p { font-size: 13.5px; color: var(--text-dim); margin: 8px 0; }
-	dialog a { color: var(--accent); }
+	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
+	dialog a { color: var(--vio-2); }
 	dialog input[type="password"] {
 		width: 100%;
-		background: var(--bg-input);
+		background: var(--panel-2);
 		border: 1px solid var(--border);
 		color: var(--text);
-		border-radius: 9px;
+		border-radius: 10px;
 		padding: 10px 12px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 13px;
 		margin: 8px 0;
 	}
-	dialog input:focus { outline: none; border-color: var(--accent); }
+	dialog input:focus { outline: none; border-color: var(--vio-1); }
 	dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; align-items: center; }
 	dialog .row label { margin-right: auto; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
 	.primary {
-		background: linear-gradient(120deg, var(--accent), var(--accent-2));
-		color: var(--accent-text);
+		background: var(--grad);
+		color: #fff;
 		border: none;
-		border-radius: 9px;
+		border-radius: 10px;
 		padding: 9px 18px;
 		font-weight: 700;
 		cursor: pointer;
+		box-shadow: var(--glow);
 	}
 
-	@media (max-width: 700px) {
-		main { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
-		.pane { min-width: 0; min-height: 45vh; flex: none; }
-		header .hide-sm { display: none; }
-		#council { max-height: 50vh; }
+	/* ------------------------------- iPhone ------------------------------ */
+	@media (max-width: 760px) {
+		body { flex-direction: column; }
+		aside {
+			width: 100%;
+			border-right: none;
+			border-bottom: 1px solid var(--border-soft);
+			padding: calc(10px + env(safe-area-inset-top)) 10px 8px;
+			gap: 8px;
+		}
+		nav {
+			flex: none;
+			flex-direction: row;
+			overflow-x: auto;
+			overflow-y: hidden;
+			padding: 2px 2px 6px;
+			scrollbar-width: none;
+		}
+		nav::-webkit-scrollbar { display: none; }
+		.entry { padding: 7px 10px; border-radius: 999px; }
+		.rinfo { max-width: 110px; }
+		.rstatus { font-size: 10px; }
+		.entry.add { border-radius: 999px; padding: 7px 14px; }
+		#mainHead { padding-top: 8px; }
+		.thread { padding: 12px 12px; }
+		.msg.user { max-width: 92%; }
 	}
 </style>
 </head>
 <body>
 
-<header>
-	<span class="logo">🐣 <span>GodMode</span> <span class="grad">web</span></span>
-	<span class="spacer"></span>
-	<button class="iconbtn" id="councilBtn" title="After every model answers, a synthesizer model merges them into one best answer">🤝 Council</button>
-	<button class="iconbtn hide-sm" id="newChatBtn" title="Clear all conversations">✦ New</button>
-	<button class="iconbtn hide-sm" id="addPaneBtn" title="Add a model pane">＋</button>
-	<button class="iconbtn" id="keyBtn" title="API key & settings">⚙︎</button>
-</header>
-
-<main id="panes"></main>
-
-<section id="council">
-	<div class="council-inner">
-		<div class="council-head">
-			<span class="title">🤝 Council verdict</span>
-			<input id="synthModel" list="modelList" spellcheck="false" autocomplete="off" title="Synthesizer model" />
-			<button class="iconbtn" id="councilClear" style="padding:3px 10px">✦</button>
-		</div>
-		<div class="council-body" id="councilBody">
-			<span class="hint">Send a prompt and the synthesizer will read every pane's answer, merge the best parts, and flag where the models disagree.</span>
-		</div>
+<aside>
+	<div class="rail-top">
+		<span class="logo">🐣 God<span class="grad">Mode</span></span>
+		<button class="iconbtn" id="councilBtn" title="Council mode: a synthesizer model merges every answer into one verdict">🤝</button>
+		<button class="iconbtn" id="newChatBtn" title="New chat (clears all conversations)">✦</button>
+		<button class="iconbtn" id="keyBtn" title="API key & settings">⚙︎</button>
 	</div>
-</section>
+	<nav id="railList"></nav>
+</aside>
 
-<footer>
-	<textarea id="prompt" rows="1" placeholder="Ask every AI at once… (Enter to send)"></textarea>
-	<button class="send" id="sendBtn" title="Send to all panes">➤</button>
-</footer>
+<div id="mainCol">
+	<div id="mainHead">
+		<span class="avatar" id="headAvatar">?</span>
+		<span id="headTag">synthesizer</span>
+		<input id="headModel" list="modelList" spellcheck="false" autocomplete="off" title="Model id — type to change" />
+		<button class="iconbtn" id="clearThreadBtn" title="Clear this conversation">✦</button>
+		<button class="iconbtn" id="removeModelBtn" title="Remove this model">✕</button>
+	</div>
+	<div id="threads"></div>
+	<footer>
+		<textarea id="prompt" rows="1" placeholder="Ask every AI at once…"></textarea>
+		<button class="send" id="sendBtn" title="Send to all models">➤</button>
+	</footer>
+</div>
 
 <datalist id="modelList"></datalist>
 
 <dialog id="settings">
-	<h2>🐣 Welcome to GodMode Web</h2>
+	<h2>🐣 Welcome to GodMode</h2>
 	<p>
-		One prompt, sent to multiple AI models side by side. Responses stream in
-		from the <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
-		one key unlocks GPT, Claude, Gemini, Grok, Kimi, DeepSeek, Qwen and 300+ more.
-		Type any model id in a pane's header to switch it.
+		One prompt, answered by every AI at once. Pick a model in the sidebar to read
+		its answer; the dot shows who's still working. Powered by the
+		<a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
+		one key unlocks GPT, Claude, Gemini, Grok, Kimi, DeepSeek and 300+ more.
 	</p>
 	<p>
 		Paste your API key (create one at
 		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>).
-		It is stored only in this browser, and sent only to OpenRouter.
+		It is stored only on this device, and sent only to OpenRouter.
 	</p>
 	<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
 	<div class="row">
@@ -421,14 +443,15 @@
 'use strict';
 
 const API_BASE = 'https://openrouter.ai/api/v1';
+const COUNCIL_UID = '__council';
 const store = {
 	get key() { return localStorage.getItem('godmode.key') || ''; },
 	set key(v) { localStorage.setItem('godmode.key', v); },
-	get paneModels() {
+	get modelIds() {
 		try { return JSON.parse(localStorage.getItem('godmode.panes')) || null; }
 		catch { return null; }
 	},
-	set paneModels(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
+	set modelIds(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
 	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
 	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
 	get council() { return localStorage.getItem('godmode.council') === '1'; },
@@ -437,8 +460,8 @@ const store = {
 	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
 };
 
-// Preferred defaults per pane, first available on OpenRouter wins.
-const DEFAULT_PANE_PREFS = [
+// Preferred defaults, first available on OpenRouter wins.
+const DEFAULT_PREFS = [
 	['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5', 'openai/gpt-4o'],
 	['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-3.7-sonnet'],
 	['google/gemini-3-pro', 'google/gemini-3-flash', 'google/gemini-2.5-pro', 'google/gemini-2.0-flash-001'],
@@ -446,12 +469,11 @@ const DEFAULT_PANE_PREFS = [
 ];
 const SYNTH_PREFS = ['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'openai/gpt-5.2', 'google/gemini-2.5-pro'];
 
-// vendor branding for the pane avatar chip
 const VENDORS = {
 	openai: ['#10a37f', 'G'],
 	anthropic: ['#d97757', 'C'],
 	google: ['#4285f4', '✦'],
-	'x-ai': ['#333333', '𝕏'],
+	'x-ai': ['#3b3b47', '𝕏'],
 	moonshotai: ['#7c5cff', 'K'],
 	deepseek: ['#4d6bfe', 'D'],
 	qwen: ['#615ced', 'Q'],
@@ -467,10 +489,16 @@ function vendorInfo(modelId) {
 	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
 	return VENDORS[prefix] || ['#666a75', (prefix[0] || '?').toUpperCase()];
 }
+function shortName(modelId) {
+	const tail = (modelId || '').split('/')[1] || modelId || '?';
+	return tail.replace(/[-_]/g, ' ');
+}
 
 let availableModels = [];
-const panes = []; // { id, model, messages, controller, els }
-let paneSeq = 0;
+const models = []; // { uid, model, messages, controller, els }
+let councilEntry = null; // same shape, uid COUNCIL_UID
+let selectedUid = null;
+let uidSeq = 0;
 let generating = false;
 
 /* ---------- tiny markdown renderer (safe: escapes HTML first) ---------- */
@@ -513,73 +541,171 @@ function renderMarkdown(src) {
 	return html;
 }
 
-/* ------------------------------ panes ------------------------------ */
-const panesEl = document.getElementById('panes');
+/* --------------------------- rail + threads --------------------------- */
+const railList = document.getElementById('railList');
+const threadsEl = document.getElementById('threads');
+const addChip = document.createElement('div');
+addChip.className = 'entry add';
+addChip.textContent = '＋ Add model';
+addChip.addEventListener('click', () => {
+	const m = addModel(availableModels[0]?.id || 'openai/gpt-4o');
+	select(m.uid);
+});
 
-function paintAvatar(el, model) {
+function paintAvatar(el, model, isCouncil) {
+	if (isCouncil) {
+		el.style.background = 'linear-gradient(120deg, #7c5cfc, #c44cf0)';
+		el.textContent = '🤝';
+		return;
+	}
 	const [color, letter] = vendorInfo(model);
 	el.style.background = color;
 	el.textContent = letter;
 }
 
-function addPane(model) {
-	const id = ++paneSeq;
-	const el = document.createElement('section');
-	el.className = 'pane';
-	el.innerHTML = `
-		<div class="pane-head">
-			<span class="avatar"></span>
-			<input list="modelList" spellcheck="false" autocomplete="off" title="OpenRouter model id — type to change" />
-			<button class="clear" title="Clear this conversation">✦</button>
-			<button class="close" title="Remove pane">✕</button>
-		</div>
-		<div class="pane-body">
-			<div class="placeholder">${esc(model)}</div>
+function makeEntry(m, isCouncil) {
+	const entry = document.createElement('div');
+	entry.className = 'entry';
+	entry.innerHTML = `
+		<span class="avatar"></span>
+		<div class="rinfo">
+			<div class="rname"></div>
+			<div class="rstatus">ready</div>
 		</div>`;
-	panesEl.appendChild(el);
-	const pane = {
-		id, model, messages: [], controller: null,
-		els: {
-			root: el,
-			model: el.querySelector('input'),
-			body: el.querySelector('.pane-body'),
-			avatar: el.querySelector('.avatar'),
-		},
+	entry.addEventListener('click', () => select(m.uid));
+
+	const thread = document.createElement('div');
+	thread.className = 'thread';
+	thread.innerHTML = isCouncil
+		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
+		: `<div class="placeholder"></div>`;
+	threadsEl.appendChild(thread);
+
+	m.els = {
+		entry,
+		avatar: entry.querySelector('.avatar'),
+		name: entry.querySelector('.rname'),
+		status: entry.querySelector('.rstatus'),
+		thread,
 	};
-	pane.els.model.value = model;
-	paintAvatar(pane.els.avatar, model);
-	pane.els.model.addEventListener('change', () => {
-		pane.model = pane.els.model.value.trim();
-		paintAvatar(pane.els.avatar, pane.model);
-		savePanes();
-	});
-	el.querySelector('.close').addEventListener('click', () => {
-		pane.controller?.abort();
-		panes.splice(panes.indexOf(pane), 1);
-		el.remove();
-		savePanes();
-	});
-	el.querySelector('.clear').addEventListener('click', () => clearPane(pane));
-	panes.push(pane);
-	savePanes();
-	return pane;
+	refreshEntry(m, isCouncil);
+	return m;
 }
 
-function clearPane(pane) {
-	pane.controller?.abort();
-	pane.messages = [];
-	pane.els.body.innerHTML = `<div class="placeholder">${esc(pane.model)}</div>`;
+function refreshEntry(m, isCouncil) {
+	paintAvatar(m.els.avatar, m.model, isCouncil);
+	m.els.name.textContent = isCouncil ? 'Council' : shortName(m.model);
+	if (!isCouncil) {
+		const ph = m.els.thread.querySelector('.placeholder');
+		if (ph) ph.innerHTML = '<b>' + esc(shortName(m.model)) + '</b><br>' + esc(m.model);
+	}
 }
 
-function savePanes() {
-	store.paneModels = panes.map((p) => p.model);
+function setStatus(m, state, text) {
+	m.els.entry.classList.remove('working', 'done', 'error');
+	if (state) m.els.entry.classList.add(state);
+	m.els.status.textContent = text;
 }
 
-function addMessage(pane, role) {
-	pane.els.body.querySelector('.placeholder')?.remove();
+function addModel(modelId) {
+	const m = { uid: 'm' + ++uidSeq, model: modelId, messages: [], controller: null };
+	makeEntry(m, false);
+	models.push(m);
+	renderRail();
+	saveModels();
+	return m;
+}
+
+function removeModel(uid) {
+	const i = models.findIndex((m) => m.uid === uid);
+	if (i < 0 || models.length <= 1) return;
+	const m = models[i];
+	m.controller?.abort();
+	m.els.thread.remove();
+	models.splice(i, 1);
+	renderRail();
+	saveModels();
+	if (selectedUid === uid) select(models[0].uid);
+}
+
+function ensureCouncil() {
+	if (!councilEntry) {
+		councilEntry = { uid: COUNCIL_UID, model: store.synthModel || SYNTH_PREFS[0], messages: [], controller: null };
+		makeEntry(councilEntry, true);
+	}
+	return councilEntry;
+}
+
+function renderRail() {
+	railList.innerHTML = '';
+	if (store.council) railList.appendChild(ensureCouncil().els.entry);
+	models.forEach((m) => railList.appendChild(m.els.entry));
+	railList.appendChild(addChip);
+}
+
+function saveModels() {
+	store.modelIds = models.map((m) => m.model);
+}
+
+function allEntries() {
+	return store.council && councilEntry ? [councilEntry, ...models] : models;
+}
+
+function find(uid) {
+	return uid === COUNCIL_UID ? councilEntry : models.find((m) => m.uid === uid);
+}
+
+/* ------------------------------ selection ----------------------------- */
+const headAvatar = document.getElementById('headAvatar');
+const headModel = document.getElementById('headModel');
+const headTag = document.getElementById('headTag');
+const removeModelBtn = document.getElementById('removeModelBtn');
+
+function select(uid) {
+	const m = find(uid);
+	if (!m) return;
+	selectedUid = uid;
+	allEntries().forEach((e) => e.els.entry.classList.toggle('active', e.uid === uid));
+	document.querySelectorAll('.thread').forEach((t) => t.classList.remove('active'));
+	m.els.thread.classList.add('active');
+	const isCouncil = uid === COUNCIL_UID;
+	paintAvatar(headAvatar, m.model, isCouncil);
+	headModel.value = m.model;
+	headTag.style.display = isCouncil ? 'inline' : 'none';
+	removeModelBtn.style.display = isCouncil || models.length <= 1 ? 'none' : 'grid';
+	m.els.thread.scrollTop = m.els.thread.scrollHeight;
+}
+
+headModel.addEventListener('change', () => {
+	const m = find(selectedUid);
+	if (!m) return;
+	m.model = headModel.value.trim();
+	if (selectedUid === COUNCIL_UID) store.synthModel = m.model;
+	else saveModels();
+	refreshEntry(m, selectedUid === COUNCIL_UID);
+	paintAvatar(headAvatar, m.model, selectedUid === COUNCIL_UID);
+});
+removeModelBtn.addEventListener('click', () => removeModel(selectedUid));
+document.getElementById('clearThreadBtn').addEventListener('click', () => {
+	const m = find(selectedUid);
+	if (m) clearThread(m);
+});
+
+function clearThread(m) {
+	m.controller?.abort();
+	m.messages = [];
+	const isCouncil = m.uid === COUNCIL_UID;
+	m.els.thread.innerHTML = isCouncil
+		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
+		: `<div class="placeholder"><b>${esc(shortName(m.model))}</b><br>${esc(m.model)}</div>`;
+	setStatus(m, null, 'ready');
+}
+
+function addMessage(m, role) {
+	m.els.thread.querySelector('.placeholder')?.remove();
 	const div = document.createElement('div');
 	div.className = 'msg ' + role;
-	pane.els.body.appendChild(div);
+	m.els.thread.appendChild(div);
 	return div;
 }
 
@@ -622,7 +748,6 @@ async function streamCompletion({ model, messages, signal, onDelta }) {
 }
 
 function streamingShell(container) {
-	// returns { update(text), finish(metaText), fail(msg) } writing into container
 	const md = document.createElement('span');
 	md.className = 'md';
 	const cursor = document.createElement('span');
@@ -647,72 +772,71 @@ function streamingShell(container) {
 	};
 }
 
-async function streamChat(pane, prompt) {
-	pane.messages.push({ role: 'user', content: prompt });
-	addMessage(pane, 'user').textContent = prompt;
+async function streamChat(m, prompt) {
+	m.messages.push({ role: 'user', content: prompt });
+	addMessage(m, 'user').textContent = prompt;
 
-	const el = addMessage(pane, 'assistant');
+	const el = addMessage(m, 'assistant');
 	const shell = streamingShell(el);
-	pane.controller = new AbortController();
+	m.controller = new AbortController();
 	const started = Date.now();
+	setStatus(m, 'working', 'working…');
 	let text = '';
-	const scrollDown = () => { pane.els.body.scrollTop = pane.els.body.scrollHeight; };
+	const scrollDown = () => { m.els.thread.scrollTop = m.els.thread.scrollHeight; };
 	scrollDown();
 
 	try {
 		text = await streamCompletion({
-			model: pane.model,
-			messages: pane.messages,
-			signal: pane.controller.signal,
+			model: m.model,
+			messages: m.messages,
+			signal: m.controller.signal,
 			onDelta: (t) => { text = t; shell.update(t); scrollDown(); },
 		});
-		pane.messages.push({ role: 'assistant', content: text });
-		shell.finish(pane.model + ' · ' + ((Date.now() - started) / 1000).toFixed(1) + 's');
+		m.messages.push({ role: 'assistant', content: text });
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(m.model + ' · ' + secs + 's');
+		setStatus(m, 'done', secs + 's');
 		return text;
 	} catch (err) {
 		if (err.name === 'AbortError') {
-			if (text) pane.messages.push({ role: 'assistant', content: text });
+			if (text) m.messages.push({ role: 'assistant', content: text });
 			shell.finish('stopped');
+			setStatus(m, null, 'stopped');
 			return text;
 		}
-		pane.messages.pop(); // let the user retry the failed turn
+		m.messages.pop(); // let the user retry the failed turn
 		shell.fail(String(err.message || err));
+		setStatus(m, 'error', 'error');
 		if (/auth|key|401/i.test(String(err.message))) openSettings();
 		return '';
 	} finally {
-		pane.controller = null;
+		m.controller = null;
 	}
 }
 
 /* ------------------------------ council ----------------------------- */
-const councilEl = document.getElementById('council');
-const councilBody = document.getElementById('councilBody');
 const councilBtn = document.getElementById('councilBtn');
-const synthModelEl = document.getElementById('synthModel');
-let councilController = null;
 
 function refreshCouncilUI() {
 	councilBtn.classList.toggle('active', store.council);
-	councilEl.classList.toggle('visible', store.council);
+	renderRail();
+	if (!store.council && selectedUid === COUNCIL_UID) select(models[0]?.uid);
 }
 councilBtn.addEventListener('click', () => {
 	store.council = !store.council;
 	refreshCouncilUI();
+	if (store.council) select(COUNCIL_UID);
 });
-document.getElementById('councilClear').addEventListener('click', () => {
-	councilController?.abort();
-	councilBody.innerHTML = '<span class="hint">Send a prompt and the synthesizer will read every pane\'s answer, merge the best parts, and flag where the models disagree.</span>';
-});
-synthModelEl.addEventListener('change', () => { store.synthModel = synthModelEl.value.trim(); });
 
 async function synthesize(prompt, answers) {
-	// answers: [{model, text}]
-	councilBody.innerHTML = '';
-	const wrap = document.createElement('div');
-	councilBody.appendChild(wrap);
-	const shell = streamingShell(wrap);
-	councilController = new AbortController();
+	const c = ensureCouncil();
+	c.els.thread.querySelector('.placeholder')?.remove();
+	const el = addMessage(c, 'assistant');
+	const shell = streamingShell(el);
+	c.controller = new AbortController();
 	const started = Date.now();
+	setStatus(c, 'working', 'deliberating…');
+	select(COUNCIL_UID);
 
 	const briefing =
 		'You are the Council synthesizer. ' + answers.length +
@@ -723,17 +847,19 @@ async function synthesize(prompt, answers) {
 
 	try {
 		await streamCompletion({
-			model: synthModelEl.value.trim(),
+			model: c.model,
 			messages: [{ role: 'user', content: briefing }],
-			signal: councilController.signal,
-			onDelta: (t) => { shell.update(t); councilBody.scrollTop = councilBody.scrollHeight; },
+			signal: c.controller.signal,
+			onDelta: (t) => { shell.update(t); c.els.thread.scrollTop = c.els.thread.scrollHeight; },
 		});
-		shell.finish(synthModelEl.value.trim() + ' · ' + ((Date.now() - started) / 1000).toFixed(1) + 's');
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(c.model + ' · ' + secs + 's');
+		setStatus(c, 'done', secs + 's');
 	} catch (err) {
-		if (err.name === 'AbortError') shell.finish('stopped');
-		else shell.fail(String(err.message || err));
+		if (err.name === 'AbortError') { shell.finish('stopped'); setStatus(c, null, 'stopped'); }
+		else { shell.fail(String(err.message || err)); setStatus(c, 'error', 'error'); }
 	} finally {
-		councilController = null;
+		c.controller = null;
 	}
 }
 
@@ -743,27 +869,26 @@ const sendBtn = document.getElementById('sendBtn');
 
 async function sendAll() {
 	if (generating) { // acts as stop
-		panes.forEach((p) => p.controller?.abort());
-		councilController?.abort();
+		models.forEach((m) => m.controller?.abort());
+		councilEntry?.controller?.abort();
 		return;
 	}
 	const prompt = promptEl.value.trim();
 	if (!prompt) return;
 	if (!store.key) { openSettings(); return; }
-	if (!panes.length) addDefaultPanes();
 	promptEl.value = '';
 	autosize();
 	generating = true;
 	sendBtn.classList.add('stop');
 	sendBtn.textContent = '◼';
 	try {
-		const results = await Promise.allSettled(panes.map((p) => streamChat(p, prompt)));
+		const results = await Promise.allSettled(models.map((m) => streamChat(m, prompt)));
 		if (store.council) {
 			const answers = results
-				.map((r, i) => ({ model: panes[i]?.model, text: r.status === 'fulfilled' ? r.value : '' }))
+				.map((r, i) => ({ model: models[i]?.model, text: r.status === 'fulfilled' ? r.value : '' }))
 				.filter((a) => a.model && a.text);
 			if (answers.length >= 2) await synthesize(prompt, answers);
-			else councilBody.innerHTML = '<span class="hint">Need at least two successful answers to hold a council.</span>';
+			else setStatus(ensureCouncil(), 'error', 'needs 2+ answers');
 		}
 	} finally {
 		generating = false;
@@ -783,9 +908,14 @@ promptEl.addEventListener('keydown', (e) => {
 });
 function autosize() {
 	promptEl.style.height = 'auto';
-	promptEl.style.height = Math.min(promptEl.scrollHeight, innerHeight * 0.4) + 'px';
+	promptEl.style.height = Math.min(promptEl.scrollHeight, innerHeight * 0.38) + 'px';
 }
 promptEl.addEventListener('input', autosize);
+
+document.getElementById('newChatBtn').addEventListener('click', () => {
+	models.forEach(clearThread);
+	if (councilEntry) clearThread(councilEntry);
+});
 
 /* ----------------------------- settings ----------------------------- */
 const settingsEl = document.getElementById('settings');
@@ -801,18 +931,7 @@ document.getElementById('keyBtn').addEventListener('click', openSettings);
 document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	store.key = keyInput.value.trim();
 	store.enterToSend = enterToSendEl.checked;
-	updatePlaceholder();
 	settingsEl.close();
-});
-function updatePlaceholder() {
-	promptEl.placeholder = store.enterToSend
-		? 'Ask every AI at once… (Enter to send)'
-		: 'Ask every AI at once… (' + (navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl') + '+Enter to send)';
-}
-
-document.getElementById('newChatBtn').addEventListener('click', () => panes.forEach(clearPane));
-document.getElementById('addPaneBtn').addEventListener('click', () => {
-	addPane(availableModels[0]?.id || 'openai/gpt-4o');
 });
 
 /* -------------------------- model discovery ------------------------- */
@@ -821,21 +940,20 @@ function pickAvailable(prefs) {
 	const ids = new Set(availableModels.map((m) => m.id));
 	for (const want of prefs) {
 		if (ids.has(want)) return want;
-		// prefix match tolerates suffixes like ":free" or "-preview"
 		const near = availableModels.find((m) => m.id.startsWith(want));
 		if (near) return near.id;
 	}
 	return prefs[0];
 }
 
-let usingDefaultPanes = false;
-function addDefaultPanes() {
-	const saved = store.paneModels;
+let usingDefaults = false;
+function addDefaults() {
+	const saved = store.modelIds;
 	if (saved && saved.length) {
-		saved.forEach((m) => addPane(m));
+		saved.forEach((id) => addModel(id));
 	} else {
-		usingDefaultPanes = true;
-		DEFAULT_PANE_PREFS.forEach((prefs) => addPane(pickAvailable(prefs)));
+		usingDefaults = true;
+		DEFAULT_PREFS.forEach((prefs) => addModel(pickAvailable(prefs)));
 	}
 }
 
@@ -851,33 +969,29 @@ async function loadModels() {
 			opt.value = m.id;
 			list.appendChild(opt);
 		}
-		// upgrade any default panes that resolved before the list arrived
-		if (usingDefaultPanes) {
-			panes.forEach((pane, i) => {
-				if (!DEFAULT_PANE_PREFS[i]) return;
-				const better = pickAvailable(DEFAULT_PANE_PREFS[i]);
-				if (better !== pane.model) {
-					pane.model = better;
-					pane.els.model.value = better;
-					paintAvatar(pane.els.avatar, better);
-					const ph = pane.els.body.querySelector('.placeholder');
-					if (ph) ph.textContent = better;
+		if (usingDefaults) {
+			models.forEach((m, i) => {
+				if (!DEFAULT_PREFS[i]) return;
+				const better = pickAvailable(DEFAULT_PREFS[i]);
+				if (better !== m.model) {
+					m.model = better;
+					refreshEntry(m, false);
 				}
 			});
-			savePanes();
+			saveModels();
 		}
 		if (!store.synthModel) {
-			synthModelEl.value = pickAvailable(SYNTH_PREFS);
-			store.synthModel = synthModelEl.value;
+			store.synthModel = pickAvailable(SYNTH_PREFS);
+			if (councilEntry) { councilEntry.model = store.synthModel; refreshEntry(councilEntry, true); }
 		}
+		if (selectedUid) select(selectedUid); // refresh head after upgrades
 	} catch { /* offline or blocked: typed model ids still work */ }
 }
 
 /* ------------------------------- boot ------------------------------- */
-updatePlaceholder();
+addDefaults();
 refreshCouncilUI();
-synthModelEl.value = store.synthModel || SYNTH_PREFS[0];
-addDefaultPanes();
+select(models[0]?.uid);
 loadModels();
 if (!store.key) openSettings();
 </script>

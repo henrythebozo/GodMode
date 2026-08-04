@@ -1,0 +1,13 @@
+{
+	"name": "GodMode — one prompt, every AI",
+	"short_name": "GodMode",
+	"description": "Chat with GPT, Claude, Gemini, Kimi and 300+ models at once.",
+	"start_url": ".",
+	"display": "standalone",
+	"background_color": "#0e0e16",
+	"theme_color": "#0e0e16",
+	"icons": [
+		{ "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+		{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+	]
+}
