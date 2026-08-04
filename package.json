@@ -210,8 +210,16 @@
 		}
 	},
 	"devEngines": {
-		"node": ">=18.x",
-		"npm": ">=7.x"
+		"runtime": {
+			"name": "node",
+			"version": ">=18.0.0",
+			"onFail": "warn"
+		},
+		"packageManager": {
+			"name": "npm",
+			"version": ">=7.0.0",
+			"onFail": "warn"
+		}
 	},
 	"electronmon": {
 		"patterns": [
