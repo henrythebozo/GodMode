@@ -430,9 +430,21 @@
 	<p>
 		Paste your API key (create one at
 		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>).
-		It is stored only on this device, and sent only to OpenRouter.
+		Keys are stored only on this device, and sent only to the AI provider they belong to.
 	</p>
-	<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
+	<input type="password" id="keyInput" placeholder="OpenRouter key — sk-or-v1-…" autocomplete="off" />
+	<details id="directKeys">
+		<summary style="font-size:13px;color:var(--dim);cursor:pointer">Direct API keys (optional)</summary>
+		<p>
+			Have your own vendor keys? Add them and use models named
+			<code>claude:…</code>, <code>kimi:…</code>, <code>pplx:…</code> from the model
+			dropdown. Claude works everywhere; Kimi &amp; Perplexity block browsers, so they
+			need the local server (<code>npm run web</code>).
+		</p>
+		<input type="password" id="anthKeyInput" placeholder="Anthropic (Claude) key — sk-ant-…" autocomplete="off" />
+		<input type="password" id="kimiKeyInput" placeholder="Moonshot (Kimi) key — sk-…" autocomplete="off" />
+		<input type="password" id="pplxKeyInput" placeholder="Perplexity key — pplx-…" autocomplete="off" />
+	</details>
 	<div class="row">
 		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
 		<button class="primary" id="saveKeyBtn">Save</button>
@@ -447,6 +459,12 @@ const COUNCIL_UID = '__council';
 const store = {
 	get key() { return localStorage.getItem('godmode.key') || ''; },
 	set key(v) { localStorage.setItem('godmode.key', v); },
+	get anthKey() { return localStorage.getItem('godmode.key.anthropic') || ''; },
+	set anthKey(v) { localStorage.setItem('godmode.key.anthropic', v); },
+	get kimiKey() { return localStorage.getItem('godmode.key.kimi') || ''; },
+	set kimiKey(v) { localStorage.setItem('godmode.key.kimi', v); },
+	get pplxKey() { return localStorage.getItem('godmode.key.pplx') || ''; },
+	set pplxKey(v) { localStorage.setItem('godmode.key.pplx', v); },
 	get modelIds() {
 		try { return JSON.parse(localStorage.getItem('godmode.panes')) || null; }
 		catch { return null; }
@@ -485,13 +503,78 @@ const VENDORS = {
 	microsoft: ['#0078d4', 'Ms'],
 	nvidia: ['#76b900', 'N'],
 };
+const DIRECT_VENDORS = {
+	claude: VENDORS.anthropic,
+	kimi: VENDORS.moonshotai,
+	pplx: VENDORS.perplexity,
+};
 function vendorInfo(modelId) {
+	const direct = (modelId || '').match(/^(claude|kimi|pplx):/);
+	if (direct) return DIRECT_VENDORS[direct[1]];
 	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
 	return VENDORS[prefix] || ['#666a75', (prefix[0] || '?').toUpperCase()];
 }
 function shortName(modelId) {
-	const tail = (modelId || '').split('/')[1] || modelId || '?';
+	const id = modelId || '';
+	if (/^(claude|kimi|pplx):/.test(id)) return id.split(':')[1].replace(/[-_]/g, ' ');
+	const tail = id.split('/')[1] || id || '?';
 	return tail.replace(/[-_]/g, ' ');
+}
+
+/* --------------------------- backend routing --------------------------
+ * Model ids route to a backend:
+ *   claude:<model>  -> Anthropic API directly from the browser (allowed by
+ *                      Anthropic via the direct-browser-access header)
+ *   kimi:<model>    -> Moonshot API via the npm-run-web local proxy
+ *   pplx:<model>    -> Perplexity API via the npm-run-web local proxy
+ *   anything else   -> OpenRouter
+ */
+let hasProxy = false;
+function backendFor(modelId) {
+	const m = (modelId || '').match(/^(claude|kimi|pplx):(.*)$/);
+	if (!m) {
+		if (!store.key) throw new Error('Add your OpenRouter API key in ⚙︎ Settings');
+		return {
+			kind: 'openai',
+			url: API_BASE + '/chat/completions',
+			model: modelId,
+			headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'GodMode Web' },
+		};
+	}
+	const [, vendor, model] = m;
+	if (vendor === 'claude') {
+		if (!store.anthKey) throw new Error('Add your Anthropic (Claude) API key in ⚙︎ Settings');
+		return {
+			kind: 'anthropic',
+			url: 'https://api.anthropic.com/v1/messages',
+			model,
+			headers: {
+				'x-api-key': store.anthKey,
+				'anthropic-version': '2023-06-01',
+				'anthropic-dangerous-direct-browser-access': 'true',
+				'Content-Type': 'application/json',
+			},
+		};
+	}
+	if (!hasProxy) {
+		throw new Error('Kimi/Perplexity direct keys need the local server — run "npm run web" and open http://localhost:8741 (or use an OpenRouter model id instead)');
+	}
+	if (vendor === 'kimi') {
+		if (!store.kimiKey) throw new Error('Add your Moonshot (Kimi) API key in ⚙︎ Settings');
+		return {
+			kind: 'openai',
+			url: '/proxy/moonshot/v1/chat/completions',
+			model,
+			headers: { Authorization: 'Bearer ' + store.kimiKey, 'Content-Type': 'application/json' },
+		};
+	}
+	if (!store.pplxKey) throw new Error('Add your Perplexity API key in ⚙︎ Settings');
+	return {
+		kind: 'openai',
+		url: '/proxy/perplexity/chat/completions',
+		model,
+		headers: { Authorization: 'Bearer ' + store.pplxKey, 'Content-Type': 'application/json' },
+	};
 }
 
 let availableModels = [];
@@ -710,16 +793,23 @@ function addMessage(m, role) {
 }
 
 /* --------------------- streaming (shared plumbing) ------------------- */
+function parseDelta(kind, data) {
+	if (kind === 'anthropic') {
+		const ev = JSON.parse(data);
+		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
+	}
+	return JSON.parse(data).choices?.[0]?.delta?.content;
+}
+
 async function streamCompletion({ model, messages, signal, onDelta }) {
-	const res = await fetch(API_BASE + '/chat/completions', {
+	const backend = backendFor(model); // throws a friendly error if unusable
+	const body = { model: backend.model, messages, stream: true };
+	if (backend.kind === 'anthropic') body.max_tokens = 8192;
+	const res = await fetch(backend.url, {
 		method: 'POST',
 		signal,
-		headers: {
-			Authorization: 'Bearer ' + store.key,
-			'Content-Type': 'application/json',
-			'X-Title': 'GodMode Web',
-		},
-		body: JSON.stringify({ model, messages, stream: true }),
+		headers: backend.headers,
+		body: JSON.stringify(body),
 	});
 	if (!res.ok) {
 		let detail = res.status + ' ' + res.statusText;
@@ -739,7 +829,7 @@ async function streamCompletion({ model, messages, signal, onDelta }) {
 			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
 			if (!data || data === '[DONE]') continue;
 			try {
-				const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+				const delta = parseDelta(backend.kind, data);
 				if (delta) { text += delta; onDelta(text); }
 			} catch {}
 		}
@@ -875,7 +965,7 @@ async function sendAll() {
 	}
 	const prompt = promptEl.value.trim();
 	if (!prompt) return;
-	if (!store.key) { openSettings(); return; }
+	if (!anyKey()) { openSettings(); return; }
 	promptEl.value = '';
 	autosize();
 	generating = true;
@@ -920,18 +1010,35 @@ document.getElementById('newChatBtn').addEventListener('click', () => {
 /* ----------------------------- settings ----------------------------- */
 const settingsEl = document.getElementById('settings');
 const keyInput = document.getElementById('keyInput');
+const anthKeyInput = document.getElementById('anthKeyInput');
+const kimiKeyInput = document.getElementById('kimiKeyInput');
+const pplxKeyInput = document.getElementById('pplxKeyInput');
 const enterToSendEl = document.getElementById('enterToSend');
+
+function anyKey() {
+	return store.key || store.anthKey || store.kimiKey || store.pplxKey;
+}
 
 function openSettings() {
 	keyInput.value = store.key;
+	anthKeyInput.value = store.anthKey;
+	kimiKeyInput.value = store.kimiKey;
+	pplxKeyInput.value = store.pplxKey;
 	enterToSendEl.checked = store.enterToSend;
+	if (store.anthKey || store.kimiKey || store.pplxKey) {
+		document.getElementById('directKeys').open = true;
+	}
 	if (!settingsEl.open) settingsEl.showModal();
 }
 document.getElementById('keyBtn').addEventListener('click', openSettings);
 document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	store.key = keyInput.value.trim();
+	store.anthKey = anthKeyInput.value.trim();
+	store.kimiKey = kimiKeyInput.value.trim();
+	store.pplxKey = pplxKeyInput.value.trim();
 	store.enterToSend = enterToSendEl.checked;
 	settingsEl.close();
+	loadDirectModels();
 });
 
 /* -------------------------- model discovery ------------------------- */
@@ -957,18 +1064,68 @@ function addDefaults() {
 	}
 }
 
+const directSuggestions = new Set();
+
+function rebuildDatalist() {
+	const list = document.getElementById('modelList');
+	list.innerHTML = '';
+	for (const id of directSuggestions) {
+		const opt = document.createElement('option');
+		opt.value = id;
+		list.appendChild(opt);
+	}
+	for (const m of availableModels) {
+		const opt = document.createElement('option');
+		opt.value = m.id;
+		list.appendChild(opt);
+	}
+}
+
+// Suggest direct-key model ids in the dropdown; fetch live catalogs where the
+// vendor offers one, with sensible fallbacks when offline.
+async function loadDirectModels() {
+	directSuggestions.clear();
+	if (store.anthKey) {
+		['claude:claude-opus-5', 'claude:claude-sonnet-5', 'claude:claude-haiku-4-5'].forEach((s) => directSuggestions.add(s));
+		try {
+			const res = await fetch('https://api.anthropic.com/v1/models', {
+				headers: {
+					'x-api-key': store.anthKey,
+					'anthropic-version': '2023-06-01',
+					'anthropic-dangerous-direct-browser-access': 'true',
+				},
+			});
+			(await res.json()).data?.forEach((m) => directSuggestions.add('claude:' + m.id));
+		} catch {}
+	}
+	if (store.kimiKey && hasProxy) {
+		directSuggestions.add('kimi:kimi-latest');
+		try {
+			const res = await fetch('/proxy/moonshot/v1/models', {
+				headers: { Authorization: 'Bearer ' + store.kimiKey },
+			});
+			(await res.json()).data?.forEach((m) => directSuggestions.add('kimi:' + m.id));
+		} catch {}
+	}
+	if (store.pplxKey && hasProxy) {
+		['pplx:sonar', 'pplx:sonar-pro', 'pplx:sonar-reasoning-pro'].forEach((s) => directSuggestions.add(s));
+	}
+	rebuildDatalist();
+}
+
+async function detectProxy() {
+	try {
+		const res = await fetch('/proxy/ping');
+		hasProxy = res.ok && (await res.text()) === 'pong';
+	} catch { hasProxy = false; }
+}
+
 async function loadModels() {
 	try {
 		const res = await fetch(API_BASE + '/models');
 		const { data } = await res.json();
 		availableModels = data || [];
-		const list = document.getElementById('modelList');
-		list.innerHTML = '';
-		for (const m of availableModels) {
-			const opt = document.createElement('option');
-			opt.value = m.id;
-			list.appendChild(opt);
-		}
+		rebuildDatalist();
 		if (usingDefaults) {
 			models.forEach((m, i) => {
 				if (!DEFAULT_PREFS[i]) return;
@@ -993,7 +1150,8 @@ addDefaults();
 refreshCouncilUI();
 select(models[0]?.uid);
 loadModels();
-if (!store.key) openSettings();
+detectProxy().then(loadDirectModels);
+if (!anyKey()) openSettings();
 </script>
 </body>
 </html>

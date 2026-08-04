@@ -4,12 +4,42 @@
  * Also listens on your LAN address so a phone on the same Wi-Fi can open it.
  */
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
 const ROOT = path.join(__dirname, '..', '..', 'docs');
 const PORT = process.env.PORT || 8741;
+
+// Pass-through API proxy so the browser can use vendors whose APIs block
+// cross-origin requests (Kimi/Moonshot, Perplexity). The browser sends its
+// own Authorization header; no keys are stored or logged here.
+const PROXY_HOSTS = {
+	moonshot: 'api.moonshot.ai',
+	perplexity: 'api.perplexity.ai',
+	anthropic: 'api.anthropic.com',
+};
+const DROP_HEADERS = ['host', 'origin', 'referer', 'connection'];
+
+function proxy(req, res, vendor, upstreamPath) {
+	const headers = {};
+	for (const [k, v] of Object.entries(req.headers)) {
+		if (!DROP_HEADERS.includes(k.toLowerCase())) headers[k] = v;
+	}
+	const up = https.request(
+		{ host: PROXY_HOSTS[vendor], path: upstreamPath, method: req.method, headers },
+		(upRes) => {
+			res.writeHead(upRes.statusCode, upRes.headers);
+			upRes.pipe(res);
+		},
+	);
+	up.on('error', (e) => {
+		res.writeHead(502, { 'Content-Type': 'application/json' });
+		res.end(JSON.stringify({ error: { message: 'proxy error: ' + e.message } }));
+	});
+	req.pipe(up);
+}
 
 const MIME = {
 	'.html': 'text/html; charset=utf-8',
@@ -24,6 +54,12 @@ const MIME = {
 
 const server = http.createServer((req, res) => {
 	const urlPath = decodeURIComponent(req.url.split('?')[0]);
+	if (urlPath === '/proxy/ping') {
+		res.writeHead(200, { 'Content-Type': 'text/plain' });
+		return res.end('pong');
+	}
+	const proxyMatch = urlPath.match(/^\/proxy\/(moonshot|perplexity|anthropic)(\/.*)$/);
+	if (proxyMatch) return proxy(req, res, proxyMatch[1], proxyMatch[2]);
 	let file = path.normalize(path.join(ROOT, urlPath === '/' ? 'index.html' : urlPath));
 	if (!file.startsWith(ROOT)) {
 		res.writeHead(403);
