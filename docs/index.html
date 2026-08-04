@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GodMode Web — one prompt, every AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐣</text></svg>" />
+<style>
+	:root {
+		--bg: #101014;
+		--bg-pane: #17171d;
+		--bg-input: #1e1e26;
+		--border: #2a2a34;
+		--text: #e8e8ee;
+		--text-dim: #9a9aa8;
+		--accent: #f5c542;
+		--accent-text: #171200;
+		--user-bubble: #26262f;
+		--err: #ff7a7a;
+		--code-bg: #0c0c10;
+	}
+	@media (prefers-color-scheme: light) {
+		:root {
+			--bg: #f4f4f6;
+			--bg-pane: #ffffff;
+			--bg-input: #ffffff;
+			--border: #d8d8e0;
+			--text: #1b1b22;
+			--text-dim: #6a6a78;
+			--user-bubble: #ececf2;
+			--err: #c0392b;
+			--code-bg: #f0f0f4;
+		}
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100%; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		display: flex;
+		flex-direction: column;
+		overscroll-behavior: none;
+	}
+
+	header {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 14px;
+		border-bottom: 1px solid var(--border);
+		flex: none;
+	}
+	header .logo { font-weight: 700; font-size: 17px; white-space: nowrap; }
+	header .logo .web { color: var(--accent); font-weight: 500; }
+	header .spacer { flex: 1; }
+	.iconbtn {
+		background: none;
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 8px;
+		padding: 5px 11px;
+		font-size: 13px;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+	.iconbtn:hover { border-color: var(--text-dim); }
+
+	main {
+		flex: 1;
+		display: flex;
+		gap: 1px;
+		background: var(--border);
+		overflow-x: auto;
+		min-height: 0;
+	}
+	.pane {
+		background: var(--bg-pane);
+		flex: 1 1 0;
+		min-width: 300px;
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+	.pane-head {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+		padding: 7px 9px;
+		border-bottom: 1px solid var(--border);
+		flex: none;
+	}
+	.pane-head input {
+		flex: 1;
+		min-width: 0;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 7px;
+		padding: 5px 8px;
+		font-size: 12.5px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+	.pane-head button {
+		background: none;
+		border: none;
+		color: var(--text-dim);
+		font-size: 15px;
+		cursor: pointer;
+		padding: 2px 5px;
+		border-radius: 6px;
+	}
+	.pane-head button:hover { color: var(--text); background: var(--user-bubble); }
+
+	.pane-body {
+		flex: 1;
+		overflow-y: auto;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		min-height: 0;
+	}
+	.msg { max-width: 100%; overflow-wrap: break-word; }
+	.msg.user {
+		background: var(--user-bubble);
+		border-radius: 12px;
+		padding: 7px 12px;
+		align-self: flex-end;
+		max-width: 88%;
+		white-space: pre-wrap;
+	}
+	.msg.assistant { align-self: stretch; }
+	.msg.assistant.streaming::after {
+		content: "▌";
+		color: var(--accent);
+		animation: blink 1s step-end infinite;
+	}
+	@keyframes blink { 50% { opacity: 0; } }
+	.msg .error { color: var(--err); font-size: 13.5px; white-space: pre-wrap; }
+	.placeholder {
+		color: var(--text-dim);
+		font-size: 13.5px;
+		margin: auto;
+		text-align: center;
+		padding: 20px;
+	}
+
+	/* minimal markdown styles */
+	.msg h1, .msg h2, .msg h3 { margin: 10px 0 4px; line-height: 1.25; }
+	.msg h1 { font-size: 1.25em; } .msg h2 { font-size: 1.15em; } .msg h3 { font-size: 1.05em; }
+	.msg p { margin: 6px 0; }
+	.msg ul, .msg ol { margin: 6px 0; padding-left: 22px; }
+	.msg pre {
+		background: var(--code-bg);
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		padding: 9px 11px;
+		overflow-x: auto;
+		margin: 8px 0;
+		font-size: 13px;
+	}
+	.msg code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+	.msg :not(pre) > code {
+		background: var(--code-bg);
+		border: 1px solid var(--border);
+		border-radius: 5px;
+		padding: 1px 5px;
+	}
+	.msg a { color: var(--accent); }
+	.msg blockquote { border-left: 3px solid var(--border); margin: 6px 0; padding-left: 10px; color: var(--text-dim); }
+
+	footer {
+		flex: none;
+		border-top: 1px solid var(--border);
+		padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+		display: flex;
+		gap: 9px;
+		align-items: flex-end;
+	}
+	footer textarea {
+		flex: 1;
+		resize: none;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 12px;
+		padding: 10px 13px;
+		font: inherit;
+		max-height: 40vh;
+	}
+	footer textarea:focus { outline: none; border-color: var(--accent); }
+	.send {
+		background: var(--accent);
+		color: var(--accent-text);
+		border: none;
+		border-radius: 12px;
+		width: 46px;
+		height: 46px;
+		font-size: 19px;
+		cursor: pointer;
+		flex: none;
+	}
+	.send:disabled { opacity: 0.45; cursor: default; }
+	.send.stop { background: var(--err); color: #fff; }
+
+	dialog {
+		background: var(--bg-pane);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 14px;
+		padding: 22px;
+		max-width: 430px;
+		width: calc(100vw - 40px);
+	}
+	dialog::backdrop { background: rgba(0,0,0,0.55); }
+	dialog h2 { font-size: 17px; margin-bottom: 4px; }
+	dialog p { font-size: 13.5px; color: var(--text-dim); margin: 8px 0; }
+	dialog a { color: var(--accent); }
+	dialog input[type="password"], dialog input[type="text"] {
+		width: 100%;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 8px;
+		padding: 9px 11px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 13px;
+		margin: 8px 0;
+	}
+	dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+	dialog .row label { margin-right: auto; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+	.primary {
+		background: var(--accent);
+		color: var(--accent-text);
+		border: none;
+		border-radius: 8px;
+		padding: 8px 16px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	@media (max-width: 700px) {
+		main { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+		.pane { min-width: 0; min-height: 45vh; flex: none; }
+		header .hide-sm { display: none; }
+	}
+</style>
+</head>
+<body>
+
+<header>
+	<span class="logo">🐣 GodMode <span class="web">web</span></span>
+	<span class="spacer"></span>
+	<button class="iconbtn" id="newChatBtn" title="Clear all conversations">✦ New chat</button>
+	<button class="iconbtn hide-sm" id="addPaneBtn" title="Add a model pane">+ Pane</button>
+	<button class="iconbtn" id="keyBtn" title="API key & settings">⚙︎</button>
+</header>
+
+<main id="panes"></main>
+
+<footer>
+	<textarea id="prompt" rows="1" placeholder="Ask every AI at once… (Enter to send)"></textarea>
+	<button class="send" id="sendBtn" title="Send to all panes">➤</button>
+</footer>
+
+<datalist id="modelList"></datalist>
+
+<dialog id="settings">
+	<h2>🐣 Welcome to GodMode Web</h2>
+	<p>
+		One prompt, sent to multiple AI models side by side. Responses stream in
+		from the <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
+		one key unlocks GPT, Claude, Gemini, Grok, DeepSeek and 300+ more.
+	</p>
+	<p>
+		Paste your API key (create one at
+		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>).
+		It is stored only in this browser, and sent only to OpenRouter.
+	</p>
+	<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
+	<div class="row">
+		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
+		<button class="primary" id="saveKeyBtn">Save</button>
+	</div>
+</dialog>
+
+<script>
+'use strict';
+
+const API_BASE = 'https://openrouter.ai/api/v1';
+const store = {
+	get key() { return localStorage.getItem('godmode.key') || ''; },
+	set key(v) { localStorage.setItem('godmode.key', v); },
+	get paneModels() {
+		try { return JSON.parse(localStorage.getItem('godmode.panes')) || null; }
+		catch { return null; }
+	},
+	set paneModels(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
+	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
+	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
+};
+
+// Preferred defaults per pane, first available on OpenRouter wins.
+// Editable in the pane header — any OpenRouter model id works.
+const DEFAULT_PANE_PREFS = [
+	['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5', 'openai/gpt-4o'],
+	['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-3.7-sonnet'],
+	['google/gemini-3-pro', 'google/gemini-3-flash', 'google/gemini-2.5-pro', 'google/gemini-2.0-flash-001'],
+	['x-ai/grok-4.1', 'x-ai/grok-4', 'deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct'],
+];
+
+let availableModels = [];
+const panes = []; // { id, model, messages, controller, els }
+let paneSeq = 0;
+let generating = false;
+
+/* ---------- tiny markdown renderer (safe: escapes HTML first) ---------- */
+function esc(s) {
+	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function inlineMd(s) {
+	return s
+		.replace(/`([^`]+)`/g, (_, c) => '<code>' + c + '</code>')
+		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+		.replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, '$1<em>$2</em>')
+		.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+}
+function renderMarkdown(src) {
+	const lines = esc(src).split('\n');
+	let html = '', inCode = false, inList = null, para = [];
+	const flushPara = () => { if (para.length) { html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } };
+	const closeList = () => { if (inList) { html += '</' + inList + '>'; inList = null; } };
+	for (const line of lines) {
+		if (line.startsWith('```')) {
+			flushPara(); closeList();
+			html += inCode ? '</code></pre>' : '<pre><code>';
+			inCode = !inCode;
+			continue;
+		}
+		if (inCode) { html += line + '\n'; continue; }
+		const h = line.match(/^(#{1,3})\s+(.*)/);
+		const ul = line.match(/^\s*[-*]\s+(.*)/);
+		const ol = line.match(/^\s*\d+[.)]\s+(.*)/);
+		const bq = line.match(/^>\s?(.*)/);
+		if (h) { flushPara(); closeList(); html += `<h${h[1].length}>` + inlineMd(h[2]) + `</h${h[1].length}>`; }
+		else if (ul) { flushPara(); if (inList !== 'ul') { closeList(); html += '<ul>'; inList = 'ul'; } html += '<li>' + inlineMd(ul[1]) + '</li>'; }
+		else if (ol) { flushPara(); if (inList !== 'ol') { closeList(); html += '<ol>'; inList = 'ol'; } html += '<li>' + inlineMd(ol[1]) + '</li>'; }
+		else if (bq) { flushPara(); closeList(); html += '<blockquote>' + inlineMd(bq[1]) + '</blockquote>'; }
+		else if (!line.trim()) { flushPara(); closeList(); }
+		else para.push(line);
+	}
+	if (inCode) html += '</code></pre>';
+	flushPara(); closeList();
+	return html;
+}
+
+/* ------------------------------ panes ------------------------------ */
+const panesEl = document.getElementById('panes');
+
+function addPane(model) {
+	const id = ++paneSeq;
+	const el = document.createElement('section');
+	el.className = 'pane';
+	el.innerHTML = `
+		<div class="pane-head">
+			<input list="modelList" spellcheck="false" autocomplete="off" title="OpenRouter model id" />
+			<button class="clear" title="Clear this conversation">✦</button>
+			<button class="close" title="Remove pane">✕</button>
+		</div>
+		<div class="pane-body">
+			<div class="placeholder">${esc(model)}</div>
+		</div>`;
+	panesEl.appendChild(el);
+	const pane = {
+		id, model, messages: [], controller: null,
+		els: { root: el, model: el.querySelector('input'), body: el.querySelector('.pane-body') },
+	};
+	pane.els.model.value = model;
+	pane.els.model.addEventListener('change', () => {
+		pane.model = pane.els.model.value.trim();
+		savePanes();
+	});
+	el.querySelector('.close').addEventListener('click', () => {
+		pane.controller?.abort();
+		panes.splice(panes.indexOf(pane), 1);
+		el.remove();
+		savePanes();
+	});
+	el.querySelector('.clear').addEventListener('click', () => clearPane(pane));
+	panes.push(pane);
+	savePanes();
+	return pane;
+}
+
+function clearPane(pane) {
+	pane.controller?.abort();
+	pane.messages = [];
+	pane.els.body.innerHTML = `<div class="placeholder">${esc(pane.model)}</div>`;
+}
+
+function savePanes() {
+	store.paneModels = panes.map((p) => p.model);
+}
+
+function addMessage(pane, role) {
+	pane.els.body.querySelector('.placeholder')?.remove();
+	const div = document.createElement('div');
+	div.className = 'msg ' + role;
+	pane.els.body.appendChild(div);
+	return div;
+}
+
+/* ---------------------------- streaming ---------------------------- */
+async function streamChat(pane, prompt) {
+	pane.messages.push({ role: 'user', content: prompt });
+	const userEl = addMessage(pane, 'user');
+	userEl.textContent = prompt;
+
+	const el = addMessage(pane, 'assistant');
+	el.classList.add('streaming');
+	pane.controller = new AbortController();
+	let text = '';
+	const scrollDown = () => { pane.els.body.scrollTop = pane.els.body.scrollHeight; };
+	scrollDown();
+
+	try {
+		const res = await fetch(API_BASE + '/chat/completions', {
+			method: 'POST',
+			signal: pane.controller.signal,
+			headers: {
+				Authorization: 'Bearer ' + store.key,
+				'Content-Type': 'application/json',
+				'X-Title': 'GodMode Web',
+			},
+			body: JSON.stringify({
+				model: pane.model,
+				messages: pane.messages,
+				stream: true,
+			}),
+		});
+		if (!res.ok) {
+			let detail = res.status + ' ' + res.statusText;
+			try { detail = (await res.json()).error?.message || detail; } catch {}
+			throw new Error(detail);
+		}
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let buf = '';
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buf += decoder.decode(value, { stream: true });
+			const lines = buf.split('\n');
+			buf = lines.pop();
+			for (const line of lines) {
+				const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+				if (!data || data === '[DONE]') continue;
+				try {
+					const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+					if (delta) {
+						text += delta;
+						el.innerHTML = renderMarkdown(text);
+						scrollDown();
+					}
+				} catch {}
+			}
+		}
+		pane.messages.push({ role: 'assistant', content: text });
+	} catch (err) {
+		if (err.name === 'AbortError') {
+			if (text) pane.messages.push({ role: 'assistant', content: text });
+		} else {
+			pane.messages.pop(); // let the user retry the failed turn
+			el.innerHTML = '<div class="error">⚠ ' + esc(String(err.message || err)) + '</div>';
+			if (/auth|key|401/i.test(String(err.message))) openSettings();
+		}
+	} finally {
+		el.classList.remove('streaming');
+		pane.controller = null;
+	}
+}
+
+/* ------------------------------ send ------------------------------- */
+const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('sendBtn');
+
+async function sendAll() {
+	if (generating) { // acts as stop
+		panes.forEach((p) => p.controller?.abort());
+		return;
+	}
+	const prompt = promptEl.value.trim();
+	if (!prompt) return;
+	if (!store.key) { openSettings(); return; }
+	if (!panes.length) addDefaultPanes();
+	promptEl.value = '';
+	autosize();
+	generating = true;
+	sendBtn.classList.add('stop');
+	sendBtn.textContent = '◼';
+	try {
+		await Promise.allSettled(panes.map((p) => streamChat(p, prompt)));
+	} finally {
+		generating = false;
+		sendBtn.classList.remove('stop');
+		sendBtn.textContent = '➤';
+	}
+}
+
+sendBtn.addEventListener('click', sendAll);
+promptEl.addEventListener('keydown', (e) => {
+	const plainEnter = e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey;
+	const cmdEnter = e.key === 'Enter' && (e.metaKey || e.ctrlKey);
+	if ((store.enterToSend && plainEnter) || cmdEnter) {
+		e.preventDefault();
+		sendAll();
+	}
+});
+function autosize() {
+	promptEl.style.height = 'auto';
+	promptEl.style.height = Math.min(promptEl.scrollHeight, innerHeight * 0.4) + 'px';
+}
+promptEl.addEventListener('input', autosize);
+
+/* ---------------------------- settings ----------------------------- */
+const settingsEl = document.getElementById('settings');
+const keyInput = document.getElementById('keyInput');
+const enterToSendEl = document.getElementById('enterToSend');
+
+function openSettings() {
+	keyInput.value = store.key;
+	enterToSendEl.checked = store.enterToSend;
+	if (!settingsEl.open) settingsEl.showModal();
+}
+document.getElementById('keyBtn').addEventListener('click', openSettings);
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+	store.key = keyInput.value.trim();
+	store.enterToSend = enterToSendEl.checked;
+	updatePlaceholder();
+	settingsEl.close();
+});
+function updatePlaceholder() {
+	promptEl.placeholder = store.enterToSend
+		? 'Ask every AI at once… (Enter to send)'
+		: 'Ask every AI at once… (' + (navigator.platform.includes('Mac') ? 'Cmd' : 'Ctrl') + '+Enter to send)';
+}
+
+document.getElementById('newChatBtn').addEventListener('click', () => panes.forEach(clearPane));
+document.getElementById('addPaneBtn').addEventListener('click', () => {
+	addPane(availableModels[0]?.id || 'openai/gpt-4o');
+});
+
+/* ------------------------- model discovery ------------------------- */
+function pickAvailable(prefs) {
+	if (!availableModels.length) return prefs[0];
+	const ids = new Set(availableModels.map((m) => m.id));
+	for (const want of prefs) {
+		if (ids.has(want)) return want;
+		// prefix match tolerates dated suffixes like ":free" or "-preview"
+		const near = availableModels.find((m) => m.id.startsWith(want));
+		if (near) return near.id;
+	}
+	return prefs[0];
+}
+
+let usingDefaultPanes = false;
+function addDefaultPanes() {
+	const saved = store.paneModels;
+	if (saved && saved.length) {
+		saved.forEach((m) => addPane(m));
+	} else {
+		usingDefaultPanes = true;
+		DEFAULT_PANE_PREFS.forEach((prefs) => addPane(pickAvailable(prefs)));
+	}
+}
+
+async function loadModels() {
+	try {
+		const res = await fetch(API_BASE + '/models');
+		const { data } = await res.json();
+		availableModels = data || [];
+		const list = document.getElementById('modelList');
+		list.innerHTML = '';
+		for (const m of availableModels) {
+			const opt = document.createElement('option');
+			opt.value = m.id;
+			list.appendChild(opt);
+		}
+		// upgrade any default panes that resolved before the list arrived
+		if (usingDefaultPanes) {
+			panes.forEach((pane, i) => {
+				if (!DEFAULT_PANE_PREFS[i]) return;
+				const better = pickAvailable(DEFAULT_PANE_PREFS[i]);
+				if (better !== pane.model) {
+					pane.model = better;
+					pane.els.model.value = better;
+					const ph = pane.els.body.querySelector('.placeholder');
+					if (ph) ph.textContent = better;
+				}
+			});
+			savePanes();
+		}
+	} catch { /* offline or blocked: typed model ids still work */ }
+}
+
+/* ------------------------------ boot ------------------------------- */
+updatePlaceholder();
+addDefaultPanes();
+loadModels();
+if (!store.key) openSettings();
+</script>
+</body>
+</html>
