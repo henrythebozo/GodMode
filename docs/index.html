@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>GodMode — one prompt, every AI</title>
+<meta name="theme-color" content="#0e0e16" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GodMode" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
+<style>
+	:root {
+		--bg: #0e0e16;
+		--bg-glow: radial-gradient(120% 90% at 15% 0%, #1b1b2c 0%, #12121c 45%, #0e0e16 100%);
+		--panel: #16161f;
+		--panel-2: #1c1c29;
+		--border: #262636;
+		--border-soft: #20202e;
+		--text: #ecebf6;
+		--dim: #8d8da2;
+		--vio-1: #7c5cfc;
+		--vio-2: #c44cf0;
+		--grad: linear-gradient(120deg, var(--vio-1), var(--vio-2));
+		--glow: 0 0 22px rgba(124, 92, 252, 0.35);
+		--user-bubble: linear-gradient(120deg, rgba(124, 92, 252, 0.22), rgba(196, 76, 240, 0.16));
+		--err: #ff8095;
+		--ok: #3ddc97;
+		--code-bg: #0a0a12;
+		--shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100dvh; }
+	body {
+		background: var(--bg-glow) fixed, var(--bg);
+		color: var(--text);
+		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		display: flex;
+		overscroll-behavior: none;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	/* ------------------------------ sidebar ------------------------------ */
+	aside {
+		width: 248px;
+		flex: none;
+		display: flex;
+		flex-direction: column;
+		border-right: 1px solid var(--border-soft);
+		background: rgba(22, 22, 31, 0.6);
+		padding: calc(14px + env(safe-area-inset-top)) 12px 14px;
+		gap: 12px;
+		min-height: 0;
+	}
+	.rail-top { display: flex; align-items: center; gap: 6px; padding: 0 2px; }
+	.logo {
+		font-weight: 800;
+		font-size: 15.5px;
+		letter-spacing: -0.3px;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+	.logo .grad {
+		background: var(--grad);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.iconbtn {
+		background: var(--panel-2);
+		border: 1px solid var(--border);
+		color: var(--dim);
+		border-radius: 10px;
+		width: 32px;
+		height: 32px;
+		font-size: 14px;
+		cursor: pointer;
+		flex: none;
+		display: grid;
+		place-items: center;
+		transition: color 0.15s, border-color 0.15s, background 0.15s;
+	}
+	.iconbtn:hover { color: var(--text); border-color: var(--dim); }
+	.iconbtn.active {
+		background: var(--grad);
+		color: #fff;
+		border-color: transparent;
+		box-shadow: var(--glow);
+	}
+
+	nav {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		overflow-y: auto;
+		min-height: 0;
+		padding: 2px;
+	}
+	.entry {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 9px 10px;
+		border-radius: 13px;
+		border: 1px solid transparent;
+		cursor: pointer;
+		user-select: none;
+		transition: background 0.15s, border-color 0.15s;
+		flex: none;
+	}
+	.entry:hover { background: var(--panel-2); }
+	.entry.active {
+		background: linear-gradient(120deg, rgba(124, 92, 252, 0.28), rgba(196, 76, 240, 0.18));
+		border-color: rgba(140, 92, 252, 0.45);
+		box-shadow: var(--glow);
+	}
+	.avatar {
+		width: 30px;
+		height: 30px;
+		border-radius: 10px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 13.5px;
+		font-weight: 800;
+		color: #fff;
+		background: #666;
+	}
+	.rinfo { min-width: 0; flex: 1; }
+	.rname {
+		font-size: 13.5px;
+		font-weight: 700;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.rstatus {
+		font-size: 11px;
+		color: var(--dim);
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.entry.working .rstatus { color: var(--vio-2); }
+	.entry.working .rstatus::before {
+		content: "●";
+		margin-right: 5px;
+		animation: pulse 1s ease-in-out infinite;
+	}
+	@keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+	.entry.done .rstatus { color: var(--ok); }
+	.entry.error .rstatus { color: var(--err); }
+	.entry.add {
+		color: var(--dim);
+		justify-content: center;
+		border: 1px dashed var(--border);
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.entry.add:hover { color: var(--text); border-color: var(--dim); background: none; }
+
+	/* ------------------------------- main ------------------------------- */
+	#mainCol {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		min-height: 0;
+	}
+	#mainHead {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+		border-bottom: 1px solid var(--border-soft);
+		flex: none;
+	}
+	#mainHead .avatar { box-shadow: var(--glow); }
+	#headModel {
+		flex: 1;
+		min-width: 0;
+		background: transparent;
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 9px;
+		padding: 6px 9px;
+		font-size: 13px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		transition: border-color 0.15s, background 0.15s;
+	}
+	#headModel:hover { border-color: var(--border); }
+	#headModel:focus { outline: none; border-color: var(--vio-1); background: var(--panel); }
+	#headTag {
+		font-size: 10.5px;
+		font-weight: 700;
+		letter-spacing: 0.4px;
+		text-transform: uppercase;
+		color: var(--vio-2);
+		display: none;
+	}
+
+	#threads { flex: 1; min-height: 0; display: flex; }
+	.thread {
+		display: none;
+		flex: 1;
+		flex-direction: column;
+		gap: 12px;
+		overflow-y: auto;
+		padding: 16px clamp(14px, 4vw, 60px);
+		scroll-behavior: smooth;
+		min-height: 0;
+	}
+	.thread.active { display: flex; }
+	.msg { max-width: 100%; overflow-wrap: break-word; font-size: 14.5px; }
+	.msg.user {
+		background: var(--user-bubble);
+		border: 1px solid rgba(140, 92, 252, 0.3);
+		border-radius: 16px 16px 5px 16px;
+		padding: 9px 14px;
+		align-self: flex-end;
+		max-width: 86%;
+		white-space: pre-wrap;
+	}
+	.msg.assistant {
+		align-self: stretch;
+		background: var(--panel);
+		border: 1px solid var(--border-soft);
+		border-radius: 16px;
+		padding: 12px 15px;
+		box-shadow: var(--shadow);
+	}
+	.cursor { display: none; color: var(--vio-2); animation: pulse 1s step-end infinite; }
+	.streaming .cursor { display: inline; }
+	.meta {
+		font-size: 11px;
+		color: var(--dim);
+		margin-top: 5px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+	.msg .error { color: var(--err); font-size: 13.5px; white-space: pre-wrap; }
+	.placeholder {
+		color: var(--dim);
+		font-size: 13px;
+		margin: auto;
+		text-align: center;
+		padding: 20px;
+		max-width: 420px;
+		line-height: 1.7;
+	}
+	.placeholder b { color: var(--text); }
+
+	/* markdown */
+	.md h1, .md h2, .md h3 { margin: 10px 0 4px; line-height: 1.25; }
+	.md h1 { font-size: 1.22em; } .md h2 { font-size: 1.12em; } .md h3 { font-size: 1.04em; }
+	.md p { margin: 6px 0; }
+	.md ul, .md ol { margin: 6px 0; padding-left: 22px; }
+	.md pre {
+		background: var(--code-bg);
+		border: 1px solid var(--border-soft);
+		border-radius: 10px;
+		padding: 10px 12px;
+		overflow-x: auto;
+		margin: 8px 0;
+		font-size: 13px;
+	}
+	.md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+	.md :not(pre) > code {
+		background: var(--code-bg);
+		border: 1px solid var(--border-soft);
+		border-radius: 5px;
+		padding: 1px 5px;
+	}
+	.md a { color: var(--vio-2); }
+	.md blockquote { border-left: 3px solid var(--vio-1); margin: 6px 0; padding-left: 10px; color: var(--dim); }
+
+	/* ------------------------------ composer ----------------------------- */
+	footer {
+		flex: none;
+		padding: 10px 14px calc(12px + env(safe-area-inset-bottom));
+		display: flex;
+		gap: 10px;
+		align-items: flex-end;
+	}
+	footer textarea {
+		flex: 1;
+		resize: none;
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 16px;
+		padding: 12px 15px;
+		font: inherit;
+		max-height: 38dvh;
+		box-shadow: var(--shadow);
+	}
+	footer textarea:focus { outline: none; border-color: var(--vio-1); box-shadow: var(--glow); }
+	footer textarea::placeholder { color: var(--dim); }
+	.send {
+		background: var(--grad);
+		color: #fff;
+		border: none;
+		border-radius: 50%;
+		width: 48px;
+		height: 48px;
+		font-size: 19px;
+		cursor: pointer;
+		flex: none;
+		box-shadow: var(--glow);
+		transition: filter 0.15s;
+	}
+	.send:hover { filter: brightness(1.1); }
+	.send.stop { background: var(--err); box-shadow: none; }
+
+	/* ------------------------------- dialog ------------------------------ */
+	dialog {
+		background: var(--panel);
+		color: var(--text);
+		border: 1px solid var(--border);
+		border-radius: 18px;
+		padding: 24px;
+		max-width: 440px;
+		width: calc(100vw - 40px);
+		box-shadow: var(--shadow);
+	}
+	dialog::backdrop { background: rgba(5, 5, 12, 0.65); backdrop-filter: blur(4px); }
+	dialog h2 { font-size: 17px; margin-bottom: 4px; }
+	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
+	dialog a { color: var(--vio-2); }
+	dialog input[type="password"] {
+		width: 100%;
+		background: var(--panel-2);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 10px;
+		padding: 10px 12px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 13px;
+		margin: 8px 0;
+	}
+	dialog input:focus { outline: none; border-color: var(--vio-1); }
+	dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; align-items: center; }
+	dialog .row label { margin-right: auto; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+	.primary {
+		background: var(--grad);
+		color: #fff;
+		border: none;
+		border-radius: 10px;
+		padding: 9px 18px;
+		font-weight: 700;
+		cursor: pointer;
+		box-shadow: var(--glow);
+	}
+
+	/* ------------------------------- iPhone ------------------------------ */
+	@media (max-width: 760px) {
+		body { flex-direction: column; }
+		aside {
+			width: 100%;
+			border-right: none;
+			border-bottom: 1px solid var(--border-soft);
+			padding: calc(10px + env(safe-area-inset-top)) 10px 8px;
+			gap: 8px;
+		}
+		nav {
+			flex: none;
+			flex-direction: row;
+			overflow-x: auto;
+			overflow-y: hidden;
+			padding: 2px 2px 6px;
+			scrollbar-width: none;
+		}
+		nav::-webkit-scrollbar { display: none; }
+		.entry { padding: 7px 10px; border-radius: 999px; }
+		.rinfo { max-width: 110px; }
+		.rstatus { font-size: 10px; }
+		.entry.add { border-radius: 999px; padding: 7px 14px; }
+		#mainHead { padding-top: 8px; }
+		.thread { padding: 12px 12px; }
+		.msg.user { max-width: 92%; }
+	}
+</style>
+</head>
+<body>
+
+<aside>
+	<div class="rail-top">
+		<span class="logo">🐣 God<span class="grad">Mode</span></span>
+		<button class="iconbtn" id="councilBtn" title="Council mode: a synthesizer model merges every answer into one verdict">🤝</button>
+		<button class="iconbtn" id="newChatBtn" title="New chat (clears all conversations)">✦</button>
+		<button class="iconbtn" id="keyBtn" title="API key & settings">⚙︎</button>
+	</div>
+	<nav id="railList"></nav>
+</aside>
+
+<div id="mainCol">
+	<div id="mainHead">
+		<span class="avatar" id="headAvatar">?</span>
+		<span id="headTag">synthesizer</span>
+		<input id="headModel" list="modelList" spellcheck="false" autocomplete="off" title="Model id — type to change" />
+		<button class="iconbtn" id="clearThreadBtn" title="Clear this conversation">✦</button>
+		<button class="iconbtn" id="removeModelBtn" title="Remove this model">✕</button>
+	</div>
+	<div id="threads"></div>
+	<footer>
+		<textarea id="prompt" rows="1" placeholder="Ask every AI at once…"></textarea>
+		<button class="send" id="sendBtn" title="Send to all models">➤</button>
+	</footer>
+</div>
+
+<datalist id="modelList"></datalist>
+
+<dialog id="settings">
+	<h2>🐣 Welcome to GodMode</h2>
+	<p>
+		One prompt, answered by every AI at once. Pick a model in the sidebar to read
+		its answer; the dot shows who's still working. Powered by the
+		<a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
+		one key unlocks GPT, Claude, Gemini, Grok, Kimi, DeepSeek and 300+ more.
+	</p>
+	<p>
+		Paste your API key (create one at
+		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>).
+		It is stored only on this device, and sent only to OpenRouter.
+	</p>
+	<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
+	<div class="row">
+		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
+		<button class="primary" id="saveKeyBtn">Save</button>
+	</div>
+</dialog>
+
+<script>
+'use strict';
+
+const API_BASE = 'https://openrouter.ai/api/v1';
+const COUNCIL_UID = '__council';
+const store = {
+	get key() { return localStorage.getItem('godmode.key') || ''; },
+	set key(v) { localStorage.setItem('godmode.key', v); },
+	get modelIds() {
+		try { return JSON.parse(localStorage.getItem('godmode.panes')) || null; }
+		catch { return null; }
+	},
+	set modelIds(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
+	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
+	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
+	get council() { return localStorage.getItem('godmode.council') === '1'; },
+	set council(v) { localStorage.setItem('godmode.council', v ? '1' : '0'); },
+	get synthModel() { return localStorage.getItem('godmode.synth') || ''; },
+	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
+};
+
+// Preferred defaults, first available on OpenRouter wins.
+const DEFAULT_PREFS = [
+	['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5', 'openai/gpt-4o'],
+	['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-3.7-sonnet'],
+	['google/gemini-3-pro', 'google/gemini-3-flash', 'google/gemini-2.5-pro', 'google/gemini-2.0-flash-001'],
+	['moonshotai/kimi-k3', 'moonshotai/kimi-k2-thinking', 'x-ai/grok-4.1', 'deepseek/deepseek-chat'],
+];
+const SYNTH_PREFS = ['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'openai/gpt-5.2', 'google/gemini-2.5-pro'];
+
+const VENDORS = {
+	openai: ['#10a37f', 'G'],
+	anthropic: ['#d97757', 'C'],
+	google: ['#4285f4', '✦'],
+	'x-ai': ['#3b3b47', '𝕏'],
+	moonshotai: ['#7c5cff', 'K'],
+	deepseek: ['#4d6bfe', 'D'],
+	qwen: ['#615ced', 'Q'],
+	'meta-llama': ['#0668e1', 'L'],
+	mistralai: ['#fa520f', 'M'],
+	perplexity: ['#20808d', 'P'],
+	cohere: ['#39594d', 'Co'],
+	amazon: ['#ff9900', 'A'],
+	microsoft: ['#0078d4', 'Ms'],
+	nvidia: ['#76b900', 'N'],
+};
+function vendorInfo(modelId) {
+	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
+	return VENDORS[prefix] || ['#666a75', (prefix[0] || '?').toUpperCase()];
+}
+function shortName(modelId) {
+	const tail = (modelId || '').split('/')[1] || modelId || '?';
+	return tail.replace(/[-_]/g, ' ');
+}
+
+let availableModels = [];
+const models = []; // { uid, model, messages, controller, els }
+let councilEntry = null; // same shape, uid COUNCIL_UID
+let selectedUid = null;
+let uidSeq = 0;
+let generating = false;
+
+/* ---------- tiny markdown renderer (safe: escapes HTML first) ---------- */
+function esc(s) {
+	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function inlineMd(s) {
+	return s
+		.replace(/`([^`]+)`/g, (_, c) => '<code>' + c + '</code>')
+		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+		.replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, '$1<em>$2</em>')
+		.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+}
+function renderMarkdown(src) {
+	const lines = esc(src).split('\n');
+	let html = '', inCode = false, inList = null, para = [];
+	const flushPara = () => { if (para.length) { html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } };
+	const closeList = () => { if (inList) { html += '</' + inList + '>'; inList = null; } };
+	for (const line of lines) {
+		if (line.startsWith('```')) {
+			flushPara(); closeList();
+			html += inCode ? '</code></pre>' : '<pre><code>';
+			inCode = !inCode;
+			continue;
+		}
+		if (inCode) { html += line + '\n'; continue; }
+		const h = line.match(/^(#{1,3})\s+(.*)/);
+		const ul = line.match(/^\s*[-*]\s+(.*)/);
+		const ol = line.match(/^\s*\d+[.)]\s+(.*)/);
+		const bq = line.match(/^>\s?(.*)/);
+		if (h) { flushPara(); closeList(); html += `<h${h[1].length}>` + inlineMd(h[2]) + `</h${h[1].length}>`; }
+		else if (ul) { flushPara(); if (inList !== 'ul') { closeList(); html += '<ul>'; inList = 'ul'; } html += '<li>' + inlineMd(ul[1]) + '</li>'; }
+		else if (ol) { flushPara(); if (inList !== 'ol') { closeList(); html += '<ol>'; inList = 'ol'; } html += '<li>' + inlineMd(ol[1]) + '</li>'; }
+		else if (bq) { flushPara(); closeList(); html += '<blockquote>' + inlineMd(bq[1]) + '</blockquote>'; }
+		else if (!line.trim()) { flushPara(); closeList(); }
+		else para.push(line);
+	}
+	if (inCode) html += '</code></pre>';
+	flushPara(); closeList();
+	return html;
+}
+
+/* --------------------------- rail + threads --------------------------- */
+const railList = document.getElementById('railList');
+const threadsEl = document.getElementById('threads');
+const addChip = document.createElement('div');
+addChip.className = 'entry add';
+addChip.textContent = '＋ Add model';
+addChip.addEventListener('click', () => {
+	const m = addModel(availableModels[0]?.id || 'openai/gpt-4o');
+	select(m.uid);
+});
+
+function paintAvatar(el, model, isCouncil) {
+	if (isCouncil) {
+		el.style.background = 'linear-gradient(120deg, #7c5cfc, #c44cf0)';
+		el.textContent = '🤝';
+		return;
+	}
+	const [color, letter] = vendorInfo(model);
+	el.style.background = color;
+	el.textContent = letter;
+}
+
+function makeEntry(m, isCouncil) {
+	const entry = document.createElement('div');
+	entry.className = 'entry';
+	entry.innerHTML = `
+		<span class="avatar"></span>
+		<div class="rinfo">
+			<div class="rname"></div>
+			<div class="rstatus">ready</div>
+		</div>`;
+	entry.addEventListener('click', () => select(m.uid));
+
+	const thread = document.createElement('div');
+	thread.className = 'thread';
+	thread.innerHTML = isCouncil
+		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
+		: `<div class="placeholder"></div>`;
+	threadsEl.appendChild(thread);
+
+	m.els = {
+		entry,
+		avatar: entry.querySelector('.avatar'),
+		name: entry.querySelector('.rname'),
+		status: entry.querySelector('.rstatus'),
+		thread,
+	};
+	refreshEntry(m, isCouncil);
+	return m;
+}
+
+function refreshEntry(m, isCouncil) {
+	paintAvatar(m.els.avatar, m.model, isCouncil);
+	m.els.name.textContent = isCouncil ? 'Council' : shortName(m.model);
+	if (!isCouncil) {
+		const ph = m.els.thread.querySelector('.placeholder');
+		if (ph) ph.innerHTML = '<b>' + esc(shortName(m.model)) + '</b><br>' + esc(m.model);
+	}
+}
+
+function setStatus(m, state, text) {
+	m.els.entry.classList.remove('working', 'done', 'error');
+	if (state) m.els.entry.classList.add(state);
+	m.els.status.textContent = text;
+}
+
+function addModel(modelId) {
+	const m = { uid: 'm' + ++uidSeq, model: modelId, messages: [], controller: null };
+	makeEntry(m, false);
+	models.push(m);
+	renderRail();
+	saveModels();
+	return m;
+}
+
+function removeModel(uid) {
+	const i = models.findIndex((m) => m.uid === uid);
+	if (i < 0 || models.length <= 1) return;
+	const m = models[i];
+	m.controller?.abort();
+	m.els.thread.remove();
+	models.splice(i, 1);
+	renderRail();
+	saveModels();
+	if (selectedUid === uid) select(models[0].uid);
+}
+
+function ensureCouncil() {
+	if (!councilEntry) {
+		councilEntry = { uid: COUNCIL_UID, model: store.synthModel || SYNTH_PREFS[0], messages: [], controller: null };
+		makeEntry(councilEntry, true);
+	}
+	return councilEntry;
+}
+
+function renderRail() {
+	railList.innerHTML = '';
+	if (store.council) railList.appendChild(ensureCouncil().els.entry);
+	models.forEach((m) => railList.appendChild(m.els.entry));
+	railList.appendChild(addChip);
+}
+
+function saveModels() {
+	store.modelIds = models.map((m) => m.model);
+}
+
+function allEntries() {
+	return store.council && councilEntry ? [councilEntry, ...models] : models;
+}
+
+function find(uid) {
+	return uid === COUNCIL_UID ? councilEntry : models.find((m) => m.uid === uid);
+}
+
+/* ------------------------------ selection ----------------------------- */
+const headAvatar = document.getElementById('headAvatar');
+const headModel = document.getElementById('headModel');
+const headTag = document.getElementById('headTag');
+const removeModelBtn = document.getElementById('removeModelBtn');
+
+function select(uid) {
+	const m = find(uid);
+	if (!m) return;
+	selectedUid = uid;
+	allEntries().forEach((e) => e.els.entry.classList.toggle('active', e.uid === uid));
+	document.querySelectorAll('.thread').forEach((t) => t.classList.remove('active'));
+	m.els.thread.classList.add('active');
+	const isCouncil = uid === COUNCIL_UID;
+	paintAvatar(headAvatar, m.model, isCouncil);
+	headModel.value = m.model;
+	headTag.style.display = isCouncil ? 'inline' : 'none';
+	removeModelBtn.style.display = isCouncil || models.length <= 1 ? 'none' : 'grid';
+	m.els.thread.scrollTop = m.els.thread.scrollHeight;
+}
+
+headModel.addEventListener('change', () => {
+	const m = find(selectedUid);
+	if (!m) return;
+	m.model = headModel.value.trim();
+	if (selectedUid === COUNCIL_UID) store.synthModel = m.model;
+	else saveModels();
+	refreshEntry(m, selectedUid === COUNCIL_UID);
+	paintAvatar(headAvatar, m.model, selectedUid === COUNCIL_UID);
+});
+removeModelBtn.addEventListener('click', () => removeModel(selectedUid));
+document.getElementById('clearThreadBtn').addEventListener('click', () => {
+	const m = find(selectedUid);
+	if (m) clearThread(m);
+});
+
+function clearThread(m) {
+	m.controller?.abort();
+	m.messages = [];
+	const isCouncil = m.uid === COUNCIL_UID;
+	m.els.thread.innerHTML = isCouncil
+		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
+		: `<div class="placeholder"><b>${esc(shortName(m.model))}</b><br>${esc(m.model)}</div>`;
+	setStatus(m, null, 'ready');
+}
+
+function addMessage(m, role) {
+	m.els.thread.querySelector('.placeholder')?.remove();
+	const div = document.createElement('div');
+	div.className = 'msg ' + role;
+	m.els.thread.appendChild(div);
+	return div;
+}
+
+/* --------------------- streaming (shared plumbing) ------------------- */
+async function streamCompletion({ model, messages, signal, onDelta }) {
+	const res = await fetch(API_BASE + '/chat/completions', {
+		method: 'POST',
+		signal,
+		headers: {
+			Authorization: 'Bearer ' + store.key,
+			'Content-Type': 'application/json',
+			'X-Title': 'GodMode Web',
+		},
+		body: JSON.stringify({ model, messages, stream: true }),
+	});
+	if (!res.ok) {
+		let detail = res.status + ' ' + res.statusText;
+		try { detail = (await res.json()).error?.message || detail; } catch {}
+		throw new Error(detail);
+	}
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = '', text = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split('\n');
+		buf = lines.pop();
+		for (const line of lines) {
+			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+			if (!data || data === '[DONE]') continue;
+			try {
+				const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+				if (delta) { text += delta; onDelta(text); }
+			} catch {}
+		}
+	}
+	return text;
+}
+
+function streamingShell(container) {
+	const md = document.createElement('span');
+	md.className = 'md';
+	const cursor = document.createElement('span');
+	cursor.className = 'cursor';
+	cursor.textContent = '▌';
+	const meta = document.createElement('div');
+	meta.className = 'meta';
+	container.append(md, cursor, meta);
+	container.classList.add('streaming');
+	return {
+		update(text) { md.innerHTML = renderMarkdown(text); },
+		finish(metaText) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			if (metaText) meta.textContent = metaText;
+		},
+		fail(msg) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			md.innerHTML = '<div class="error">⚠ ' + esc(msg) + '</div>';
+		},
+	};
+}
+
+async function streamChat(m, prompt) {
+	m.messages.push({ role: 'user', content: prompt });
+	addMessage(m, 'user').textContent = prompt;
+
+	const el = addMessage(m, 'assistant');
+	const shell = streamingShell(el);
+	m.controller = new AbortController();
+	const started = Date.now();
+	setStatus(m, 'working', 'working…');
+	let text = '';
+	const scrollDown = () => { m.els.thread.scrollTop = m.els.thread.scrollHeight; };
+	scrollDown();
+
+	try {
+		text = await streamCompletion({
+			model: m.model,
+			messages: m.messages,
+			signal: m.controller.signal,
+			onDelta: (t) => { text = t; shell.update(t); scrollDown(); },
+		});
+		m.messages.push({ role: 'assistant', content: text });
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(m.model + ' · ' + secs + 's');
+		setStatus(m, 'done', secs + 's');
+		return text;
+	} catch (err) {
+		if (err.name === 'AbortError') {
+			if (text) m.messages.push({ role: 'assistant', content: text });
+			shell.finish('stopped');
+			setStatus(m, null, 'stopped');
+			return text;
+		}
+		m.messages.pop(); // let the user retry the failed turn
+		shell.fail(String(err.message || err));
+		setStatus(m, 'error', 'error');
+		if (/auth|key|401/i.test(String(err.message))) openSettings();
+		return '';
+	} finally {
+		m.controller = null;
+	}
+}
+
+/* ------------------------------ council ----------------------------- */
+const councilBtn = document.getElementById('councilBtn');
+
+function refreshCouncilUI() {
+	councilBtn.classList.toggle('active', store.council);
+	renderRail();
+	if (!store.council && selectedUid === COUNCIL_UID) select(models[0]?.uid);
+}
+councilBtn.addEventListener('click', () => {
+	store.council = !store.council;
+	refreshCouncilUI();
+	if (store.council) select(COUNCIL_UID);
+});
+
+async function synthesize(prompt, answers) {
+	const c = ensureCouncil();
+	c.els.thread.querySelector('.placeholder')?.remove();
+	const el = addMessage(c, 'assistant');
+	const shell = streamingShell(el);
+	c.controller = new AbortController();
+	const started = Date.now();
+	setStatus(c, 'working', 'deliberating…');
+	select(COUNCIL_UID);
+
+	const briefing =
+		'You are the Council synthesizer. ' + answers.length +
+		' AI models each answered the same question independently. Merge their answers into the single best response. ' +
+		'Be concise. If the models disagree on anything substantive, add a short "Disagreements" note at the end saying who said what. Do not review each answer one by one.\n\n' +
+		'## Question\n' + prompt + '\n\n' +
+		answers.map((a) => '## Answer from ' + a.model + '\n' + a.text).join('\n\n');
+
+	try {
+		await streamCompletion({
+			model: c.model,
+			messages: [{ role: 'user', content: briefing }],
+			signal: c.controller.signal,
+			onDelta: (t) => { shell.update(t); c.els.thread.scrollTop = c.els.thread.scrollHeight; },
+		});
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(c.model + ' · ' + secs + 's');
+		setStatus(c, 'done', secs + 's');
+	} catch (err) {
+		if (err.name === 'AbortError') { shell.finish('stopped'); setStatus(c, null, 'stopped'); }
+		else { shell.fail(String(err.message || err)); setStatus(c, 'error', 'error'); }
+	} finally {
+		c.controller = null;
+	}
+}
+
+/* ------------------------------- send ------------------------------- */
+const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('sendBtn');
+
+async function sendAll() {
+	if (generating) { // acts as stop
+		models.forEach((m) => m.controller?.abort());
+		councilEntry?.controller?.abort();
+		return;
+	}
+	const prompt = promptEl.value.trim();
+	if (!prompt) return;
+	if (!store.key) { openSettings(); return; }
+	promptEl.value = '';
+	autosize();
+	generating = true;
+	sendBtn.classList.add('stop');
+	sendBtn.textContent = '◼';
+	try {
+		const results = await Promise.allSettled(models.map((m) => streamChat(m, prompt)));
+		if (store.council) {
+			const answers = results
+				.map((r, i) => ({ model: models[i]?.model, text: r.status === 'fulfilled' ? r.value : '' }))
+				.filter((a) => a.model && a.text);
+			if (answers.length >= 2) await synthesize(prompt, answers);
+			else setStatus(ensureCouncil(), 'error', 'needs 2+ answers');
+		}
+	} finally {
+		generating = false;
+		sendBtn.classList.remove('stop');
+		sendBtn.textContent = '➤';
+	}
+}
+
+sendBtn.addEventListener('click', sendAll);
+promptEl.addEventListener('keydown', (e) => {
+	const plainEnter = e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey;
+	const cmdEnter = e.key === 'Enter' && (e.metaKey || e.ctrlKey);
+	if ((store.enterToSend && plainEnter) || cmdEnter) {
+		e.preventDefault();
+		sendAll();
+	}
+});
+function autosize() {
+	promptEl.style.height = 'auto';
+	promptEl.style.height = Math.min(promptEl.scrollHeight, innerHeight * 0.38) + 'px';
+}
+promptEl.addEventListener('input', autosize);
+
+document.getElementById('newChatBtn').addEventListener('click', () => {
+	models.forEach(clearThread);
+	if (councilEntry) clearThread(councilEntry);
+});
+
+/* ----------------------------- settings ----------------------------- */
+const settingsEl = document.getElementById('settings');
+const keyInput = document.getElementById('keyInput');
+const enterToSendEl = document.getElementById('enterToSend');
+
+function openSettings() {
+	keyInput.value = store.key;
+	enterToSendEl.checked = store.enterToSend;
+	if (!settingsEl.open) settingsEl.showModal();
+}
+document.getElementById('keyBtn').addEventListener('click', openSettings);
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+	store.key = keyInput.value.trim();
+	store.enterToSend = enterToSendEl.checked;
+	settingsEl.close();
+});
+
+/* -------------------------- model discovery ------------------------- */
+function pickAvailable(prefs) {
+	if (!availableModels.length) return prefs[0];
+	const ids = new Set(availableModels.map((m) => m.id));
+	for (const want of prefs) {
+		if (ids.has(want)) return want;
+		const near = availableModels.find((m) => m.id.startsWith(want));
+		if (near) return near.id;
+	}
+	return prefs[0];
+}
+
+let usingDefaults = false;
+function addDefaults() {
+	const saved = store.modelIds;
+	if (saved && saved.length) {
+		saved.forEach((id) => addModel(id));
+	} else {
+		usingDefaults = true;
+		DEFAULT_PREFS.forEach((prefs) => addModel(pickAvailable(prefs)));
+	}
+}
+
+async function loadModels() {
+	try {
+		const res = await fetch(API_BASE + '/models');
+		const { data } = await res.json();
+		availableModels = data || [];
+		const list = document.getElementById('modelList');
+		list.innerHTML = '';
+		for (const m of availableModels) {
+			const opt = document.createElement('option');
+			opt.value = m.id;
+			list.appendChild(opt);
+		}
+		if (usingDefaults) {
+			models.forEach((m, i) => {
+				if (!DEFAULT_PREFS[i]) return;
+				const better = pickAvailable(DEFAULT_PREFS[i]);
+				if (better !== m.model) {
+					m.model = better;
+					refreshEntry(m, false);
+				}
+			});
+			saveModels();
+		}
+		if (!store.synthModel) {
+			store.synthModel = pickAvailable(SYNTH_PREFS);
+			if (councilEntry) { councilEntry.model = store.synthModel; refreshEntry(councilEntry, true); }
+		}
+		if (selectedUid) select(selectedUid); // refresh head after upgrades
+	} catch { /* offline or blocked: typed model ids still work */ }
+}
+
+/* ------------------------------- boot ------------------------------- */
+addDefaults();
+refreshCouncilUI();
+select(models[0]?.uid);
+loadModels();
+if (!store.key) openSettings();
+</script>
+</body>
+</html>

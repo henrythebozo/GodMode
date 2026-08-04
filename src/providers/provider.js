@@ -11,6 +11,13 @@ class Provider {
 
 	static url = '';
 
+	// Modern providers declare CSS selectors instead of hand-rolling injection
+	// scripts. Each list is tried in order; the first match wins, so when a
+	// site ships a redesign the fix is usually just a new selector at the
+	// front of the list.
+	static inputSelectors = [];
+	static submitSelectors = [];
+
 	static paneId() {
 		return `${this.name.toLowerCase()}Pane`;
 	}
@@ -45,16 +52,59 @@ class Provider {
 		});
 	}
 
+	// execCommand('insertText') goes through the browser's editing pipeline, so
+	// React/ProseMirror/Quill/Lexical inputs all register the change — unlike
+	// setting .value or .innerHTML directly.
+	static inputScript(input) {
+		return `(() => {
+			const sels = ${JSON.stringify(this.inputSelectors)};
+			let el = null;
+			for (const s of sels) { try { el = document.querySelector(s); } catch (e) {} if (el) break; }
+			if (!el) return;
+			el.focus();
+			if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') el.select();
+			else document.execCommand('selectAll', false, null);
+			const text = \`${input}\`;
+			if (text) document.execCommand('insertText', false, text);
+			else document.execCommand('delete', false, null);
+			el.dispatchEvent(new Event('input', { bubbles: true }));
+		})()`;
+	}
+
+	static submitScript() {
+		return `(() => {
+			const btnSels = ${JSON.stringify(this.submitSelectors)};
+			let btn = null;
+			for (const s of btnSels) { try { btn = document.querySelector(s); } catch (e) {} if (btn) break; }
+			if (btn) { btn.focus(); btn.disabled = false; btn.click(); return; }
+			// no button found: press Enter in the input instead
+			const sels = ${JSON.stringify(this.inputSelectors)};
+			let el = null;
+			for (const s of sels) { try { el = document.querySelector(s); } catch (e) {} if (el) break; }
+			if (!el) return;
+			el.focus();
+			const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+			el.dispatchEvent(new KeyboardEvent('keydown', opts));
+			el.dispatchEvent(new KeyboardEvent('keyup', opts));
+		})()`;
+	}
+
 	static handleInput(input) {
-		throw new Error(`Provider ${this.name} must implement handleInput()`);
+		if (!this.inputSelectors.length) {
+			throw new Error(`Provider ${this.name} must implement handleInput()`);
+		}
+		this.getWebview().executeJavaScript(this.inputScript(input));
 	}
 
 	static handleSubmit() {
-		throw new Error(`Provider ${this.name} must implement handleSubmit()`);
+		if (!this.inputSelectors.length && !this.submitSelectors.length) {
+			throw new Error(`Provider ${this.name} must implement handleSubmit()`);
+		}
+		this.getWebview().executeJavaScript(this.submitScript());
 	}
 
 	static handleCss() {
-		throw new Error(`Provider ${this.name} must implement handleCss()`);
+		// most providers need no CSS surgery; override when they do
 	}
 
 	// Some providers will have their own dark mode implementation
@@ -74,7 +124,9 @@ class Provider {
 	}
 
 	static getUserAgent() {
-		return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36';
+		// realistic, current browser UA with no Electron mention — several
+		// providers (especially Google login) reject old or nonstandard UAs
+		return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 	}
 
 	static isEnabled() {

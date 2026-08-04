@@ -8,6 +8,21 @@ This is a dedicated chat browser that only does one thing: help you quickly acce
 
 Whatever is typed at the bottom is entered into all **web apps** simultaneously, however if you wish to explore one further than the other you can do so independently since they are just webviews.
 
+## 🌐 GodMode Web
+
+There is also a browser version in [`docs/index.html`](docs/index.html) — a single
+self-contained HTML file with the same one-prompt-to-many-models experience.
+Because websites cannot embed the ChatGPT/Claude/Gemini web apps (those sites
+block iframes), the web version talks to models through the
+[OpenRouter](https://openrouter.ai) API instead: paste one API key and chat with
+GPT, Claude, Gemini, Grok, DeepSeek and 300+ other models side by side, with
+streaming responses. Your key is stored only in your browser.
+
+To host it free with GitHub Pages: repo **Settings → Pages → Deploy from a
+branch → `main` / `docs`**. Or run it on localhost with `npm run web`
+(no install needed — plain Node) and open `http://localhost:8741`; the
+command also prints a Wi-Fi address you can open from your phone.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.
@@ -146,6 +161,14 @@ If you want to build from source, you will need to clone the repo and open the p
    cd GodMode
    npm install --force
    npm run start # to run in development, locally
+   ```
+
+   To build your own installable Mac app (unsigned, current architecture only —
+   no Apple developer account needed):
+
+   ```bash
+   npm run package-mac-local
+   # output: release/build/GodMode-<version>-arm64.dmg (or x64 on Intel)
    ```
 
 2. Generate binaries:
