@@ -7,29 +7,36 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐣</text></svg>" />
 <style>
 	:root {
-		--bg: #101014;
-		--bg-pane: #17171d;
-		--bg-input: #1e1e26;
-		--border: #2a2a34;
-		--text: #e8e8ee;
-		--text-dim: #9a9aa8;
+		--bg: #0d0d12;
+		--bg-pane: #15151c;
+		--bg-raised: #1b1b24;
+		--bg-input: #1e1e28;
+		--border: #272733;
+		--border-soft: #20202b;
+		--text: #ececf2;
+		--text-dim: #9494a4;
 		--accent: #f5c542;
-		--accent-text: #171200;
-		--user-bubble: #26262f;
-		--err: #ff7a7a;
-		--code-bg: #0c0c10;
+		--accent-2: #f08c3c;
+		--accent-text: #201700;
+		--user-bubble: #262634;
+		--err: #ff8080;
+		--code-bg: #0a0a0f;
+		--shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 	}
 	@media (prefers-color-scheme: light) {
 		:root {
-			--bg: #f4f4f6;
+			--bg: #f3f3f7;
 			--bg-pane: #ffffff;
+			--bg-raised: #fafafc;
 			--bg-input: #ffffff;
-			--border: #d8d8e0;
-			--text: #1b1b22;
-			--text-dim: #6a6a78;
-			--user-bubble: #ececf2;
+			--border: #dcdce4;
+			--border-soft: #e8e8ee;
+			--text: #1a1a22;
+			--text-dim: #6c6c7a;
+			--user-bubble: #efeff5;
 			--err: #c0392b;
-			--code-bg: #f0f0f4;
+			--code-bg: #f1f1f5;
+			--shadow: 0 8px 28px rgba(30, 30, 60, 0.12);
 		}
 	}
 	* { box-sizing: border-box; margin: 0; }
@@ -37,143 +44,246 @@
 	body {
 		background: var(--bg);
 		color: var(--text);
-		font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 		display: flex;
 		flex-direction: column;
 		overscroll-behavior: none;
+		-webkit-font-smoothing: antialiased;
 	}
 
+	/* ------------------------------ header ------------------------------ */
 	header {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		padding: 8px 14px;
+		gap: 8px;
+		padding: 9px 14px;
 		border-bottom: 1px solid var(--border);
 		flex: none;
 	}
-	header .logo { font-weight: 700; font-size: 17px; white-space: nowrap; }
-	header .logo .web { color: var(--accent); font-weight: 500; }
+	header .logo {
+		font-weight: 800;
+		font-size: 17.5px;
+		letter-spacing: -0.3px;
+		white-space: nowrap;
+		display: flex;
+		align-items: center;
+		gap: 7px;
+	}
+	header .logo .grad {
+		background: linear-gradient(100deg, var(--accent), var(--accent-2));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
 	header .spacer { flex: 1; }
 	.iconbtn {
-		background: none;
+		background: var(--bg-raised);
 		border: 1px solid var(--border);
 		color: var(--text);
-		border-radius: 8px;
-		padding: 5px 11px;
+		border-radius: 999px;
+		padding: 6px 13px;
 		font-size: 13px;
+		font-weight: 600;
 		cursor: pointer;
 		white-space: nowrap;
+		transition: border-color 0.15s, background 0.15s;
 	}
 	.iconbtn:hover { border-color: var(--text-dim); }
+	.iconbtn.active {
+		background: linear-gradient(100deg, var(--accent), var(--accent-2));
+		color: var(--accent-text);
+		border-color: transparent;
+	}
 
+	/* ------------------------------- panes ------------------------------ */
 	main {
 		flex: 1;
 		display: flex;
-		gap: 1px;
-		background: var(--border);
+		gap: 10px;
+		padding: 10px;
 		overflow-x: auto;
 		min-height: 0;
 	}
 	.pane {
 		background: var(--bg-pane);
+		border: 1px solid var(--border-soft);
+		border-radius: 14px;
 		flex: 1 1 0;
 		min-width: 300px;
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
+		overflow: hidden;
 	}
 	.pane-head {
 		display: flex;
-		gap: 6px;
+		gap: 8px;
 		align-items: center;
-		padding: 7px 9px;
-		border-bottom: 1px solid var(--border);
+		padding: 8px 10px;
+		border-bottom: 1px solid var(--border-soft);
 		flex: none;
+	}
+	.avatar {
+		width: 26px;
+		height: 26px;
+		border-radius: 8px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 12.5px;
+		font-weight: 800;
+		color: #fff;
+		background: #666;
 	}
 	.pane-head input {
 		flex: 1;
 		min-width: 0;
-		background: var(--bg-input);
-		border: 1px solid var(--border);
+		background: transparent;
+		border: 1px solid transparent;
 		color: var(--text);
 		border-radius: 7px;
-		padding: 5px 8px;
+		padding: 5px 7px;
 		font-size: 12.5px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		transition: border-color 0.15s, background 0.15s;
 	}
+	.pane-head input:hover { border-color: var(--border); }
+	.pane-head input:focus { outline: none; border-color: var(--accent); background: var(--bg-input); }
 	.pane-head button {
 		background: none;
 		border: none;
 		color: var(--text-dim);
-		font-size: 15px;
+		font-size: 14px;
 		cursor: pointer;
-		padding: 2px 5px;
-		border-radius: 6px;
+		padding: 3px 6px;
+		border-radius: 7px;
+		flex: none;
 	}
 	.pane-head button:hover { color: var(--text); background: var(--user-bubble); }
 
 	.pane-body {
 		flex: 1;
 		overflow-y: auto;
-		padding: 12px;
+		padding: 13px;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 11px;
 		min-height: 0;
+		scroll-behavior: smooth;
 	}
 	.msg { max-width: 100%; overflow-wrap: break-word; }
 	.msg.user {
 		background: var(--user-bubble);
-		border-radius: 12px;
-		padding: 7px 12px;
+		border-radius: 14px 14px 4px 14px;
+		padding: 8px 13px;
 		align-self: flex-end;
 		max-width: 88%;
 		white-space: pre-wrap;
+		font-size: 14.5px;
 	}
-	.msg.assistant { align-self: stretch; }
-	.msg.assistant.streaming::after {
-		content: "▌";
+	.msg.assistant { align-self: stretch; font-size: 14.5px; }
+	.msg.assistant.streaming .cursor,
+	.council-body .streaming .cursor { display: inline; }
+	.cursor {
+		display: none;
 		color: var(--accent);
 		animation: blink 1s step-end infinite;
 	}
 	@keyframes blink { 50% { opacity: 0; } }
+	.meta {
+		font-size: 11.5px;
+		color: var(--text-dim);
+		margin-top: 3px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
 	.msg .error { color: var(--err); font-size: 13.5px; white-space: pre-wrap; }
 	.placeholder {
 		color: var(--text-dim);
-		font-size: 13.5px;
+		font-size: 13px;
 		margin: auto;
 		text-align: center;
 		padding: 20px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 	}
 
 	/* minimal markdown styles */
-	.msg h1, .msg h2, .msg h3 { margin: 10px 0 4px; line-height: 1.25; }
-	.msg h1 { font-size: 1.25em; } .msg h2 { font-size: 1.15em; } .msg h3 { font-size: 1.05em; }
-	.msg p { margin: 6px 0; }
-	.msg ul, .msg ol { margin: 6px 0; padding-left: 22px; }
-	.msg pre {
+	.md h1, .md h2, .md h3 { margin: 10px 0 4px; line-height: 1.25; }
+	.md h1 { font-size: 1.22em; } .md h2 { font-size: 1.12em; } .md h3 { font-size: 1.04em; }
+	.md p { margin: 6px 0; }
+	.md ul, .md ol { margin: 6px 0; padding-left: 22px; }
+	.md pre {
 		background: var(--code-bg);
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 9px 11px;
+		border: 1px solid var(--border-soft);
+		border-radius: 10px;
+		padding: 10px 12px;
 		overflow-x: auto;
 		margin: 8px 0;
 		font-size: 13px;
 	}
-	.msg code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
-	.msg :not(pre) > code {
+	.md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; }
+	.md :not(pre) > code {
 		background: var(--code-bg);
-		border: 1px solid var(--border);
+		border: 1px solid var(--border-soft);
 		border-radius: 5px;
 		padding: 1px 5px;
 	}
-	.msg a { color: var(--accent); }
-	.msg blockquote { border-left: 3px solid var(--border); margin: 6px 0; padding-left: 10px; color: var(--text-dim); }
+	.md a { color: var(--accent); }
+	.md blockquote { border-left: 3px solid var(--border); margin: 6px 0; padding-left: 10px; color: var(--text-dim); }
 
+	/* ------------------------------ council ----------------------------- */
+	#council {
+		display: none;
+		flex: none;
+		margin: 0 10px 10px;
+		border-radius: 14px;
+		padding: 1.5px;
+		background: linear-gradient(100deg, var(--accent), var(--accent-2));
+		box-shadow: var(--shadow);
+		max-height: 42vh;
+	}
+	#council.visible { display: flex; }
+	.council-inner {
+		background: var(--bg-pane);
+		border-radius: 12.5px;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		min-height: 0;
+	}
+	.council-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border-soft);
+		flex: none;
+	}
+	.council-head .title { font-weight: 700; font-size: 13.5px; white-space: nowrap; }
+	.council-head input {
+		flex: 1;
+		min-width: 0;
+		background: transparent;
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 7px;
+		padding: 4px 7px;
+		font-size: 12.5px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+	.council-head input:hover { border-color: var(--border); }
+	.council-head input:focus { outline: none; border-color: var(--accent); background: var(--bg-input); }
+	.council-body {
+		overflow-y: auto;
+		padding: 12px 14px;
+		font-size: 14.5px;
+		min-height: 52px;
+	}
+	.council-body .hint { color: var(--text-dim); font-size: 13px; }
+
+	/* ------------------------------ footer ------------------------------ */
 	footer {
 		flex: none;
-		border-top: 1px solid var(--border);
-		padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+		padding: 0 10px calc(10px + env(safe-area-inset-bottom));
 		display: flex;
 		gap: 9px;
 		align-items: flex-end;
@@ -184,59 +294,65 @@
 		background: var(--bg-input);
 		border: 1px solid var(--border);
 		color: var(--text);
-		border-radius: 12px;
-		padding: 10px 13px;
+		border-radius: 14px;
+		padding: 11px 14px;
 		font: inherit;
 		max-height: 40vh;
+		box-shadow: var(--shadow);
 	}
 	footer textarea:focus { outline: none; border-color: var(--accent); }
 	.send {
-		background: var(--accent);
+		background: linear-gradient(120deg, var(--accent), var(--accent-2));
 		color: var(--accent-text);
 		border: none;
-		border-radius: 12px;
-		width: 46px;
-		height: 46px;
+		border-radius: 14px;
+		width: 47px;
+		height: 47px;
 		font-size: 19px;
 		cursor: pointer;
 		flex: none;
+		box-shadow: var(--shadow);
+		transition: filter 0.15s;
 	}
-	.send:disabled { opacity: 0.45; cursor: default; }
+	.send:hover { filter: brightness(1.08); }
 	.send.stop { background: var(--err); color: #fff; }
 
+	/* ------------------------------ dialog ------------------------------ */
 	dialog {
 		background: var(--bg-pane);
 		color: var(--text);
 		border: 1px solid var(--border);
-		border-radius: 14px;
-		padding: 22px;
-		max-width: 430px;
+		border-radius: 16px;
+		padding: 24px;
+		max-width: 440px;
 		width: calc(100vw - 40px);
+		box-shadow: var(--shadow);
 	}
-	dialog::backdrop { background: rgba(0,0,0,0.55); }
+	dialog::backdrop { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(3px); }
 	dialog h2 { font-size: 17px; margin-bottom: 4px; }
 	dialog p { font-size: 13.5px; color: var(--text-dim); margin: 8px 0; }
 	dialog a { color: var(--accent); }
-	dialog input[type="password"], dialog input[type="text"] {
+	dialog input[type="password"] {
 		width: 100%;
 		background: var(--bg-input);
 		border: 1px solid var(--border);
 		color: var(--text);
-		border-radius: 8px;
-		padding: 9px 11px;
+		border-radius: 9px;
+		padding: 10px 12px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 13px;
 		margin: 8px 0;
 	}
-	dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+	dialog input:focus { outline: none; border-color: var(--accent); }
+	dialog .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; align-items: center; }
 	dialog .row label { margin-right: auto; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
 	.primary {
-		background: var(--accent);
+		background: linear-gradient(120deg, var(--accent), var(--accent-2));
 		color: var(--accent-text);
 		border: none;
-		border-radius: 8px;
-		padding: 8px 16px;
-		font-weight: 600;
+		border-radius: 9px;
+		padding: 9px 18px;
+		font-weight: 700;
 		cursor: pointer;
 	}
 
@@ -244,20 +360,35 @@
 		main { flex-direction: column; overflow-y: auto; overflow-x: hidden; }
 		.pane { min-width: 0; min-height: 45vh; flex: none; }
 		header .hide-sm { display: none; }
+		#council { max-height: 50vh; }
 	}
 </style>
 </head>
 <body>
 
 <header>
-	<span class="logo">🐣 GodMode <span class="web">web</span></span>
+	<span class="logo">🐣 <span>GodMode</span> <span class="grad">web</span></span>
 	<span class="spacer"></span>
-	<button class="iconbtn" id="newChatBtn" title="Clear all conversations">✦ New chat</button>
-	<button class="iconbtn hide-sm" id="addPaneBtn" title="Add a model pane">+ Pane</button>
+	<button class="iconbtn" id="councilBtn" title="After every model answers, a synthesizer model merges them into one best answer">🤝 Council</button>
+	<button class="iconbtn hide-sm" id="newChatBtn" title="Clear all conversations">✦ New</button>
+	<button class="iconbtn hide-sm" id="addPaneBtn" title="Add a model pane">＋</button>
 	<button class="iconbtn" id="keyBtn" title="API key & settings">⚙︎</button>
 </header>
 
 <main id="panes"></main>
+
+<section id="council">
+	<div class="council-inner">
+		<div class="council-head">
+			<span class="title">🤝 Council verdict</span>
+			<input id="synthModel" list="modelList" spellcheck="false" autocomplete="off" title="Synthesizer model" />
+			<button class="iconbtn" id="councilClear" style="padding:3px 10px">✦</button>
+		</div>
+		<div class="council-body" id="councilBody">
+			<span class="hint">Send a prompt and the synthesizer will read every pane's answer, merge the best parts, and flag where the models disagree.</span>
+		</div>
+	</div>
+</section>
 
 <footer>
 	<textarea id="prompt" rows="1" placeholder="Ask every AI at once… (Enter to send)"></textarea>
@@ -271,7 +402,8 @@
 	<p>
 		One prompt, sent to multiple AI models side by side. Responses stream in
 		from the <a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
-		one key unlocks GPT, Claude, Gemini, Grok, DeepSeek and 300+ more.
+		one key unlocks GPT, Claude, Gemini, Grok, Kimi, DeepSeek, Qwen and 300+ more.
+		Type any model id in a pane's header to switch it.
 	</p>
 	<p>
 		Paste your API key (create one at
@@ -299,16 +431,42 @@ const store = {
 	set paneModels(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
 	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
 	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
+	get council() { return localStorage.getItem('godmode.council') === '1'; },
+	set council(v) { localStorage.setItem('godmode.council', v ? '1' : '0'); },
+	get synthModel() { return localStorage.getItem('godmode.synth') || ''; },
+	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
 };
 
 // Preferred defaults per pane, first available on OpenRouter wins.
-// Editable in the pane header — any OpenRouter model id works.
 const DEFAULT_PANE_PREFS = [
 	['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5', 'openai/gpt-4o'],
 	['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-3.7-sonnet'],
 	['google/gemini-3-pro', 'google/gemini-3-flash', 'google/gemini-2.5-pro', 'google/gemini-2.0-flash-001'],
-	['x-ai/grok-4.1', 'x-ai/grok-4', 'deepseek/deepseek-chat', 'meta-llama/llama-3.3-70b-instruct'],
+	['moonshotai/kimi-k3', 'moonshotai/kimi-k2-thinking', 'x-ai/grok-4.1', 'deepseek/deepseek-chat'],
 ];
+const SYNTH_PREFS = ['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'openai/gpt-5.2', 'google/gemini-2.5-pro'];
+
+// vendor branding for the pane avatar chip
+const VENDORS = {
+	openai: ['#10a37f', 'G'],
+	anthropic: ['#d97757', 'C'],
+	google: ['#4285f4', '✦'],
+	'x-ai': ['#333333', '𝕏'],
+	moonshotai: ['#7c5cff', 'K'],
+	deepseek: ['#4d6bfe', 'D'],
+	qwen: ['#615ced', 'Q'],
+	'meta-llama': ['#0668e1', 'L'],
+	mistralai: ['#fa520f', 'M'],
+	perplexity: ['#20808d', 'P'],
+	cohere: ['#39594d', 'Co'],
+	amazon: ['#ff9900', 'A'],
+	microsoft: ['#0078d4', 'Ms'],
+	nvidia: ['#76b900', 'N'],
+};
+function vendorInfo(modelId) {
+	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
+	return VENDORS[prefix] || ['#666a75', (prefix[0] || '?').toUpperCase()];
+}
 
 let availableModels = [];
 const panes = []; // { id, model, messages, controller, els }
@@ -358,13 +516,20 @@ function renderMarkdown(src) {
 /* ------------------------------ panes ------------------------------ */
 const panesEl = document.getElementById('panes');
 
+function paintAvatar(el, model) {
+	const [color, letter] = vendorInfo(model);
+	el.style.background = color;
+	el.textContent = letter;
+}
+
 function addPane(model) {
 	const id = ++paneSeq;
 	const el = document.createElement('section');
 	el.className = 'pane';
 	el.innerHTML = `
 		<div class="pane-head">
-			<input list="modelList" spellcheck="false" autocomplete="off" title="OpenRouter model id" />
+			<span class="avatar"></span>
+			<input list="modelList" spellcheck="false" autocomplete="off" title="OpenRouter model id — type to change" />
 			<button class="clear" title="Clear this conversation">✦</button>
 			<button class="close" title="Remove pane">✕</button>
 		</div>
@@ -374,11 +539,18 @@ function addPane(model) {
 	panesEl.appendChild(el);
 	const pane = {
 		id, model, messages: [], controller: null,
-		els: { root: el, model: el.querySelector('input'), body: el.querySelector('.pane-body') },
+		els: {
+			root: el,
+			model: el.querySelector('input'),
+			body: el.querySelector('.pane-body'),
+			avatar: el.querySelector('.avatar'),
+		},
 	};
 	pane.els.model.value = model;
+	paintAvatar(pane.els.avatar, model);
 	pane.els.model.addEventListener('change', () => {
 		pane.model = pane.els.model.value.trim();
+		paintAvatar(pane.els.avatar, pane.model);
 		savePanes();
 	});
 	el.querySelector('.close').addEventListener('click', () => {
@@ -411,83 +583,168 @@ function addMessage(pane, role) {
 	return div;
 }
 
-/* ---------------------------- streaming ---------------------------- */
+/* --------------------- streaming (shared plumbing) ------------------- */
+async function streamCompletion({ model, messages, signal, onDelta }) {
+	const res = await fetch(API_BASE + '/chat/completions', {
+		method: 'POST',
+		signal,
+		headers: {
+			Authorization: 'Bearer ' + store.key,
+			'Content-Type': 'application/json',
+			'X-Title': 'GodMode Web',
+		},
+		body: JSON.stringify({ model, messages, stream: true }),
+	});
+	if (!res.ok) {
+		let detail = res.status + ' ' + res.statusText;
+		try { detail = (await res.json()).error?.message || detail; } catch {}
+		throw new Error(detail);
+	}
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = '', text = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split('\n');
+		buf = lines.pop();
+		for (const line of lines) {
+			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+			if (!data || data === '[DONE]') continue;
+			try {
+				const delta = JSON.parse(data).choices?.[0]?.delta?.content;
+				if (delta) { text += delta; onDelta(text); }
+			} catch {}
+		}
+	}
+	return text;
+}
+
+function streamingShell(container) {
+	// returns { update(text), finish(metaText), fail(msg) } writing into container
+	const md = document.createElement('span');
+	md.className = 'md';
+	const cursor = document.createElement('span');
+	cursor.className = 'cursor';
+	cursor.textContent = '▌';
+	const meta = document.createElement('div');
+	meta.className = 'meta';
+	container.append(md, cursor, meta);
+	container.classList.add('streaming');
+	return {
+		update(text) { md.innerHTML = renderMarkdown(text); },
+		finish(metaText) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			if (metaText) meta.textContent = metaText;
+		},
+		fail(msg) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			md.innerHTML = '<div class="error">⚠ ' + esc(msg) + '</div>';
+		},
+	};
+}
+
 async function streamChat(pane, prompt) {
 	pane.messages.push({ role: 'user', content: prompt });
-	const userEl = addMessage(pane, 'user');
-	userEl.textContent = prompt;
+	addMessage(pane, 'user').textContent = prompt;
 
 	const el = addMessage(pane, 'assistant');
-	el.classList.add('streaming');
+	const shell = streamingShell(el);
 	pane.controller = new AbortController();
+	const started = Date.now();
 	let text = '';
 	const scrollDown = () => { pane.els.body.scrollTop = pane.els.body.scrollHeight; };
 	scrollDown();
 
 	try {
-		const res = await fetch(API_BASE + '/chat/completions', {
-			method: 'POST',
+		text = await streamCompletion({
+			model: pane.model,
+			messages: pane.messages,
 			signal: pane.controller.signal,
-			headers: {
-				Authorization: 'Bearer ' + store.key,
-				'Content-Type': 'application/json',
-				'X-Title': 'GodMode Web',
-			},
-			body: JSON.stringify({
-				model: pane.model,
-				messages: pane.messages,
-				stream: true,
-			}),
+			onDelta: (t) => { text = t; shell.update(t); scrollDown(); },
 		});
-		if (!res.ok) {
-			let detail = res.status + ' ' + res.statusText;
-			try { detail = (await res.json()).error?.message || detail; } catch {}
-			throw new Error(detail);
-		}
-		const reader = res.body.getReader();
-		const decoder = new TextDecoder();
-		let buf = '';
-		for (;;) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			buf += decoder.decode(value, { stream: true });
-			const lines = buf.split('\n');
-			buf = lines.pop();
-			for (const line of lines) {
-				const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
-				if (!data || data === '[DONE]') continue;
-				try {
-					const delta = JSON.parse(data).choices?.[0]?.delta?.content;
-					if (delta) {
-						text += delta;
-						el.innerHTML = renderMarkdown(text);
-						scrollDown();
-					}
-				} catch {}
-			}
-		}
 		pane.messages.push({ role: 'assistant', content: text });
+		shell.finish(pane.model + ' · ' + ((Date.now() - started) / 1000).toFixed(1) + 's');
+		return text;
 	} catch (err) {
 		if (err.name === 'AbortError') {
 			if (text) pane.messages.push({ role: 'assistant', content: text });
-		} else {
-			pane.messages.pop(); // let the user retry the failed turn
-			el.innerHTML = '<div class="error">⚠ ' + esc(String(err.message || err)) + '</div>';
-			if (/auth|key|401/i.test(String(err.message))) openSettings();
+			shell.finish('stopped');
+			return text;
 		}
+		pane.messages.pop(); // let the user retry the failed turn
+		shell.fail(String(err.message || err));
+		if (/auth|key|401/i.test(String(err.message))) openSettings();
+		return '';
 	} finally {
-		el.classList.remove('streaming');
 		pane.controller = null;
 	}
 }
 
-/* ------------------------------ send ------------------------------- */
+/* ------------------------------ council ----------------------------- */
+const councilEl = document.getElementById('council');
+const councilBody = document.getElementById('councilBody');
+const councilBtn = document.getElementById('councilBtn');
+const synthModelEl = document.getElementById('synthModel');
+let councilController = null;
+
+function refreshCouncilUI() {
+	councilBtn.classList.toggle('active', store.council);
+	councilEl.classList.toggle('visible', store.council);
+}
+councilBtn.addEventListener('click', () => {
+	store.council = !store.council;
+	refreshCouncilUI();
+});
+document.getElementById('councilClear').addEventListener('click', () => {
+	councilController?.abort();
+	councilBody.innerHTML = '<span class="hint">Send a prompt and the synthesizer will read every pane\'s answer, merge the best parts, and flag where the models disagree.</span>';
+});
+synthModelEl.addEventListener('change', () => { store.synthModel = synthModelEl.value.trim(); });
+
+async function synthesize(prompt, answers) {
+	// answers: [{model, text}]
+	councilBody.innerHTML = '';
+	const wrap = document.createElement('div');
+	councilBody.appendChild(wrap);
+	const shell = streamingShell(wrap);
+	councilController = new AbortController();
+	const started = Date.now();
+
+	const briefing =
+		'You are the Council synthesizer. ' + answers.length +
+		' AI models each answered the same question independently. Merge their answers into the single best response. ' +
+		'Be concise. If the models disagree on anything substantive, add a short "Disagreements" note at the end saying who said what. Do not review each answer one by one.\n\n' +
+		'## Question\n' + prompt + '\n\n' +
+		answers.map((a) => '## Answer from ' + a.model + '\n' + a.text).join('\n\n');
+
+	try {
+		await streamCompletion({
+			model: synthModelEl.value.trim(),
+			messages: [{ role: 'user', content: briefing }],
+			signal: councilController.signal,
+			onDelta: (t) => { shell.update(t); councilBody.scrollTop = councilBody.scrollHeight; },
+		});
+		shell.finish(synthModelEl.value.trim() + ' · ' + ((Date.now() - started) / 1000).toFixed(1) + 's');
+	} catch (err) {
+		if (err.name === 'AbortError') shell.finish('stopped');
+		else shell.fail(String(err.message || err));
+	} finally {
+		councilController = null;
+	}
+}
+
+/* ------------------------------- send ------------------------------- */
 const promptEl = document.getElementById('prompt');
 const sendBtn = document.getElementById('sendBtn');
 
 async function sendAll() {
 	if (generating) { // acts as stop
 		panes.forEach((p) => p.controller?.abort());
+		councilController?.abort();
 		return;
 	}
 	const prompt = promptEl.value.trim();
@@ -500,7 +757,14 @@ async function sendAll() {
 	sendBtn.classList.add('stop');
 	sendBtn.textContent = '◼';
 	try {
-		await Promise.allSettled(panes.map((p) => streamChat(p, prompt)));
+		const results = await Promise.allSettled(panes.map((p) => streamChat(p, prompt)));
+		if (store.council) {
+			const answers = results
+				.map((r, i) => ({ model: panes[i]?.model, text: r.status === 'fulfilled' ? r.value : '' }))
+				.filter((a) => a.model && a.text);
+			if (answers.length >= 2) await synthesize(prompt, answers);
+			else councilBody.innerHTML = '<span class="hint">Need at least two successful answers to hold a council.</span>';
+		}
 	} finally {
 		generating = false;
 		sendBtn.classList.remove('stop');
@@ -523,7 +787,7 @@ function autosize() {
 }
 promptEl.addEventListener('input', autosize);
 
-/* ---------------------------- settings ----------------------------- */
+/* ----------------------------- settings ----------------------------- */
 const settingsEl = document.getElementById('settings');
 const keyInput = document.getElementById('keyInput');
 const enterToSendEl = document.getElementById('enterToSend');
@@ -551,13 +815,13 @@ document.getElementById('addPaneBtn').addEventListener('click', () => {
 	addPane(availableModels[0]?.id || 'openai/gpt-4o');
 });
 
-/* ------------------------- model discovery ------------------------- */
+/* -------------------------- model discovery ------------------------- */
 function pickAvailable(prefs) {
 	if (!availableModels.length) return prefs[0];
 	const ids = new Set(availableModels.map((m) => m.id));
 	for (const want of prefs) {
 		if (ids.has(want)) return want;
-		// prefix match tolerates dated suffixes like ":free" or "-preview"
+		// prefix match tolerates suffixes like ":free" or "-preview"
 		const near = availableModels.find((m) => m.id.startsWith(want));
 		if (near) return near.id;
 	}
@@ -595,17 +859,24 @@ async function loadModels() {
 				if (better !== pane.model) {
 					pane.model = better;
 					pane.els.model.value = better;
+					paintAvatar(pane.els.avatar, better);
 					const ph = pane.els.body.querySelector('.placeholder');
 					if (ph) ph.textContent = better;
 				}
 			});
 			savePanes();
 		}
+		if (!store.synthModel) {
+			synthModelEl.value = pickAvailable(SYNTH_PREFS);
+			store.synthModel = synthModelEl.value;
+		}
 	} catch { /* offline or blocked: typed model ids still work */ }
 }
 
-/* ------------------------------ boot ------------------------------- */
+/* ------------------------------- boot ------------------------------- */
 updatePlaceholder();
+refreshCouncilUI();
+synthModelEl.value = store.synthModel || SYNTH_PREFS[0];
 addDefaultPanes();
 loadModels();
 if (!store.key) openSettings();
