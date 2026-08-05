@@ -423,18 +423,17 @@
 	<h2>🐣 Welcome to GodMode</h2>
 	<p>
 		One prompt, answered by every AI at once. Pick a model in the sidebar to read
-		its answer; the dot shows who's still working. Powered by the
-		<a href="https://openrouter.ai" target="_blank" rel="noreferrer">OpenRouter</a> API —
-		one key unlocks GPT, Claude, Gemini, Grok, Kimi, DeepSeek and 300+ more.
+		its answer; the dot shows who's still working.
 	</p>
 	<p>
-		Paste your API key (create one at
-		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai/keys</a>).
-		Keys are stored only on this device, and sent only to the AI provider they belong to.
+		Add <b>either</b> an <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a>
+		key — one key, 300+ models — <b>or</b> your own vendor keys below. The sidebar
+		lines itself up with whichever keys you save. Keys are stored only on this
+		device, and each is sent only to the provider it belongs to.
 	</p>
-	<input type="password" id="keyInput" placeholder="OpenRouter key — sk-or-v1-…" autocomplete="off" />
+	<input type="password" id="keyInput" placeholder="OpenRouter key (optional) — sk-or-v1-…" autocomplete="off" />
 	<details id="directKeys">
-		<summary style="font-size:13px;color:var(--dim);cursor:pointer">Direct API keys (optional)</summary>
+		<summary style="font-size:13px;color:var(--dim);cursor:pointer">Your own vendor keys</summary>
 		<p>
 			Have your own vendor keys? Add them and use models named
 			<code>gpt:…</code>, <code>claude:…</code>, <code>kimi:…</code>, <code>pplx:…</code>
@@ -475,10 +474,16 @@ const store = {
 	set modelIds(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
 	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
 	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
+	// set once the user hand-picks models, so saving keys stops re-lining the rail
+	get custom() { return localStorage.getItem('godmode.custom') === '1'; },
+	set custom(v) { localStorage.setItem('godmode.custom', v ? '1' : '0'); },
 	get council() { return localStorage.getItem('godmode.council') === '1'; },
 	set council(v) { localStorage.setItem('godmode.council', v ? '1' : '0'); },
 	get synthModel() { return localStorage.getItem('godmode.synth') || ''; },
 	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
+	// as with `custom`: only a hand-picked synthesizer survives a key change
+	get synthCustom() { return localStorage.getItem('godmode.synthCustom') === '1'; },
+	set synthCustom(v) { localStorage.setItem('godmode.synthCustom', v ? '1' : '0'); },
 };
 
 // Preferred defaults, first available on OpenRouter wins.
@@ -646,7 +651,8 @@ const addChip = document.createElement('div');
 addChip.className = 'entry add';
 addChip.textContent = '＋ Add model';
 addChip.addEventListener('click', () => {
-	const m = addModel(availableModels[0]?.id || 'openai/gpt-4o');
+	store.custom = true;
+	const m = addModel(defaultModelList()[0] || availableModels[0]?.id || 'openai/gpt-4o');
 	select(m.uid);
 });
 
@@ -721,6 +727,7 @@ function removeModel(uid) {
 	m.controller?.abort();
 	m.els.thread.remove();
 	models.splice(i, 1);
+	store.custom = true;
 	renderRail();
 	saveModels();
 	if (selectedUid === uid) select(models[0].uid);
@@ -728,7 +735,8 @@ function removeModel(uid) {
 
 function ensureCouncil() {
 	if (!councilEntry) {
-		councilEntry = { uid: COUNCIL_UID, model: store.synthModel || SYNTH_PREFS[0], messages: [], controller: null };
+		const synth = (store.synthCustom && store.synthModel) || defaultSynthModel();
+		councilEntry = { uid: COUNCIL_UID, model: synth, messages: [], controller: null };
 		makeEntry(councilEntry, true);
 	}
 	return councilEntry;
@@ -778,8 +786,13 @@ headModel.addEventListener('change', () => {
 	const m = find(selectedUid);
 	if (!m) return;
 	m.model = headModel.value.trim();
-	if (selectedUid === COUNCIL_UID) store.synthModel = m.model;
-	else saveModels();
+	if (selectedUid === COUNCIL_UID) {
+		store.synthModel = m.model;
+		store.synthCustom = true;
+	} else {
+		store.custom = true;
+		saveModels();
+	}
 	refreshEntry(m, selectedUid === COUNCIL_UID);
 	paintAvatar(headAvatar, m.model, selectedUid === COUNCIL_UID);
 });
@@ -1056,6 +1069,7 @@ document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	store.pplxKey = pplxKeyInput.value.trim();
 	store.enterToSend = enterToSendEl.checked;
 	settingsEl.close();
+	applyDefaultModels();
 	loadDirectModels();
 });
 
@@ -1071,15 +1085,56 @@ function pickAvailable(prefs) {
 	return prefs[0];
 }
 
+// Which models to show when the user hasn't picked their own. With an
+// OpenRouter key we can offer everything; with only vendor keys we line the
+// rail up with whichever keys are actually present, so nothing errors out.
+const DIRECT_DEFAULTS = [
+	['oaiKey', 'gpt:gpt-5.2'],
+	['anthKey', 'claude:claude-opus-5'],
+	['kimiKey', 'kimi:kimi-latest'],
+	['pplxKey', 'pplx:sonar-pro'],
+];
+
+function defaultModelList() {
+	if (store.key) return DEFAULT_PREFS.map(pickAvailable);
+	const direct = DIRECT_DEFAULTS.filter(([k]) => store[k]).map(([, id]) => id);
+	return direct.length ? direct : DEFAULT_PREFS.map(pickAvailable);
+}
+
+function defaultSynthModel() {
+	if (store.key) return pickAvailable(SYNTH_PREFS);
+	if (store.anthKey) return 'claude:claude-opus-5';
+	if (store.oaiKey) return 'gpt:gpt-5.2';
+	return defaultModelList()[0];
+}
+
 let usingDefaults = false;
 function addDefaults() {
-	const saved = store.modelIds;
+	const saved = store.custom && store.modelIds;
 	if (saved && saved.length) {
 		saved.forEach((id) => addModel(id));
 	} else {
-		usingDefaults = true;
-		DEFAULT_PREFS.forEach((prefs) => addModel(pickAvailable(prefs)));
+		usingDefaults = !!store.key; // only OpenRouter defaults get upgraded later
+		defaultModelList().forEach((id) => addModel(id));
 	}
+}
+
+// Re-line the rail up with the keys the user just saved, unless they have
+// hand-picked models (then their choice wins).
+function applyDefaultModels() {
+	if (store.custom) return;
+	models.forEach((m) => {
+		m.controller?.abort();
+		m.els.thread.remove();
+	});
+	models.length = 0;
+	defaultModelList().forEach((id) => addModel(id));
+	if (councilEntry && !store.synthCustom) {
+		councilEntry.model = defaultSynthModel();
+		refreshEntry(councilEntry, true);
+	}
+	renderRail();
+	select(models[0]?.uid);
 }
 
 const directSuggestions = new Set();
@@ -1165,9 +1220,9 @@ async function loadModels() {
 			});
 			saveModels();
 		}
-		if (!store.synthModel) {
-			store.synthModel = pickAvailable(SYNTH_PREFS);
-			if (councilEntry) { councilEntry.model = store.synthModel; refreshEntry(councilEntry, true); }
+		if (councilEntry && !store.synthCustom) {
+			councilEntry.model = defaultSynthModel();
+			refreshEntry(councilEntry, true);
 		}
 		if (selectedUid) select(selectedUid); // refresh head after upgrades
 	} catch { /* offline or blocked: typed model ids still work */ }
