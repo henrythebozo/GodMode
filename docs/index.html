@@ -526,6 +526,7 @@
 		max-width: 450px;
 		width: calc(100vw - 36px);
 		box-shadow: var(--shadow);
+		margin: auto; /* the global reset drops the UA centring */
 	}
 	dialog::backdrop { background: rgba(4, 4, 8, 0.7); backdrop-filter: blur(4px); }
 	dialog h2 { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
@@ -561,6 +562,81 @@
 		cursor: pointer;
 	}
 	.primary:hover { filter: brightness(1.12); }
+	.primary:disabled { opacity: 0.4; cursor: default; filter: none; }
+	.ghost {
+		background: none;
+		border: 1px solid var(--line);
+		color: var(--dim);
+		border-radius: 10px;
+		padding: 10px 18px;
+		cursor: pointer;
+	}
+	.ghost:hover { color: var(--text); border-color: var(--dim); }
+
+	/* --------------------------- add-model picker ------------------------ */
+	.searchfield { position: relative; display: flex; align-items: center; margin: 12px 0 10px; }
+	.searchfield .lead { position: absolute; left: 13px; color: var(--dim); pointer-events: none; }
+	.searchfield input {
+		width: 100%;
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		color: var(--text);
+		border-radius: 11px;
+		padding: 11px 13px 11px 40px;
+		font: inherit;
+	}
+	.searchfield input:focus { outline: none; border-color: var(--vio); }
+	#addResults {
+		max-height: min(300px, 42dvh);
+		overflow-y: auto;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--bg);
+	}
+	.mrow {
+		display: flex;
+		align-items: center;
+		gap: 11px;
+		padding: 9px 11px;
+		cursor: pointer;
+		border-bottom: 1px solid var(--line-soft);
+	}
+	.mrow:last-child { border-bottom: none; }
+	.mrow:hover { background: var(--surface-2); }
+	.mrow.sel { background: var(--vio-soft); }
+	.mrow .avatar { width: 26px; height: 26px; border-radius: 8px; font-size: 11.5px; }
+	.mrow .mtext { min-width: 0; flex: 1; }
+	.mrow .mname {
+		font-size: 13.5px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.mrow .mid {
+		font-size: 11px;
+		color: var(--dim);
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.mtag {
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		border-radius: 999px;
+		padding: 3px 8px;
+		flex: none;
+		border: 1px solid transparent;
+	}
+	.mtag.ready { color: var(--ok); border-color: rgba(53, 211, 154, 0.35); }
+	.mtag.needs { color: var(--dim); border-color: var(--line); }
+	.emptyrow { padding: 18px; text-align: center; color: var(--dim); font-size: 13px; }
+	#addKeyBlock { margin-top: 12px; }
+	#addKeyBlock.hide { display: none; }
+	#addKeyLabel { font-size: 12.5px; color: var(--text); font-weight: 600; }
 
 	/* -------------------------------- lock ------------------------------- */
 	#lock {
@@ -805,6 +881,28 @@
 	<div class="row">
 		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
 		<button class="primary" id="saveKeyBtn">Save</button>
+	</div>
+</dialog>
+
+<dialog id="addModal">
+	<h2>Add a model</h2>
+	<p id="addCount">Search every model available to you.</p>
+	<div class="searchfield">
+		<span class="lead">
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+			</svg>
+		</span>
+		<input type="text" id="addSearch" placeholder="Search models — gpt, claude, kimi, llama…" autocomplete="off" spellcheck="false" />
+	</div>
+	<div id="addResults"></div>
+	<div id="addKeyBlock" class="hide">
+		<p><span id="addKeyLabel"></span> — <span id="addKeyHint"></span></p>
+		<input type="password" id="addKeyInput" placeholder="Paste key" autocomplete="off" />
+	</div>
+	<div class="row">
+		<button class="ghost" id="addCancel" type="button">Cancel</button>
+		<button class="primary" id="addConfirm" type="button" disabled>Add model</button>
 	</div>
 </dialog>
 
@@ -1107,11 +1205,7 @@ navLabel.textContent = 'Models';
 const addChip = document.createElement('div');
 addChip.className = 'entry add';
 addChip.textContent = '＋ Add model';
-addChip.addEventListener('click', () => {
-	store.custom = true;
-	const m = addModel(defaultModelList()[0] || availableModels[0]?.id || 'openai/gpt-4o');
-	select(m.uid);
-});
+addChip.addEventListener('click', () => openAddModal());
 
 function paintAvatar(el, model, isCouncil) {
 	if (isCouncil) {
@@ -1621,6 +1715,171 @@ document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	settingsEl.close();
 	applyDefaultModels();
 	loadDirectModels();
+});
+
+/* --------------------------- add-model picker ------------------------
+ * Search across everything reachable — OpenRouter's whole catalogue plus
+ * the direct-key models — and let a missing key be pasted right here, so
+ * adding a model and authorising it are one step.
+ */
+const KEY_NEEDS = {
+	gpt: { field: 'oaiKey', label: 'OpenAI (ChatGPT) key', placeholder: 'sk-…', where: 'platform.openai.com/api-keys' },
+	claude: { field: 'anthKey', label: 'Anthropic (Claude) key', placeholder: 'sk-ant-…', where: 'console.anthropic.com' },
+	kimi: { field: 'kimiKey', label: 'Moonshot (Kimi) key', placeholder: 'sk-…', where: 'platform.moonshot.ai' },
+	pplx: { field: 'pplxKey', label: 'Perplexity key', placeholder: 'pplx-…', where: 'perplexity.ai/settings/api' },
+	openrouter: { field: 'key', label: 'OpenRouter key', placeholder: 'sk-or-v1-…', where: 'openrouter.ai/keys' },
+};
+
+function keyNeedFor(modelId) {
+	const m = (modelId || '').match(DIRECT_RE);
+	return KEY_NEEDS[m ? m[1] : 'openrouter'];
+}
+
+// direct-key models are listed even without the key, so they are discoverable
+const DIRECT_CATALOG = [
+	'gpt:gpt-5.2', 'gpt:gpt-5.1', 'gpt:gpt-4o', 'gpt:gpt-4o-mini',
+	'claude:claude-opus-5', 'claude:claude-sonnet-5', 'claude:claude-haiku-4-5',
+	'kimi:kimi-latest', 'kimi:kimi-k2.5',
+	'pplx:sonar', 'pplx:sonar-pro', 'pplx:sonar-reasoning-pro',
+];
+
+const addModal = document.getElementById('addModal');
+const addSearch = document.getElementById('addSearch');
+const addResults = document.getElementById('addResults');
+const addKeyBlock = document.getElementById('addKeyBlock');
+const addKeyLabel = document.getElementById('addKeyLabel');
+const addKeyHint = document.getElementById('addKeyHint');
+const addKeyInput = document.getElementById('addKeyInput');
+const addConfirm = document.getElementById('addConfirm');
+const addCount = document.getElementById('addCount');
+let addSelected = '';
+
+function fullCatalog() {
+	const ids = new Set([...DIRECT_CATALOG, ...directSuggestions]);
+	availableModels.forEach((m) => ids.add(m.id));
+	return [...ids];
+}
+
+function renderAddResults() {
+	const q = addSearch.value.trim().toLowerCase();
+	const terms = q.split(/\s+/).filter(Boolean);
+	const taken = new Set(models.map((m) => m.model));
+	const scored = [];
+	for (const id of fullCatalog()) {
+		const hay = id.toLowerCase();
+		if (terms.length && !terms.every((t) => hay.includes(t))) continue;
+		const ready = !!store[keyNeedFor(id).field];
+		scored.push({ id, ready, score: (ready ? 2 : 0) + (q && hay.startsWith(q) ? 4 : 0) });
+	}
+	scored.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
+	// let an unlisted id be added verbatim — offered when the query looks like a
+	// model id, or when nothing else matched
+	const raw = addSearch.value.trim();
+	const looksLikeId = /[:/]/.test(raw);
+	if (raw && (looksLikeId || !scored.length) && !scored.some((s) => s.id.toLowerCase() === q)) {
+		scored.unshift({ id: raw, ready: !!store[keyNeedFor(raw).field], custom: true, score: 99 });
+	}
+
+	const shown = scored.slice(0, 60);
+	addCount.textContent = q
+		? shown.length + (scored.length > 60 ? '+ of ' + scored.length : '') + ' matching'
+		: fullCatalog().length + ' models available — search or scroll.';
+
+	addResults.innerHTML = '';
+	if (!shown.length) {
+		addResults.innerHTML = '<div class="emptyrow">Nothing matches. Type an exact model id to use it anyway.</div>';
+		return;
+	}
+	for (const item of shown) {
+		const row = document.createElement('div');
+		row.className = 'mrow' + (item.id === addSelected ? ' sel' : '');
+		const av = document.createElement('span');
+		av.className = 'avatar';
+		paintAvatar(av, item.id, false);
+		const text = document.createElement('div');
+		text.className = 'mtext';
+		const name = document.createElement('div');
+		name.className = 'mname';
+		name.textContent = item.custom ? 'Use exactly: ' + shortName(item.id) : shortName(item.id);
+		const sub = document.createElement('div');
+		sub.className = 'mid';
+		sub.textContent = item.id + (taken.has(item.id) ? ' · already added' : '');
+		text.append(name, sub);
+		const tag = document.createElement('span');
+		tag.className = 'mtag ' + (item.ready ? 'ready' : 'needs');
+		tag.textContent = item.ready ? 'Ready' : 'Needs key';
+		row.append(av, text, tag);
+		row.addEventListener('click', () => selectAddModel(item.id));
+		addResults.appendChild(row);
+	}
+}
+
+function selectAddModel(id) {
+	addSelected = id;
+	const need = keyNeedFor(id);
+	const have = !!store[need.field];
+	addKeyBlock.classList.toggle('hide', have);
+	if (!have) {
+		addKeyLabel.textContent = need.label;
+		addKeyHint.textContent = 'get one at ' + need.where;
+		addKeyInput.placeholder = need.placeholder;
+		addKeyInput.value = '';
+	}
+	renderAddResults();
+	updateAddConfirm();
+	if (!have) addKeyInput.focus();
+}
+
+function updateAddConfirm() {
+	const need = addSelected ? keyNeedFor(addSelected) : null;
+	const ok = !!addSelected && (!need || store[need.field] || addKeyInput.value.trim());
+	addConfirm.disabled = !ok;
+}
+
+function openAddModal() {
+	addSelected = '';
+	addSearch.value = '';
+	addKeyBlock.classList.add('hide');
+	addKeyInput.value = '';
+	renderAddResults();
+	updateAddConfirm();
+	addModal.showModal();
+	setTimeout(() => addSearch.focus(), 40);
+}
+
+addSearch.addEventListener('input', () => {
+	// keep a selection only while it still matches the query
+	if (addSelected && !addSelected.toLowerCase().includes(addSearch.value.trim().toLowerCase())) {
+		addSelected = '';
+		addKeyBlock.classList.add('hide');
+	}
+	renderAddResults();
+	updateAddConfirm();
+});
+addSearch.addEventListener('keydown', (e) => {
+	if (e.key !== 'Enter') return;
+	e.preventDefault();
+	if (!addSelected) {
+		const first = addResults.querySelector('.mrow');
+		if (first) first.click();
+	} else if (!addConfirm.disabled) {
+		addConfirm.click();
+	}
+});
+addKeyInput.addEventListener('input', updateAddConfirm);
+document.getElementById('addCancel').addEventListener('click', () => addModal.close());
+addConfirm.addEventListener('click', () => {
+	if (!addSelected) return;
+	const need = keyNeedFor(addSelected);
+	const typed = addKeyInput.value.trim();
+	if (typed && !store[need.field]) store[need.field] = typed;
+	store.custom = true;
+	const m = addModel(addSelected);
+	addModal.close();
+	select(m.uid);
+	loadDirectModels();
+	if (need.field === 'key') loadModels();
 });
 
 /* -------------------------- model discovery ------------------------- */
