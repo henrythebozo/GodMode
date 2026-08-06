@@ -1,5 +1,9 @@
-name: Deploy GodMode Web to GitHub Pages
+name: Publish Henry OS
 
+# GitHub will not let a workflow switch Pages on for a forked repository, so
+# whichever source the owner picks in Settings -> Pages, this keeps it fed:
+#   * "Deploy from a branch -> gh-pages / root"  <- the sync-branch job
+#   * "GitHub Actions"                           <- the deploy-actions job
 on:
   push:
     branches: [main]
@@ -9,7 +13,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -18,19 +22,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # Mirror docs/ to the gh-pages branch so the branch source is never stale.
+  sync-branch:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push docs/ to gh-pages
+        run: |
+          set -e
+          work="$(mktemp -d)"
+          cp -r docs/. "$work"/
+          touch "$work/.nojekyll"
+          cd "$work"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish ${GITHUB_SHA::7}"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            HEAD:gh-pages
+
+  # Only does anything when Pages is set to the "GitHub Actions" source; it is
+  # allowed to fail so a branch-source setup still shows a green run.
+  deploy-actions:
+    runs-on: ubuntu-latest
+    continue-on-error: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-        with:
-          # creates/enables the Pages site on first run, no settings toggle needed
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - id: configure
+        continue-on-error: true
+        uses: actions/configure-pages@v5
+      - if: steps.configure.outcome == 'success'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs
-      - id: deployment
+      - if: steps.configure.outcome == 'success'
+        id: deployment
         uses: actions/deploy-pages@v4
