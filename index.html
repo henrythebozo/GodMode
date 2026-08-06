@@ -1,0 +1,2300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Henry OS — one prompt, every AI</title>
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="data:application/manifest+json;base64,ewoJIm5hbWUiOiAiSGVucnkgT1Mg4oCUIG9uZSBwcm9tcHQsIGV2ZXJ5IEFJIiwKCSJzaG9ydF9uYW1lIjogIkhlbnJ5IE9TIiwKCSJkZXNjcmlwdGlvbiI6ICJBc2sgR1BULCBDbGF1ZGUsIEdlbWluaSwgS2ltaSBhbmQgMzAwKyBtb2RlbHMgYXQgb25jZSwgdGhlbiByZWFkIG9uZSBicmllZmluZy4iLAoJInN0YXJ0X3VybCI6ICIuIiwKCSJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAoJImJhY2tncm91bmRfY29sb3IiOiAiIzA3MDcwYSIsCgkidGhlbWVfY29sb3IiOiAiIzA3MDcwYSIsCgkiaWNvbnMiOiBbCgkJewoJCQkic3JjIjogImljb24tMTgwLnBuZyIsCgkJCSJzaXplcyI6ICIxODB4MTgwIiwKCQkJInR5cGUiOiAiaW1hZ2UvcG5nIgoJCX0sCgkJewoJCQkic3JjIjogImljb24tNTEyLnBuZyIsCgkJCSJzaXplcyI6ICI1MTJ4NTEyIiwKCQkJInR5cGUiOiAiaW1hZ2UvcG5nIgoJCX0KCV0KfQo=" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Henry OS" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
+<style>
+	:root {
+		--bg: #000;
+		--surface: #1c1c1e;
+		--surface-2: #2c2c2e;
+		--surface-3: #3a3a3c;
+		--line: #2a2a2d;
+		--line-soft: #1f1f22;
+		--text: #fff;
+		--dim: #8e8e93;
+		--vio: #7b5cf0;
+		--vio-lift: #a58bff;
+		--vio-soft: rgba(123, 92, 240, 0.16);
+		--ok: #32d74b;
+		--err: #ff6b81;
+		--shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100dvh; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		display: flex;
+		overscroll-behavior: none;
+		-webkit-font-smoothing: antialiased;
+	}
+	* { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
+	::-webkit-scrollbar { width: 8px; height: 8px; }
+	::-webkit-scrollbar-track { background: transparent; }
+	::-webkit-scrollbar-thumb {
+		background: var(--surface-2);
+		border-radius: 99px;
+		border: 2px solid transparent;
+		background-clip: content-box;
+	}
+	:focus-visible { outline: 2px solid var(--vio); outline-offset: 2px; }
+	::selection { background: rgba(123, 92, 240, 0.4); }
+	button { font: inherit; color: inherit; }
+	svg { display: block; }
+
+	/* round icon button, the shape used at both ends of the top bar */
+	.circ {
+		width: 38px;
+		height: 38px;
+		border-radius: 50%;
+		background: var(--surface);
+		border: none;
+		color: var(--text);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+		transition: background 0.15s;
+	}
+	.circ:hover { background: var(--surface-2); }
+	.circ:active { background: var(--surface-3); }
+	.circ.on { background: var(--vio-soft); color: var(--vio-lift); }
+	.linkbtn {
+		background: none;
+		border: none;
+		color: var(--dim);
+		font-size: 12px;
+		cursor: pointer;
+		padding: 3px 6px;
+		border-radius: 8px;
+	}
+	.linkbtn:hover { color: var(--err); background: var(--surface); }
+
+	/* ------------------------------- drawer ------------------------------ */
+	#scrim {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.55);
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.25s;
+		z-index: 40;
+	}
+	aside {
+		width: 290px;
+		flex: none;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		background: var(--bg);
+		border-right: 1px solid var(--line-soft);
+		padding: calc(16px + env(safe-area-inset-top)) 14px 14px;
+		min-height: 0;
+	}
+	.dhead {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 4px 6px 10px;
+	}
+	.dtitle {
+		flex: 1;
+		font-size: 25px;
+		font-weight: 700;
+		letter-spacing: -0.5px;
+	}
+
+	nav {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		overflow-y: auto;
+		min-height: 0;
+		padding: 2px 0;
+	}
+	.navlabel {
+		font-size: 15px;
+		font-weight: 700;
+		color: var(--text);
+		padding: 20px 10px 8px;
+		flex: none;
+	}
+	.entry {
+		display: flex;
+		align-items: center;
+		gap: 13px;
+		padding: 11px 10px;
+		border-radius: 12px;
+		cursor: pointer;
+		user-select: none;
+		flex: none;
+		transition: background 0.14s;
+	}
+	.entry:hover { background: var(--surface); }
+	.entry.active { background: var(--surface); }
+	.avatar {
+		width: 28px;
+		height: 28px;
+		border-radius: 8px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 12.5px;
+		font-weight: 700;
+		color: #fff;
+		background: #45454f;
+	}
+	.rinfo { min-width: 0; flex: 1; }
+	.rname {
+		font-size: 15.5px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		letter-spacing: -0.2px;
+	}
+	.rstatus {
+		font-size: 12px;
+		color: var(--dim);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.entry.working .rstatus { color: var(--vio-lift); }
+	.entry.working .rstatus::before {
+		content: "●";
+		margin-right: 5px;
+		animation: pulse 1s ease-in-out infinite;
+	}
+	@keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+	.entry.done .rstatus { color: var(--ok); }
+	.entry.error .rstatus { color: var(--err); }
+	.entry.add { color: var(--dim); font-weight: 600; font-size: 15px; }
+	.entry.add:hover { color: var(--text); }
+
+	.dfoot {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding-top: 10px;
+	}
+	.pill {
+		flex: 1;
+		background: var(--vio);
+		border: none;
+		border-radius: 999px;
+		padding: 12px 18px;
+		font-size: 15px;
+		font-weight: 650;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 9px;
+		transition: filter 0.15s;
+	}
+	.pill:hover { filter: brightness(1.12); }
+
+	/* -------------------------------- main ------------------------------- */
+	#mainCol {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		min-height: 0;
+		background: var(--bg);
+	}
+	#topbar {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: calc(10px + env(safe-area-inset-top)) 14px 8px;
+		flex: none;
+	}
+	#menuBtn { display: none; }
+	.seg {
+		display: flex;
+		background: var(--surface);
+		border-radius: 999px;
+		padding: 3px;
+		margin: 0 auto;
+		max-width: 340px;
+	}
+	.seg button {
+		border: none;
+		background: none;
+		color: var(--dim);
+		border-radius: 999px;
+		padding: 8px 22px;
+		font-size: 15px;
+		font-weight: 600;
+		cursor: pointer;
+		white-space: nowrap;
+		max-width: 170px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition: background 0.16s, color 0.16s;
+	}
+	.seg button.on { background: var(--surface-3); color: var(--text); }
+
+	.modelline {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 0 14px 8px;
+		flex: none;
+	}
+	#headModel {
+		background: none;
+		border: 1px solid transparent;
+		color: var(--dim);
+		border-radius: 8px;
+		padding: 3px 8px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 12px;
+		text-align: center;
+		max-width: 240px;
+		min-width: 0;
+		text-overflow: ellipsis;
+	}
+	#headModel:hover { border-color: var(--line); color: var(--text); }
+	#headModel:focus { outline: none; border-color: var(--vio); color: var(--text); }
+
+	#threads { flex: 1; min-height: 0; display: flex; }
+	.thread {
+		display: none;
+		flex: 1;
+		flex-direction: column;
+		gap: 20px;
+		overflow-y: auto;
+		padding: 12px clamp(16px, 6vw, 90px) 8px;
+		scroll-behavior: smooth;
+		min-height: 0;
+	}
+	.thread.active { display: flex; }
+
+	.msg { max-width: 100%; overflow-wrap: break-word; animation: rise 0.22s ease-out; }
+	@keyframes rise {
+		from { opacity: 0; transform: translateY(6px); }
+		to { opacity: 1; transform: none; }
+	}
+	.msg.user { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+	.msg.user .bubble {
+		background: var(--surface-2);
+		border-radius: 20px;
+		padding: 11px 16px;
+		max-width: 82%;
+		white-space: pre-wrap;
+	}
+	.msg.user .stamp { font-size: 11.5px; color: var(--dim); padding-right: 6px; }
+
+	.msg.assistant { display: flex; gap: 12px; align-items: flex-start; }
+	.msg.assistant .who {
+		width: 26px;
+		height: 26px;
+		border-radius: 8px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		font-size: 12px;
+		font-weight: 700;
+		color: #fff;
+		background: #45454f;
+		margin-top: 2px;
+	}
+	.msg.assistant .body { min-width: 0; flex: 1; }
+	.cursor { display: none; color: var(--vio-lift); animation: pulse 1s step-end infinite; }
+	.streaming .cursor { display: inline; }
+	.ansfoot {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-top: 12px;
+		font-size: 12px;
+		color: var(--dim);
+	}
+	.ansfoot .stamp { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+	.ansfoot .livedot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--ok);
+	}
+	.copybtn {
+		background: none;
+		border: none;
+		color: var(--dim);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0;
+		font-size: 12px;
+	}
+	.copybtn:hover { color: var(--text); }
+	.msg .error { color: var(--err); white-space: pre-wrap; font-size: 14px; }
+
+	.placeholder {
+		color: var(--dim);
+		margin: auto;
+		text-align: center;
+		padding: 20px;
+		max-width: 420px;
+		font-size: 14px;
+	}
+	.placeholder .hero {
+		width: 52px;
+		height: 52px;
+		border-radius: 16px;
+		margin: 0 auto 16px;
+		display: grid;
+		place-items: center;
+		font-size: 23px;
+		background: var(--vio-soft);
+	}
+	.placeholder b {
+		display: block;
+		color: var(--text);
+		font-size: 22px;
+		font-weight: 700;
+		letter-spacing: -0.4px;
+		margin-bottom: 8px;
+	}
+	.placeholder .modelid {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 12px;
+	}
+
+	/* markdown */
+	.md h1, .md h2, .md h3 { line-height: 1.3; margin: 12px 0 5px; }
+	.md h1 { font-size: 1.2em; } .md h2 { font-size: 1.1em; } .md h3 { font-size: 1.02em; }
+	.md p { margin: 8px 0; }
+	.md ul, .md ol { margin: 8px 0; padding-left: 22px; }
+	.md li { margin: 4px 0; }
+	.md li::marker { color: var(--dim); }
+	.md pre {
+		background: var(--surface);
+		border-radius: 12px;
+		padding: 13px 15px;
+		overflow-x: auto;
+		margin: 10px 0;
+		font-size: 13px;
+	}
+	.md code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+	.md :not(pre) > code {
+		background: var(--surface);
+		border-radius: 5px;
+		padding: 1px 5px;
+	}
+	.md a { color: var(--vio-lift); }
+	.md blockquote {
+		border-left: 2px solid var(--surface-3);
+		margin: 8px 0;
+		padding-left: 12px;
+		color: var(--dim);
+	}
+	.md strong { color: var(--text); font-weight: 650; }
+	.thread.council .md h2 {
+		font-size: 11.5px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.12em;
+		color: var(--vio-lift);
+		margin: 20px 0 8px;
+	}
+	.thread.council .md > h2:first-child { margin-top: 0; }
+
+	/* ---------------------------- suggestions ---------------------------- */
+	#suggest {
+		flex: none;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 0 clamp(16px, 6vw, 90px) 10px;
+	}
+	#suggest.hide { display: none; }
+	.sugg {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		background: none;
+		border: none;
+		padding: 12px 6px;
+		font-size: 15.5px;
+		text-align: left;
+		cursor: pointer;
+		border-radius: 12px;
+		color: var(--text);
+	}
+	.sugg:hover { background: var(--surface); }
+	.sugg .ic {
+		width: 22px;
+		flex: none;
+		display: grid;
+		place-items: center;
+		color: var(--vio-lift);
+	}
+
+	/* ------------------------------ composer ----------------------------- */
+	footer {
+		flex: none;
+		padding: 0 clamp(12px, 4vw, 90px) calc(14px + env(safe-area-inset-bottom));
+	}
+	.composer {
+		display: flex;
+		align-items: flex-end;
+		gap: 8px;
+		background: var(--surface);
+		border-radius: 26px;
+		padding: 6px 6px 6px 6px;
+	}
+	.plus {
+		width: 38px;
+		height: 38px;
+		border-radius: 50%;
+		background: none;
+		border: none;
+		color: var(--text);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+	}
+	.plus:hover { background: var(--surface-2); }
+	.composer textarea {
+		flex: 1;
+		resize: none;
+		background: none;
+		border: none;
+		color: var(--text);
+		font: inherit;
+		padding: 9px 2px;
+		max-height: 32dvh;
+	}
+	.composer textarea:focus { outline: none; }
+	.composer textarea::placeholder { color: var(--dim); }
+	.send {
+		background: var(--vio);
+		color: #fff;
+		border: none;
+		border-radius: 50%;
+		width: 38px;
+		height: 38px;
+		cursor: pointer;
+		flex: none;
+		display: grid;
+		place-items: center;
+		transition: filter 0.15s;
+	}
+	.send:hover { filter: brightness(1.12); }
+	.send.stop { background: var(--err); }
+
+	/* ------------------------------- dialog ------------------------------ */
+	dialog {
+		background: var(--surface);
+		color: var(--text);
+		border: none;
+		border-radius: 20px;
+		padding: 24px;
+		max-width: 450px;
+		width: calc(100vw - 36px);
+		box-shadow: var(--shadow);
+		margin: auto;
+	}
+	dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
+	dialog a { color: var(--vio-lift); }
+	dialog code {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.9em;
+		color: var(--text);
+	}
+	dialog input[type="password"] {
+		width: 100%;
+		background: var(--surface-2);
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 12px;
+		padding: 12px 14px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 13px;
+		margin: 8px 0;
+	}
+	dialog input:focus { outline: none; border-color: var(--vio); }
+	dialog summary { font-size: 13.5px; color: var(--dim); cursor: pointer; margin-top: 6px; }
+	dialog .row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+	dialog .row label { margin-right: auto; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+	.primary {
+		background: var(--vio);
+		color: #fff;
+		border: none;
+		border-radius: 999px;
+		padding: 12px 22px;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.primary:hover { filter: brightness(1.12); }
+	.primary:disabled { opacity: 0.4; cursor: default; filter: none; }
+	.acctrow {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-top: 18px;
+		padding-top: 14px;
+		border-top: 1px solid var(--surface-2);
+		font-size: 12.5px;
+		color: var(--dim);
+	}
+	.acctrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.ghost {
+		background: var(--surface-2);
+		border: none;
+		color: var(--text);
+		border-radius: 999px;
+		padding: 12px 22px;
+		cursor: pointer;
+	}
+	.ghost:hover { background: var(--surface-3); }
+
+	/* --------------------------- add-model picker ------------------------ */
+	.searchfield { position: relative; display: flex; align-items: center; margin: 12px 0 10px; }
+	.searchfield .lead { position: absolute; left: 14px; color: var(--dim); pointer-events: none; }
+	.searchfield input {
+		width: 100%;
+		background: var(--surface-2);
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 12px;
+		padding: 12px 14px 12px 42px;
+		font: inherit;
+	}
+	.searchfield input:focus { outline: none; border-color: var(--vio); }
+	#addResults {
+		max-height: min(300px, 42dvh);
+		overflow-y: auto;
+		border-radius: 14px;
+		background: var(--bg);
+	}
+	.mrow {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 12px;
+		cursor: pointer;
+	}
+	.mrow:hover { background: var(--surface); }
+	.mrow.sel { background: var(--vio-soft); }
+	.mrow .avatar { width: 28px; height: 28px; }
+	.mrow .mtext { min-width: 0; flex: 1; }
+	.mrow .mname {
+		font-size: 14.5px;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.mrow .mid {
+		font-size: 11.5px;
+		color: var(--dim);
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.mtag {
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		border-radius: 999px;
+		padding: 4px 9px;
+		flex: none;
+		background: var(--surface-2);
+	}
+	.mtag.ready { color: var(--ok); }
+	.mtag.needs { color: var(--dim); }
+	.emptyrow { padding: 18px; text-align: center; color: var(--dim); font-size: 13.5px; }
+	#addKeyBlock { margin-top: 12px; }
+	#addKeyBlock.hide { display: none; }
+	#addKeyLabel { font-size: 13px; color: var(--text); font-weight: 600; }
+
+	/* -------------------------------- lock ------------------------------- */
+	#lock {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		display: grid;
+		place-items: center;
+		padding: 24px;
+		background:
+			radial-gradient(90% 60% at 50% 108%, rgba(123, 92, 240, 0.17) 0%, transparent 62%),
+			var(--bg);
+	}
+	#lock form {
+		width: min(340px, 100%);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 14px;
+		text-align: center;
+	}
+	#lock .mark {
+		width: 66px;
+		height: 66px;
+		border-radius: 20px;
+		display: grid;
+		place-items: center;
+		font-size: 32px;
+		font-weight: 800;
+		letter-spacing: -1px;
+		color: var(--vio-lift);
+		background: var(--vio-soft);
+		border: 1px solid rgba(123, 92, 240, 0.34);
+	}
+	#lock .word { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+	#lock .sub { font-size: 14px; color: var(--dim); margin-top: -6px; }
+	.field { position: relative; width: 100%; display: flex; align-items: center; }
+	.field .lead { position: absolute; left: 15px; color: var(--dim); pointer-events: none; }
+	.field input {
+		width: 100%;
+		background: var(--surface);
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 14px;
+		padding: 15px 46px;
+		font: inherit;
+	}
+	.field input:focus { outline: none; border-color: var(--vio); }
+	.field .peek {
+		position: absolute;
+		right: 8px;
+		background: none;
+		border: none;
+		color: var(--dim);
+		cursor: pointer;
+		padding: 8px;
+		border-radius: 8px;
+		display: grid;
+		place-items: center;
+	}
+	.field .peek:hover { color: var(--text); }
+	#lock button[type="submit"] {
+		width: 100%;
+		background: var(--vio);
+		color: #fff;
+		border: none;
+		border-radius: 14px;
+		padding: 15px;
+		font-weight: 650;
+		font-size: 16px;
+		cursor: pointer;
+	}
+	#lock button[type="submit"]:hover { filter: brightness(1.12); }
+	#lock .err { color: var(--err); font-size: 13px; min-height: 15px; margin-top: -8px; }
+	#lock .err.ok { color: var(--ok); }
+	#lock .swap {
+		background: none;
+		border: none;
+		color: var(--dim);
+		font-size: 13.5px;
+		cursor: pointer;
+		padding: 6px;
+	}
+	#lock .swap:hover { color: var(--text); }
+	#lock .field + .field { margin-top: -4px; }
+	#lock.wrong form { animation: shake 0.34s; }
+	@keyframes shake {
+		25% { transform: translateX(-7px); }
+		75% { transform: translateX(7px); }
+	}
+	body.locked > :not(#lock) { display: none; }
+
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after {
+			animation-duration: 0.001ms !important;
+			transition-duration: 0.001ms !important;
+		}
+		.thread { scroll-behavior: auto; }
+	}
+
+	/* ------------------------------- iPhone ------------------------------ */
+	@media (max-width: 860px) {
+		body { position: relative; overflow: hidden; }
+		aside {
+			position: fixed;
+			top: 0;
+			bottom: 0;
+			left: 0;
+			width: min(300px, 84vw);
+			z-index: 50;
+			transform: translateX(-102%);
+			transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+			border-right: none;
+		}
+		body.drawer aside { transform: none; }
+		body.drawer #scrim { opacity: 1; pointer-events: auto; }
+		#menuBtn { display: grid; }
+		.seg button { padding: 8px 16px; font-size: 14.5px; max-width: 120px; }
+		#topbar { padding-top: calc(8px + env(safe-area-inset-top)); }
+		.thread { padding: 10px 14px 6px; gap: 18px; }
+		.msg.user .bubble { max-width: 88%; }
+		#suggest { padding: 0 10px 8px; }
+		.sugg { font-size: 15px; padding: 11px 8px; }
+		footer { padding: 0 10px calc(10px + env(safe-area-inset-bottom)); }
+		.composer textarea { font-size: 16px; } /* 16px keeps iOS from zooming */
+
+		dialog {
+			margin: auto auto 0;
+			width: 100%;
+			max-width: none;
+			border-radius: 22px 22px 0 0;
+			padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+			animation: sheet 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+			max-height: 92dvh;
+		}
+		dialog::before {
+			content: "";
+			display: block;
+			width: 38px;
+			height: 4px;
+			border-radius: 99px;
+			background: var(--surface-3);
+			margin: 0 auto 14px;
+		}
+		@keyframes sheet { from { transform: translateY(100%); } }
+		dialog input[type="password"], #addSearch, .field input { font-size: 16px; }
+		dialog .row button { min-height: 46px; }
+		.mrow { padding: 12px; min-height: 54px; }
+		#addResults { max-height: 38dvh; }
+	}
+</style>
+</head>
+<body class="locked">
+
+<div id="lock">
+	<form id="lockForm">
+		<div class="mark">H</div>
+		<div class="word">Henry OS</div>
+		<p class="sub" id="authSub">Sign in to your account</p>
+		<div class="field">
+			<span class="lead">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
+				</svg>
+			</span>
+			<input type="email" id="authEmail" autocomplete="email" placeholder="Email" aria-label="Email" required />
+		</div>
+		<div class="field">
+			<span class="lead">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
+				</svg>
+			</span>
+			<input type="password" id="lockInput" autocomplete="current-password" placeholder="Password" aria-label="Password" required />
+			<button type="button" class="peek" id="peekBtn" aria-label="Show password">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+				</svg>
+			</button>
+		</div>
+		<p class="err" id="lockErr" role="alert"></p>
+		<button type="submit" id="authSubmit">Sign in</button>
+		<button type="button" class="swap" id="authSwap">New here? Create an account</button>
+	</form>
+</div>
+
+<div id="scrim"></div>
+
+<aside>
+	<div class="dhead">
+		<span class="dtitle">Henry OS</span>
+		<button class="circ" id="searchBtn" title="Search all models">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+			</svg>
+		</button>
+	</div>
+	<nav id="railList"></nav>
+	<div class="dfoot">
+		<button class="pill" id="newChatBtn">
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+			</svg>
+			New chat
+		</button>
+		<button class="circ" id="keyBtn" title="Settings">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="3" />
+				<path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+			</svg>
+		</button>
+	</div>
+</aside>
+
+<div id="mainCol">
+	<div id="topbar">
+		<button class="circ" id="menuBtn" title="Models">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+				<path d="M4 8h16M4 16h11" />
+			</svg>
+		</button>
+		<div class="seg" id="seg">
+			<button type="button" data-seg="council" id="segCouncil">Council</button>
+			<button type="button" data-seg="model" id="segModel">Model</button>
+		</div>
+		<button class="circ" id="councilBtn" title="Turn the Council on or off">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1" />
+				<path d="M8 20h8M9 17a5 5 0 1 1 6 0Z" />
+			</svg>
+		</button>
+	</div>
+	<div class="modelline">
+		<input id="headModel" list="modelList" spellcheck="false" autocomplete="off" title="Model id — type to change" />
+		<button class="linkbtn" id="removeModelBtn" type="button">Remove</button>
+	</div>
+	<div id="threads"></div>
+	<div id="suggest"></div>
+	<footer>
+		<div class="composer">
+			<button class="plus" id="plusBtn" title="Add a model">
+				<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14" /></svg>
+			</button>
+			<textarea id="prompt" rows="1" placeholder="Ask every AI…"></textarea>
+			<button class="send" id="sendBtn" title="Send to every model">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg>
+			</button>
+		</div>
+	</footer>
+</div>
+
+<datalist id="modelList"></datalist>
+
+<dialog id="settings">
+	<h2>Connect your AI</h2>
+	<p>
+		One prompt goes to every model in the list at once, and Claude writes the
+		Council briefing. Add <b>either</b> an
+		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a>
+		key — one key, 300+ models — <b>or</b> your own vendor keys below. The list
+		lines itself up with whichever keys you save.
+	</p>
+	<p>Keys are stored only on this device, and each is sent only to the provider it belongs to.</p>
+	<input type="password" id="keyInput" placeholder="OpenRouter key (optional) — sk-or-v1-…" autocomplete="off" />
+	<details id="directKeys">
+		<summary>Your own vendor keys</summary>
+		<p>
+			Models are named <code>gpt:…</code>, <code>claude:…</code>, <code>kimi:…</code>,
+			<code>pplx:…</code>. ChatGPT and Claude work anywhere; Kimi and Perplexity block
+			browsers, so they need the local server (<code>npm run web</code>).
+		</p>
+		<input type="password" id="oaiKeyInput" placeholder="OpenAI (ChatGPT) key — sk-…" autocomplete="off" />
+		<input type="password" id="anthKeyInput" placeholder="Anthropic (Claude) key — sk-ant-…" autocomplete="off" />
+		<input type="password" id="kimiKeyInput" placeholder="Moonshot (Kimi) key — sk-…" autocomplete="off" />
+		<input type="password" id="pplxKeyInput" placeholder="Perplexity key — pplx-…" autocomplete="off" />
+	</details>
+	<div class="row">
+		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
+		<button class="primary" id="saveKeyBtn">Save</button>
+	</div>
+	<div class="acctrow">
+		<span id="acctWho"></span>
+		<button class="linkbtn" id="signOutBtn" type="button">Sign out</button>
+	</div>
+</dialog>
+
+<dialog id="addModal">
+	<h2>Add a model</h2>
+	<p id="addCount">Search every model available to you.</p>
+	<div class="searchfield">
+		<span class="lead">
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+			</svg>
+		</span>
+		<input type="text" id="addSearch" placeholder="Search models — gpt, claude, kimi, llama…" autocomplete="off" spellcheck="false" />
+	</div>
+	<div id="addResults"></div>
+	<div id="addKeyBlock" class="hide">
+		<p><span id="addKeyLabel"></span> — <span id="addKeyHint"></span></p>
+		<input type="password" id="addKeyInput" placeholder="Paste key" autocomplete="off" />
+	</div>
+	<div class="row">
+		<button class="ghost" id="addCancel" type="button">Cancel</button>
+		<button class="primary" id="addConfirm" type="button" disabled>Add model</button>
+	</div>
+</dialog>
+
+<script>
+'use strict';
+
+/* ------------------------------ accounts -----------------------------
+ * Real sign-in, so each person's API keys live with their account rather
+ * than on whichever device they happened to use. Keys are stored in a
+ * Supabase row that only that account can read (row level security), and
+ * are still sent straight from the browser to the AI provider — they are
+ * never proxied through anything of ours.
+ *
+ * The key below is Supabase's publishable key. It is meant to be public;
+ * it grants nothing on its own, since every row is gated on the signed-in
+ * user's id.
+ */
+const SB_URL = 'https://gmkpolqeyyoeqqnbskco.supabase.co';
+const SB_KEY = 'sb_publishable_uyHPDaZl638lei5mdWSq2g_vY9CFHIz';
+
+const session = {
+	get value() {
+		try { return JSON.parse(localStorage.getItem('henryos.session')) || null; }
+		catch { return null; }
+	},
+	set value(v) {
+		if (v) localStorage.setItem('henryos.session', JSON.stringify(v));
+		else localStorage.removeItem('henryos.session');
+	},
+};
+
+async function sbAuth(path, body) {
+	const res = await fetch(SB_URL + '/auth/v1/' + path, {
+		method: 'POST',
+		headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(data.msg || data.error_description || data.error || ('sign-in failed (' + res.status + ')'));
+	return data;
+}
+
+function keepSession(data) {
+	if (!data.access_token) return null;
+	const v = {
+		access_token: data.access_token,
+		refresh_token: data.refresh_token,
+		expires_at: Date.now() + (data.expires_in || 3600) * 1000,
+		email: data.user?.email || '',
+		user_id: data.user?.id || '',
+	};
+	session.value = v;
+	return v;
+}
+
+// access tokens are short lived; swap a stale one for a fresh pair
+async function freshToken() {
+	const v = session.value;
+	if (!v) return null;
+	if (Date.now() < v.expires_at - 60000) return v.access_token;
+	try {
+		const data = await sbAuth('token?grant_type=refresh_token', { refresh_token: v.refresh_token });
+		return keepSession(data)?.access_token || null;
+	} catch {
+		session.value = null;
+		return null;
+	}
+}
+
+/* ------------------------- settings sync ---------------------------- */
+function snapshot() {
+	return {
+		keys: {
+			openrouter: store.key, openai: store.oaiKey, anthropic: store.anthKey,
+			kimi: store.kimiKey, pplx: store.pplxKey,
+		},
+		models: store.modelIds || [],
+		prefs: {
+			custom: store.custom, council: store.council, synth: store.synthModel,
+			synthCustom: store.synthCustom, enter: store.enterToSend,
+		},
+	};
+}
+
+function applySnapshot(s) {
+	const k = s.keys || {};
+	store.key = k.openrouter || '';
+	store.oaiKey = k.openai || '';
+	store.anthKey = k.anthropic || '';
+	store.kimiKey = k.kimi || '';
+	store.pplxKey = k.pplx || '';
+	if (Array.isArray(s.models)) store.modelIds = s.models;
+	const p = s.prefs || {};
+	store.custom = !!p.custom;
+	store.council = p.council !== false;
+	if (p.synth) store.synthModel = p.synth;
+	store.synthCustom = !!p.synthCustom;
+	store.enterToSend = p.enter !== false;
+}
+
+function hasAnything(s) {
+	return Object.values(s.keys || {}).some(Boolean) || (s.models || []).length > 0;
+}
+
+function hasKeys(s) {
+	return Object.values(s.keys || {}).some(Boolean);
+}
+
+async function pullSettings() {
+	try {
+		const token = await freshToken();
+		if (!token) return null;
+		const res = await fetch(SB_URL + '/rest/v1/user_settings?select=keys,models,prefs', {
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		});
+		if (!res.ok) return null;
+		const rows = await res.json().catch(() => []);
+		return rows[0] || null;
+	} catch {
+		return null; // offline: carry on with whatever this device already has
+	}
+}
+
+let pushTimer = null;
+async function pushSettings() {
+	let token, v;
+	try {
+		token = await freshToken();
+		v = session.value;
+	} catch { return; }
+	if (!token || !v) return;
+	const body = { user_id: v.user_id, ...snapshot(), updated_at: new Date().toISOString() };
+	await fetch(SB_URL + '/rest/v1/user_settings', {
+		method: 'POST',
+		headers: {
+			apikey: SB_KEY,
+			Authorization: 'Bearer ' + token,
+			'Content-Type': 'application/json',
+			Prefer: 'resolution=merge-duplicates,return=minimal',
+		},
+		body: JSON.stringify(body),
+	}).catch(() => {});
+}
+
+// called wherever settings change; coalesced so typing does not spam the API
+function syncSettings() {
+	if (!session.value) return;
+	clearTimeout(pushTimer);
+	pushTimer = setTimeout(pushSettings, 600);
+}
+
+/* --------------------------- the sign-in gate ------------------------ */
+const lockEl = document.getElementById('lock');
+const lockErr = document.getElementById('lockErr');
+const authEmail = document.getElementById('authEmail');
+const authSub = document.getElementById('authSub');
+const authSubmit = document.getElementById('authSubmit');
+const authSwap = document.getElementById('authSwap');
+let signingUp = false;
+
+function setAuthMode(makeAccount) {
+	signingUp = makeAccount;
+	authSub.textContent = makeAccount ? 'Create your account' : 'Sign in to your account';
+	authSubmit.textContent = makeAccount ? 'Create account' : 'Sign in';
+	authSwap.textContent = makeAccount ? 'Already have an account? Sign in' : 'New here? Create an account';
+	document.getElementById('lockInput').autocomplete = makeAccount ? 'new-password' : 'current-password';
+	lockErr.textContent = '';
+	lockErr.classList.remove('ok');
+}
+
+function openApp() {
+	document.body.classList.remove('locked');
+	lockEl.remove();
+	if (!anyKey()) openSettings();
+	promptEl.focus();
+}
+
+// bring the account's saved keys down, or seed the account from this device
+async function adoptAccountSettings() {
+	const row = await pullSettings().catch(() => null);
+	if (!row) return;
+	const remote = { keys: row.keys || {}, models: row.models || [], prefs: row.prefs || {} };
+	if (hasAnything(remote)) {
+		applySnapshot(remote);
+		rebuildFromStore();
+	} else if (hasKeys(snapshot())) {
+		pushSettings();
+	}
+}
+
+if (session.value) {
+	document.body.classList.remove('locked');
+	lockEl.remove();
+} else {
+	document.getElementById('peekBtn').addEventListener('click', () => {
+		const input = document.getElementById('lockInput');
+		input.type = input.type === 'password' ? 'text' : 'password';
+		input.focus();
+	});
+	authSwap.addEventListener('click', () => setAuthMode(!signingUp));
+	document.getElementById('lockForm').addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const email = authEmail.value.trim();
+		const password = document.getElementById('lockInput').value;
+		if (!email || !password) return;
+		authSubmit.disabled = true;
+		lockErr.classList.remove('ok');
+		lockErr.textContent = signingUp ? 'Creating account…' : 'Signing in…';
+		try {
+			if (signingUp) {
+				const data = await sbAuth('signup', { email, password });
+				if (!keepSession(data)) {
+					// confirmation is on, so there is no session until the link is clicked
+					setAuthMode(false); // note: this clears the error line, so message after
+					authEmail.value = email;
+					lockErr.classList.add('ok');
+					lockErr.textContent = 'Check ' + email + ' for a confirmation link, then sign in.';
+					return;
+				}
+			} else {
+				keepSession(await sbAuth('token?grant_type=password', { email, password }));
+			}
+			await adoptAccountSettings();
+			openApp();
+		} catch (err) {
+			lockErr.textContent = String(err.message || err);
+			lockEl.classList.remove('wrong');
+			void lockEl.offsetWidth;
+			lockEl.classList.add('wrong');
+		} finally {
+			authSubmit.disabled = false;
+		}
+	});
+	setTimeout(() => authEmail.focus(), 50);
+}
+
+async function signOut() {
+	const token = await freshToken();
+	if (token) {
+		fetch(SB_URL + '/auth/v1/logout', {
+			method: 'POST',
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		}).catch(() => {});
+	}
+	session.value = null;
+	// leave no keys behind for whoever opens this device next
+	applySnapshot({ keys: {}, models: [], prefs: {} });
+	localStorage.removeItem('godmode.panes');
+	location.reload();
+}
+
+const API_BASE = 'https://openrouter.ai/api/v1';
+const COUNCIL_UID = '__council';
+const store = {
+	get key() { return localStorage.getItem('godmode.key') || ''; },
+	set key(v) { localStorage.setItem('godmode.key', v); },
+	get oaiKey() { return localStorage.getItem('godmode.key.openai') || ''; },
+	set oaiKey(v) { localStorage.setItem('godmode.key.openai', v); },
+	get anthKey() { return localStorage.getItem('godmode.key.anthropic') || ''; },
+	set anthKey(v) { localStorage.setItem('godmode.key.anthropic', v); },
+	get kimiKey() { return localStorage.getItem('godmode.key.kimi') || ''; },
+	set kimiKey(v) { localStorage.setItem('godmode.key.kimi', v); },
+	get pplxKey() { return localStorage.getItem('godmode.key.pplx') || ''; },
+	set pplxKey(v) { localStorage.setItem('godmode.key.pplx', v); },
+	get modelIds() {
+		try { return JSON.parse(localStorage.getItem('godmode.panes')) || null; }
+		catch { return null; }
+	},
+	set modelIds(v) { localStorage.setItem('godmode.panes', JSON.stringify(v)); },
+	get enterToSend() { return localStorage.getItem('godmode.enter') !== '0'; },
+	set enterToSend(v) { localStorage.setItem('godmode.enter', v ? '1' : '0'); },
+	// set once the user hand-picks models, so saving keys stops re-lining the rail
+	get custom() { return localStorage.getItem('godmode.custom') === '1'; },
+	set custom(v) { localStorage.setItem('godmode.custom', v ? '1' : '0'); },
+	// Council is the landing view unless it has been switched off
+	get council() {
+		const v = localStorage.getItem('godmode.council');
+		return v === null ? true : v === '1';
+	},
+	set council(v) { localStorage.setItem('godmode.council', v ? '1' : '0'); },
+	get synthModel() { return localStorage.getItem('godmode.synth') || ''; },
+	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
+	// as with `custom`: only a hand-picked synthesizer survives a key change
+	get synthCustom() { return localStorage.getItem('godmode.synthCustom') === '1'; },
+	set synthCustom(v) { localStorage.setItem('godmode.synthCustom', v ? '1' : '0'); },
+};
+
+// Preferred defaults, first available on OpenRouter wins.
+const DEFAULT_PREFS = [
+	['openai/gpt-5.2', 'openai/gpt-5.1', 'openai/gpt-5', 'openai/gpt-4o'],
+	['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'anthropic/claude-sonnet-4.5', 'anthropic/claude-3.7-sonnet'],
+	['google/gemini-3-pro', 'google/gemini-3-flash', 'google/gemini-2.5-pro', 'google/gemini-2.0-flash-001'],
+	['moonshotai/kimi-k3', 'moonshotai/kimi-k2-thinking', 'x-ai/grok-4.1', 'deepseek/deepseek-chat'],
+];
+const SYNTH_PREFS = ['anthropic/claude-opus-5', 'anthropic/claude-sonnet-5', 'openai/gpt-5.2', 'google/gemini-2.5-pro'];
+
+const VENDORS = {
+	openai: ['#10a37f', 'G'],
+	anthropic: ['#d97757', 'C'],
+	google: ['#4285f4', '✦'],
+	'x-ai': ['#3b3b47', '𝕏'],
+	moonshotai: ['#7c5cff', 'K'],
+	deepseek: ['#4d6bfe', 'D'],
+	qwen: ['#615ced', 'Q'],
+	'meta-llama': ['#0668e1', 'L'],
+	mistralai: ['#fa520f', 'M'],
+	perplexity: ['#20808d', 'P'],
+	cohere: ['#39594d', 'Co'],
+	amazon: ['#ff9900', 'A'],
+	microsoft: ['#0078d4', 'Ms'],
+	nvidia: ['#76b900', 'N'],
+};
+const DIRECT_VENDORS = {
+	gpt: VENDORS.openai,
+	claude: VENDORS.anthropic,
+	kimi: VENDORS.moonshotai,
+	pplx: VENDORS.perplexity,
+};
+const DIRECT_RE = /^(gpt|claude|kimi|pplx):/;
+function vendorInfo(modelId) {
+	const direct = (modelId || '').match(DIRECT_RE);
+	if (direct) return DIRECT_VENDORS[direct[1]];
+	const prefix = (modelId || '').split('/')[0].replace(/^~/, '');
+	return VENDORS[prefix] || ['#45454f', (prefix[0] || '?').toUpperCase()];
+}
+function shortName(modelId) {
+	const id = modelId || '';
+	if (DIRECT_RE.test(id)) return id.split(':')[1].replace(/[-_]/g, ' ');
+	const tail = id.split('/')[1] || id || '?';
+	return tail.replace(/[-_]/g, ' ');
+}
+function nowTime() {
+	return new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+/* --------------------------- backend routing --------------------------
+ * Model ids route to a backend:
+ *   claude:<model>  -> Anthropic API directly from the browser (allowed by
+ *                      Anthropic via the direct-browser-access header)
+ *   gpt:<model>     -> OpenAI API (through the local proxy when present)
+ *   kimi:<model>    -> Moonshot API via the npm-run-web local proxy
+ *   pplx:<model>    -> Perplexity API via the npm-run-web local proxy
+ *   anything else   -> OpenRouter
+ */
+let hasProxy = false;
+function backendFor(modelId) {
+	const m = (modelId || '').match(/^(gpt|claude|kimi|pplx):(.*)$/);
+	if (!m) {
+		if (!store.key) throw new Error('Add your OpenRouter API key in Settings');
+		return {
+			kind: 'openai',
+			url: API_BASE + '/chat/completions',
+			model: modelId,
+			headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'Henry OS' },
+		};
+	}
+	const [, vendor, model] = m;
+	if (vendor === 'gpt') {
+		if (!store.oaiKey) throw new Error('Add your OpenAI (ChatGPT) API key in Settings');
+		return {
+			kind: 'openai',
+			url: hasProxy ? '/proxy/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions',
+			model,
+			headers: { Authorization: 'Bearer ' + store.oaiKey, 'Content-Type': 'application/json' },
+		};
+	}
+	if (vendor === 'claude') {
+		if (!store.anthKey) throw new Error('Add your Anthropic (Claude) API key in Settings');
+		return {
+			kind: 'anthropic',
+			url: 'https://api.anthropic.com/v1/messages',
+			model,
+			headers: {
+				'x-api-key': store.anthKey,
+				'anthropic-version': '2023-06-01',
+				'anthropic-dangerous-direct-browser-access': 'true',
+				'Content-Type': 'application/json',
+			},
+		};
+	}
+	if (!hasProxy) {
+		throw new Error('Kimi and Perplexity keys need the local server — run "npm run web" and open http://localhost:8741 (or use an OpenRouter model instead)');
+	}
+	if (vendor === 'kimi') {
+		if (!store.kimiKey) throw new Error('Add your Moonshot (Kimi) API key in Settings');
+		return {
+			kind: 'openai',
+			url: '/proxy/moonshot/v1/chat/completions',
+			model,
+			headers: { Authorization: 'Bearer ' + store.kimiKey, 'Content-Type': 'application/json' },
+		};
+	}
+	if (!store.pplxKey) throw new Error('Add your Perplexity API key in Settings');
+	return {
+		kind: 'openai',
+		url: '/proxy/perplexity/chat/completions',
+		model,
+		headers: { Authorization: 'Bearer ' + store.pplxKey, 'Content-Type': 'application/json' },
+	};
+}
+
+let availableModels = [];
+const models = []; // { uid, model, messages, controller, els }
+let councilEntry = null; // same shape, uid COUNCIL_UID
+let selectedUid = null;
+let uidSeq = 0;
+let generating = false;
+
+/* ---------- tiny markdown renderer (safe: escapes HTML first) ---------- */
+function esc(s) {
+	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function inlineMd(s) {
+	return s
+		.replace(/`([^`]+)`/g, (_, c) => '<code>' + c + '</code>')
+		.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+		.replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, '$1<em>$2</em>')
+		.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
+}
+function renderMarkdown(src) {
+	const lines = esc(src).split('\n');
+	let html = '', inCode = false, inList = null, para = [];
+	const flushPara = () => { if (para.length) { html += '<p>' + inlineMd(para.join('<br>')) + '</p>'; para = []; } };
+	const closeList = () => { if (inList) { html += '</' + inList + '>'; inList = null; } };
+	for (const line of lines) {
+		if (line.startsWith('```')) {
+			flushPara(); closeList();
+			html += inCode ? '</code></pre>' : '<pre><code>';
+			inCode = !inCode;
+			continue;
+		}
+		if (inCode) { html += line + '\n'; continue; }
+		const h = line.match(/^(#{1,3})\s+(.*)/);
+		const ul = line.match(/^\s*[-*]\s+(.*)/);
+		const ol = line.match(/^\s*\d+[.)]\s+(.*)/);
+		const bq = line.match(/^>\s?(.*)/);
+		if (h) { flushPara(); closeList(); html += `<h${h[1].length}>` + inlineMd(h[2]) + `</h${h[1].length}>`; }
+		else if (ul) { flushPara(); if (inList !== 'ul') { closeList(); html += '<ul>'; inList = 'ul'; } html += '<li>' + inlineMd(ul[1]) + '</li>'; }
+		else if (ol) { flushPara(); if (inList !== 'ol') { closeList(); html += '<ol>'; inList = 'ol'; } html += '<li>' + inlineMd(ol[1]) + '</li>'; }
+		else if (bq) { flushPara(); closeList(); html += '<blockquote>' + inlineMd(bq[1]) + '</blockquote>'; }
+		else if (!line.trim()) { flushPara(); closeList(); }
+		else para.push(line);
+	}
+	if (inCode) html += '</code></pre>';
+	flushPara(); closeList();
+	return html;
+}
+
+/* --------------------------- rail + threads --------------------------- */
+const railList = document.getElementById('railList');
+const threadsEl = document.getElementById('threads');
+const navLabel = document.createElement('div');
+navLabel.className = 'navlabel';
+navLabel.textContent = 'Models';
+const addChip = document.createElement('div');
+addChip.className = 'entry add';
+addChip.textContent = '＋ Add model';
+addChip.addEventListener('click', () => openAddModal());
+
+function paintAvatar(el, model, isCouncil) {
+	if (isCouncil) {
+		el.style.background = 'linear-gradient(135deg, #7b5cf0, #b56cf5)';
+		el.textContent = '🤝';
+		return;
+	}
+	const [color, letter] = vendorInfo(model);
+	el.style.background = color;
+	el.textContent = letter;
+}
+
+const EXAMPLES = [
+	{ text: 'Explain quantum computing like I am 12', icon: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9V15h7v-1.1A6 6 0 0 0 12 3Z"/>' },
+	{ text: 'What can I cook with chicken, rice and a lemon?', icon: '<path d="M4 13h16a8 8 0 0 1-16 0Z"/><path d="M3 20h18"/><path d="M9 9c0-1.5 1-1.5 1-3s-1-1.5-1-3"/><path d="M14 9c0-1.5 1-1.5 1-3s-1-1.5-1-3"/>' },
+	{ text: 'Write a polite email asking for a refund', icon: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>' },
+	{ text: 'Plan a 3-day trip to Lisbon', icon: '<path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>' },
+];
+
+function placeholderHTML(m, isCouncil) {
+	if (isCouncil) {
+		return `<div class="placeholder">
+			<div class="hero">🤝</div>
+			<b>One question, every AI</b>
+			<p>Your prompt goes to every model in your list at the same moment. Claude then reads all of their answers and writes the briefing here — the best combined answer, what each model thinks, and anywhere they disagree.</p>
+		</div>`;
+	}
+	return `<div class="placeholder">
+		<b>${esc(shortName(m.model))}</b>
+		<div class="modelid">${esc(m.model)}</div>
+	</div>`;
+}
+
+function makeEntry(m, isCouncil) {
+	const entry = document.createElement('div');
+	entry.className = 'entry';
+	entry.innerHTML = `
+		<span class="avatar"></span>
+		<div class="rinfo">
+			<div class="rname"></div>
+			<div class="rstatus">ready</div>
+		</div>`;
+	entry.addEventListener('click', () => select(m.uid));
+
+	const thread = document.createElement('div');
+	thread.className = isCouncil ? 'thread council' : 'thread';
+	thread.innerHTML = placeholderHTML(m, isCouncil);
+	threadsEl.appendChild(thread);
+
+	m.els = {
+		entry,
+		avatar: entry.querySelector('.avatar'),
+		name: entry.querySelector('.rname'),
+		status: entry.querySelector('.rstatus'),
+		thread,
+	};
+	refreshEntry(m, isCouncil);
+	return m;
+}
+
+function refreshEntry(m, isCouncil) {
+	paintAvatar(m.els.avatar, m.model, isCouncil);
+	m.els.name.textContent = isCouncil ? 'Council' : shortName(m.model);
+	if (!isCouncil && m.els.thread.querySelector('.placeholder')) {
+		m.els.thread.innerHTML = placeholderHTML(m, false);
+	}
+	if (selectedUid === m.uid) refreshHead(m, isCouncil);
+}
+
+function setStatus(m, state, text) {
+	m.els.entry.classList.remove('working', 'done', 'error');
+	if (state) m.els.entry.classList.add(state);
+	m.els.status.textContent = text;
+}
+
+function addModel(modelId) {
+	const m = { uid: 'm' + ++uidSeq, model: modelId, messages: [], controller: null };
+	makeEntry(m, false);
+	models.push(m);
+	renderRail();
+	saveModels();
+	return m;
+}
+
+function removeModel(uid) {
+	const i = models.findIndex((m) => m.uid === uid);
+	if (i < 0 || models.length <= 1) return;
+	const m = models[i];
+	m.controller?.abort();
+	m.els.thread.remove();
+	models.splice(i, 1);
+	store.custom = true;
+	renderRail();
+	saveModels();
+	if (selectedUid === uid) select(models[0].uid);
+}
+
+function ensureCouncil() {
+	if (!councilEntry) {
+		const synth = (store.synthCustom && store.synthModel) || defaultSynthModel();
+		councilEntry = { uid: COUNCIL_UID, model: synth, messages: [], controller: null };
+		makeEntry(councilEntry, true);
+	}
+	return councilEntry;
+}
+
+function renderRail() {
+	railList.innerHTML = '';
+	if (store.council) railList.appendChild(ensureCouncil().els.entry);
+	railList.appendChild(navLabel);
+	models.forEach((m) => railList.appendChild(m.els.entry));
+	railList.appendChild(addChip);
+}
+
+function saveModels() {
+	store.modelIds = models.map((m) => m.model);
+	syncSettings();
+}
+
+function allEntries() {
+	return store.council && councilEntry ? [councilEntry, ...models] : models;
+}
+
+function find(uid) {
+	return uid === COUNCIL_UID ? councilEntry : models.find((m) => m.uid === uid);
+}
+
+/* ------------------------------ selection ----------------------------- */
+const headModel = document.getElementById('headModel');
+const removeModelBtn = document.getElementById('removeModelBtn');
+const segCouncil = document.getElementById('segCouncil');
+const segModel = document.getElementById('segModel');
+const suggestEl = document.getElementById('suggest');
+let lastModelUid = null;
+
+/* the drawer slides over the chat on a phone; on a wide screen it is fixed */
+function setDrawer(open) {
+	document.body.classList.toggle('drawer', open);
+}
+document.getElementById('menuBtn').addEventListener('click', () => {
+	setDrawer(!document.body.classList.contains('drawer'));
+});
+document.getElementById('scrim').addEventListener('click', () => setDrawer(false));
+document.getElementById('searchBtn').addEventListener('click', () => {
+	setDrawer(false);
+	openAddModal();
+});
+document.getElementById('plusBtn').addEventListener('click', () => openAddModal());
+segCouncil.addEventListener('click', () => select(COUNCIL_UID));
+segModel.addEventListener('click', () => select(lastModelUid || models[0]?.uid));
+
+// the suggestions only stand in for an empty conversation
+function refreshSuggest() {
+	const m = find(selectedUid);
+	suggestEl.classList.toggle('hide', !m || !m.els.thread.querySelector('.placeholder'));
+}
+
+function refreshHead(m, isCouncil) {
+	headModel.value = m.model;
+	removeModelBtn.style.display = isCouncil || models.length <= 1 ? 'none' : 'inline';
+	const solo = find(lastModelUid) || models[0];
+	segModel.textContent = solo ? shortName(solo.model) : 'Model';
+	segCouncil.classList.toggle('on', isCouncil);
+	segModel.classList.toggle('on', !isCouncil);
+	segCouncil.style.display = store.council ? '' : 'none';
+}
+
+function select(uid) {
+	const m = find(uid);
+	if (!m) return;
+	selectedUid = uid;
+	if (uid !== COUNCIL_UID) lastModelUid = uid;
+	allEntries().forEach((e) => e.els.entry.classList.toggle('active', e.uid === uid));
+	document.querySelectorAll('.thread').forEach((t) => t.classList.remove('active'));
+	m.els.thread.classList.add('active');
+	refreshHead(m, uid === COUNCIL_UID);
+	refreshSuggest();
+	setDrawer(false);
+	m.els.thread.scrollTop = m.els.thread.scrollHeight;
+}
+
+headModel.addEventListener('focus', () => {
+	const m = find(selectedUid);
+	if (m) headModel.value = m.model;
+});
+headModel.addEventListener('blur', () => {
+	const m = find(selectedUid);
+	if (m) headModel.value = shortName(m.model);
+});
+headModel.addEventListener('change', () => {
+	const m = find(selectedUid);
+	if (!m) return;
+	m.model = headModel.value.trim();
+	if (selectedUid === COUNCIL_UID) {
+		store.synthModel = m.model;
+		store.synthCustom = true;
+		syncSettings();
+	} else {
+		store.custom = true;
+		saveModels();
+	}
+	refreshEntry(m, selectedUid === COUNCIL_UID);
+});
+removeModelBtn.addEventListener('click', () => removeModel(selectedUid));
+document.getElementById('newChatBtn').addEventListener('click', () => {
+	models.forEach(clearThread);
+	if (councilEntry) clearThread(councilEntry);
+	refreshSuggest();
+	setDrawer(false);
+});
+
+function clearThread(m) {
+	m.controller?.abort();
+	m.messages = [];
+	m.els.thread.innerHTML = placeholderHTML(m, m.uid === COUNCIL_UID);
+	setStatus(m, null, 'ready');
+}
+
+function addMessage(m, role) {
+	m.els.thread.querySelector('.placeholder')?.remove();
+	const div = document.createElement('div');
+	div.className = 'msg ' + role;
+	m.els.thread.appendChild(div);
+	return div;
+}
+
+/* --------------------- streaming (shared plumbing) ------------------- */
+function parseDelta(kind, data) {
+	if (kind === 'anthropic') {
+		const ev = JSON.parse(data);
+		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
+	}
+	return JSON.parse(data).choices?.[0]?.delta?.content;
+}
+
+async function streamCompletion({ model, messages, signal, onDelta }) {
+	const backend = backendFor(model); // throws a friendly error if unusable
+	const body = { model: backend.model, messages, stream: true };
+	if (backend.kind === 'anthropic') body.max_tokens = 8192;
+	const res = await fetch(backend.url, {
+		method: 'POST',
+		signal,
+		headers: backend.headers,
+		body: JSON.stringify(body),
+	});
+	if (!res.ok) {
+		let detail = res.status + ' ' + res.statusText;
+		try { detail = (await res.json()).error?.message || detail; } catch {}
+		throw new Error(detail);
+	}
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = '', text = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split('\n');
+		buf = lines.pop();
+		for (const line of lines) {
+			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+			if (!data || data === '[DONE]') continue;
+			try {
+				const delta = parseDelta(backend.kind, data);
+				if (delta) { text += delta; onDelta(text); }
+			} catch {}
+		}
+	}
+	return text;
+}
+
+const COPY_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
+function streamingShell(container, model, isCouncil) {
+	const who = document.createElement('span');
+	who.className = 'who';
+	paintAvatar(who, model, isCouncil);
+	const bodyEl = document.createElement('div');
+	bodyEl.className = 'body';
+	const md = document.createElement('span');
+	md.className = 'md';
+	const cursor = document.createElement('span');
+	cursor.className = 'cursor';
+	cursor.textContent = '▌';
+	const foot = document.createElement('div');
+	foot.className = 'ansfoot';
+	const copy = document.createElement('button');
+	copy.className = 'copybtn';
+	copy.type = 'button';
+	copy.innerHTML = COPY_ICON + '<span>Copy</span>';
+	copy.hidden = true;
+	const stamp = document.createElement('span');
+	stamp.className = 'stamp';
+	foot.append(copy, stamp);
+	bodyEl.append(md, cursor, foot);
+	container.append(who, bodyEl);
+	container.classList.add('streaming');
+
+	let last = '';
+	const copyLabel = copy.querySelector('span');
+	copy.addEventListener('click', async () => {
+		try {
+			await navigator.clipboard.writeText(last);
+			copyLabel.textContent = 'Copied';
+		} catch {
+			copyLabel.textContent = 'Copy failed';
+		}
+		setTimeout(() => { copyLabel.textContent = 'Copy'; }, 1400);
+	});
+
+	return {
+		update(text) { last = text; md.innerHTML = renderMarkdown(text); },
+		finish(metaText, ok) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			stamp.textContent = metaText || '';
+			if (ok) {
+				const dot = document.createElement('span');
+				dot.className = 'livedot';
+				stamp.appendChild(dot);
+			}
+			if (last) copy.hidden = false;
+		},
+		fail(msg) {
+			container.classList.remove('streaming');
+			cursor.remove();
+			md.innerHTML = '<div class="error">⚠ ' + esc(msg) + '</div>';
+		},
+	};
+}
+
+async function streamChat(m, prompt) {
+	m.messages.push({ role: 'user', content: prompt });
+	const u = addMessage(m, 'user');
+	const bubble = document.createElement('div');
+	bubble.className = 'bubble';
+	bubble.textContent = prompt;
+	const ustamp = document.createElement('div');
+	ustamp.className = 'stamp';
+	ustamp.textContent = nowTime();
+	u.append(bubble, ustamp);
+
+	const el = addMessage(m, 'assistant');
+	const shell = streamingShell(el, m.model, false);
+	m.controller = new AbortController();
+	const started = Date.now();
+	setStatus(m, 'working', 'working…');
+	let text = '';
+	const scrollDown = () => { m.els.thread.scrollTop = m.els.thread.scrollHeight; };
+	scrollDown();
+
+	try {
+		text = await streamCompletion({
+			model: m.model,
+			messages: m.messages,
+			signal: m.controller.signal,
+			onDelta: (t) => { text = t; shell.update(t); scrollDown(); },
+		});
+		m.messages.push({ role: 'assistant', content: text });
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(nowTime() + ' · ' + secs + 's', true);
+		setStatus(m, 'done', secs + 's');
+		return text;
+	} catch (err) {
+		if (err.name === 'AbortError') {
+			if (text) m.messages.push({ role: 'assistant', content: text });
+			shell.finish('stopped');
+			setStatus(m, null, 'stopped');
+			return text;
+		}
+		m.messages.pop(); // let the user retry the failed turn
+		shell.fail(String(err.message || err));
+		setStatus(m, 'error', 'error');
+		if (/auth|key|401/i.test(String(err.message))) openSettings();
+		return '';
+	} finally {
+		m.controller = null;
+	}
+}
+
+/* ------------------------------ council ----------------------------- */
+const councilBtn = document.getElementById('councilBtn');
+
+function refreshCouncilUI() {
+	councilBtn.classList.toggle('on', store.council);
+	segCouncil.style.display = store.council ? '' : 'none';
+	renderRail();
+	if (!store.council && selectedUid === COUNCIL_UID) select(models[0]?.uid);
+}
+councilBtn.addEventListener('click', () => {
+	store.council = !store.council;
+	refreshCouncilUI();
+	if (store.council) select(COUNCIL_UID);
+	syncSettings();
+});
+
+async function synthesize(prompt, answers) {
+	const c = ensureCouncil();
+	c.els.thread.querySelector('.placeholder')?.remove();
+	const el = addMessage(c, 'assistant');
+	const shell = streamingShell(el, c.model, true);
+	c.controller = new AbortController();
+	const started = Date.now();
+	setStatus(c, 'working', 'deliberating…');
+	select(COUNCIL_UID);
+
+	const briefing =
+		'You are the Council synthesizer. ' + answers.length +
+		' AI models each answered the same question independently. Write a single briefing with exactly these three sections, using these headings:\n\n' +
+		'## Answer\nThe best combined answer, written as one clean response to the question. Do not mention the models here.\n\n' +
+		'## What each model said\nOne bullet per model, formatted `- **<name>** — its take in one or two sentences`, capturing what is distinctive about that model\'s answer. Use the short model name (e.g. "GPT-5.2", "Claude Opus 5", "Kimi K3").\n\n' +
+		'## Where they differ\nOnly the substantive disagreements, one bullet each, naming who said what. If they all essentially agree, write a single line saying so.\n\n' +
+		'Be concise throughout. Do not add any other sections.\n\n' +
+		'# Question\n' + prompt + '\n\n' +
+		answers.map((a) => '# Answer from ' + a.model + '\n' + a.text).join('\n\n');
+
+	try {
+		await streamCompletion({
+			model: c.model,
+			messages: [{ role: 'user', content: briefing }],
+			signal: c.controller.signal,
+			onDelta: (t) => { shell.update(t); c.els.thread.scrollTop = c.els.thread.scrollHeight; },
+		});
+		const secs = ((Date.now() - started) / 1000).toFixed(1);
+		shell.finish(nowTime() + ' · ' + secs + 's', true);
+		setStatus(c, 'done', secs + 's');
+	} catch (err) {
+		if (err.name === 'AbortError') { shell.finish('stopped'); setStatus(c, null, 'stopped'); }
+		else { shell.fail(String(err.message || err)); setStatus(c, 'error', 'error'); }
+	} finally {
+		c.controller = null;
+	}
+}
+
+/* ------------------------------- send ------------------------------- */
+const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('sendBtn');
+const SEND_ICON = sendBtn.innerHTML;
+const STOP_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>';
+
+async function sendAll() {
+	if (generating) { // acts as stop
+		models.forEach((m) => m.controller?.abort());
+		councilEntry?.controller?.abort();
+		return;
+	}
+	const prompt = promptEl.value.trim();
+	if (!prompt) return;
+	if (!anyKey()) { openSettings(); return; }
+	promptEl.value = '';
+	autosize();
+	suggestEl.classList.add('hide');
+	generating = true;
+	sendBtn.classList.add('stop');
+	sendBtn.innerHTML = STOP_ICON;
+	try {
+		const results = await Promise.allSettled(models.map((m) => streamChat(m, prompt)));
+		if (store.council) {
+			const answers = results
+				.map((r, i) => ({ model: models[i]?.model, text: r.status === 'fulfilled' ? r.value : '' }))
+				.filter((a) => a.model && a.text);
+			if (answers.length >= 2) await synthesize(prompt, answers);
+			else setStatus(ensureCouncil(), 'error', 'needs 2+ answers');
+		}
+	} finally {
+		generating = false;
+		sendBtn.classList.remove('stop');
+		sendBtn.innerHTML = SEND_ICON;
+	}
+}
+
+sendBtn.addEventListener('click', sendAll);
+promptEl.addEventListener('keydown', (e) => {
+	const plainEnter = e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey;
+	const cmdEnter = e.key === 'Enter' && (e.metaKey || e.ctrlKey);
+	if ((store.enterToSend && plainEnter) || cmdEnter) {
+		e.preventDefault();
+		sendAll();
+	}
+});
+function autosize() {
+	promptEl.style.height = 'auto';
+	promptEl.style.height = Math.min(promptEl.scrollHeight, innerHeight * 0.34) + 'px';
+}
+promptEl.addEventListener('input', autosize);
+
+// suggestions above the composer: tap one and it goes to every model
+EXAMPLES.forEach(({ text, icon }) => {
+	const row = document.createElement('button');
+	row.className = 'sugg';
+	row.type = 'button';
+	row.innerHTML =
+		'<span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+		icon + '</svg></span><span></span>';
+	row.lastChild.textContent = text;
+	row.addEventListener('click', () => {
+		promptEl.value = text;
+		autosize();
+		sendAll();
+	});
+	suggestEl.appendChild(row);
+});
+
+/* ----------------------------- settings ----------------------------- */
+const settingsEl = document.getElementById('settings');
+const keyInput = document.getElementById('keyInput');
+const oaiKeyInput = document.getElementById('oaiKeyInput');
+const anthKeyInput = document.getElementById('anthKeyInput');
+const kimiKeyInput = document.getElementById('kimiKeyInput');
+const pplxKeyInput = document.getElementById('pplxKeyInput');
+const enterToSendEl = document.getElementById('enterToSend');
+
+function anyKey() {
+	return store.key || store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey;
+}
+
+function openSettings() {
+	const who = session.value;
+	document.getElementById('acctWho').textContent = who ? 'Signed in as ' + who.email : 'Not signed in';
+	keyInput.value = store.key;
+	oaiKeyInput.value = store.oaiKey;
+	anthKeyInput.value = store.anthKey;
+	kimiKeyInput.value = store.kimiKey;
+	pplxKeyInput.value = store.pplxKey;
+	enterToSendEl.checked = store.enterToSend;
+	if (store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey) {
+		document.getElementById('directKeys').open = true;
+	}
+	if (!settingsEl.open) settingsEl.showModal();
+}
+document.getElementById('keyBtn').addEventListener('click', openSettings);
+document.getElementById('signOutBtn').addEventListener('click', signOut);
+document.getElementById('saveKeyBtn').addEventListener('click', () => {
+	store.key = keyInput.value.trim();
+	store.oaiKey = oaiKeyInput.value.trim();
+	store.anthKey = anthKeyInput.value.trim();
+	store.kimiKey = kimiKeyInput.value.trim();
+	store.pplxKey = pplxKeyInput.value.trim();
+	store.enterToSend = enterToSendEl.checked;
+	settingsEl.close();
+	applyDefaultModels();
+	loadDirectModels();
+	syncSettings();
+});
+
+/* --------------------------- add-model picker ------------------------
+ * Search across everything reachable — OpenRouter's whole catalogue plus
+ * the direct-key models — and let a missing key be pasted right here, so
+ * adding a model and authorising it are one step.
+ */
+const KEY_NEEDS = {
+	gpt: { field: 'oaiKey', label: 'OpenAI (ChatGPT) key', placeholder: 'sk-…', where: 'platform.openai.com/api-keys' },
+	claude: { field: 'anthKey', label: 'Anthropic (Claude) key', placeholder: 'sk-ant-…', where: 'console.anthropic.com' },
+	kimi: { field: 'kimiKey', label: 'Moonshot (Kimi) key', placeholder: 'sk-…', where: 'platform.moonshot.ai' },
+	pplx: { field: 'pplxKey', label: 'Perplexity key', placeholder: 'pplx-…', where: 'perplexity.ai/settings/api' },
+	openrouter: { field: 'key', label: 'OpenRouter key', placeholder: 'sk-or-v1-…', where: 'openrouter.ai/keys' },
+};
+
+function keyNeedFor(modelId) {
+	const m = (modelId || '').match(DIRECT_RE);
+	return KEY_NEEDS[m ? m[1] : 'openrouter'];
+}
+
+// direct-key models are listed even without the key, so they are discoverable
+const DIRECT_CATALOG = [
+	'gpt:gpt-5.2', 'gpt:gpt-5.1', 'gpt:gpt-4o', 'gpt:gpt-4o-mini',
+	'claude:claude-opus-5', 'claude:claude-sonnet-5', 'claude:claude-haiku-4-5',
+	'kimi:kimi-latest', 'kimi:kimi-k2.5',
+	'pplx:sonar', 'pplx:sonar-pro', 'pplx:sonar-reasoning-pro',
+];
+
+const addModal = document.getElementById('addModal');
+const addSearch = document.getElementById('addSearch');
+const addResults = document.getElementById('addResults');
+const addKeyBlock = document.getElementById('addKeyBlock');
+const addKeyLabel = document.getElementById('addKeyLabel');
+const addKeyHint = document.getElementById('addKeyHint');
+const addKeyInput = document.getElementById('addKeyInput');
+const addConfirm = document.getElementById('addConfirm');
+const addCount = document.getElementById('addCount');
+let addSelected = '';
+
+function fullCatalog() {
+	const ids = new Set([...DIRECT_CATALOG, ...directSuggestions]);
+	availableModels.forEach((m) => ids.add(m.id));
+	return [...ids];
+}
+
+function renderAddResults() {
+	const q = addSearch.value.trim().toLowerCase();
+	const terms = q.split(/\s+/).filter(Boolean);
+	const taken = new Set(models.map((m) => m.model));
+	const scored = [];
+	for (const id of fullCatalog()) {
+		const hay = id.toLowerCase();
+		if (terms.length && !terms.every((t) => hay.includes(t))) continue;
+		const ready = !!store[keyNeedFor(id).field];
+		scored.push({ id, ready, score: (ready ? 2 : 0) + (q && hay.startsWith(q) ? 4 : 0) });
+	}
+	scored.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
+
+	// let an unlisted id be added verbatim — offered when the query looks like a
+	// model id, or when nothing else matched
+	const raw = addSearch.value.trim();
+	const looksLikeId = /[:/]/.test(raw);
+	if (raw && (looksLikeId || !scored.length) && !scored.some((s) => s.id.toLowerCase() === q)) {
+		scored.unshift({ id: raw, ready: !!store[keyNeedFor(raw).field], custom: true, score: 99 });
+	}
+
+	const shown = scored.slice(0, 60);
+	addCount.textContent = q
+		? shown.length + (scored.length > 60 ? '+ of ' + scored.length : '') + ' matching'
+		: fullCatalog().length + ' models available — search or scroll.';
+
+	addResults.innerHTML = '';
+	if (!shown.length) {
+		addResults.innerHTML = '<div class="emptyrow">Nothing matches. Type an exact model id to use it anyway.</div>';
+		return;
+	}
+	for (const item of shown) {
+		const row = document.createElement('div');
+		row.className = 'mrow' + (item.id === addSelected ? ' sel' : '');
+		const av = document.createElement('span');
+		av.className = 'avatar';
+		paintAvatar(av, item.id, false);
+		const text = document.createElement('div');
+		text.className = 'mtext';
+		const name = document.createElement('div');
+		name.className = 'mname';
+		name.textContent = item.custom ? 'Use exactly: ' + shortName(item.id) : shortName(item.id);
+		const sub = document.createElement('div');
+		sub.className = 'mid';
+		sub.textContent = item.id + (taken.has(item.id) ? ' · already added' : '');
+		text.append(name, sub);
+		const tag = document.createElement('span');
+		tag.className = 'mtag ' + (item.ready ? 'ready' : 'needs');
+		tag.textContent = item.ready ? 'Ready' : 'Needs key';
+		row.append(av, text, tag);
+		row.addEventListener('click', () => selectAddModel(item.id));
+		addResults.appendChild(row);
+	}
+}
+
+function selectAddModel(id) {
+	addSelected = id;
+	const need = keyNeedFor(id);
+	const have = !!store[need.field];
+	addKeyBlock.classList.toggle('hide', have);
+	if (!have) {
+		addKeyLabel.textContent = need.label;
+		addKeyHint.textContent = 'get one at ' + need.where;
+		addKeyInput.placeholder = need.placeholder;
+		addKeyInput.value = '';
+	}
+	renderAddResults();
+	updateAddConfirm();
+	if (!have) addKeyInput.focus();
+}
+
+function updateAddConfirm() {
+	const need = addSelected ? keyNeedFor(addSelected) : null;
+	const ok = !!addSelected && (!need || store[need.field] || addKeyInput.value.trim());
+	addConfirm.disabled = !ok;
+}
+
+function openAddModal() {
+	addSelected = '';
+	addSearch.value = '';
+	addKeyBlock.classList.add('hide');
+	addKeyInput.value = '';
+	renderAddResults();
+	updateAddConfirm();
+	addModal.showModal();
+	setTimeout(() => addSearch.focus(), 40);
+}
+
+addSearch.addEventListener('input', () => {
+	// keep a selection only while it still matches the query
+	if (addSelected && !addSelected.toLowerCase().includes(addSearch.value.trim().toLowerCase())) {
+		addSelected = '';
+		addKeyBlock.classList.add('hide');
+	}
+	renderAddResults();
+	updateAddConfirm();
+});
+addSearch.addEventListener('keydown', (e) => {
+	if (e.key !== 'Enter') return;
+	e.preventDefault();
+	if (!addSelected) {
+		const first = addResults.querySelector('.mrow');
+		if (first) first.click();
+	} else if (!addConfirm.disabled) {
+		addConfirm.click();
+	}
+});
+addKeyInput.addEventListener('input', updateAddConfirm);
+document.getElementById('addCancel').addEventListener('click', () => addModal.close());
+addConfirm.addEventListener('click', () => {
+	if (!addSelected) return;
+	const need = keyNeedFor(addSelected);
+	const typed = addKeyInput.value.trim();
+	if (typed && !store[need.field]) store[need.field] = typed;
+	store.custom = true;
+	syncSettings();
+	const m = addModel(addSelected);
+	addModal.close();
+	select(m.uid);
+	loadDirectModels();
+	if (need.field === 'key') loadModels();
+});
+
+/* -------------------------- model discovery ------------------------- */
+function pickAvailable(prefs) {
+	if (!availableModels.length) return prefs[0];
+	const ids = new Set(availableModels.map((m) => m.id));
+	for (const want of prefs) {
+		if (ids.has(want)) return want;
+		const near = availableModels.find((m) => m.id.startsWith(want));
+		if (near) return near.id;
+	}
+	return prefs[0];
+}
+
+// Which models to show when the user hasn't picked their own. With an
+// OpenRouter key we can offer everything; with only vendor keys we line the
+// rail up with whichever keys are actually present, so nothing errors out.
+const DIRECT_DEFAULTS = [
+	['oaiKey', 'gpt:gpt-5.2'],
+	['anthKey', 'claude:claude-opus-5'],
+	['kimiKey', 'kimi:kimi-latest'],
+	['pplxKey', 'pplx:sonar-pro'],
+];
+
+function defaultModelList() {
+	if (store.key) return DEFAULT_PREFS.map(pickAvailable);
+	const direct = DIRECT_DEFAULTS.filter(([k]) => store[k]).map(([, id]) => id);
+	return direct.length ? direct : DEFAULT_PREFS.map(pickAvailable);
+}
+
+function defaultSynthModel() {
+	if (store.key) return pickAvailable(SYNTH_PREFS);
+	if (store.anthKey) return 'claude:claude-opus-5';
+	if (store.oaiKey) return 'gpt:gpt-5.2';
+	return defaultModelList()[0];
+}
+
+let usingDefaults = false;
+function addDefaults() {
+	const saved = store.custom && store.modelIds;
+	if (saved && saved.length) {
+		saved.forEach((id) => addModel(id));
+	} else {
+		usingDefaults = !!store.key; // only OpenRouter defaults get upgraded later
+		defaultModelList().forEach((id) => addModel(id));
+	}
+}
+
+// Re-line the rail up with the keys the user just saved, unless they have
+// hand-picked models (then their choice wins).
+function applyDefaultModels() {
+	if (store.custom) return;
+	models.forEach((m) => {
+		m.controller?.abort();
+		m.els.thread.remove();
+	});
+	models.length = 0;
+	defaultModelList().forEach((id) => addModel(id));
+	if (councilEntry && !store.synthCustom) {
+		councilEntry.model = defaultSynthModel();
+		refreshEntry(councilEntry, true);
+	}
+	renderRail();
+	select(store.council ? COUNCIL_UID : models[0]?.uid);
+}
+
+// re-lay the app out from the store, used after an account's settings arrive
+function rebuildFromStore() {
+	models.forEach((m) => {
+		m.controller?.abort();
+		m.els.thread.remove();
+	});
+	models.length = 0;
+	const saved = store.custom && store.modelIds;
+	(saved && saved.length ? saved : defaultModelList()).forEach((id) => addModel(id));
+	if (councilEntry) {
+		councilEntry.model = (store.synthCustom && store.synthModel) || defaultSynthModel();
+		refreshEntry(councilEntry, true);
+	}
+	refreshCouncilUI();
+	select(store.council ? COUNCIL_UID : models[0]?.uid);
+	loadDirectModels();
+}
+
+const directSuggestions = new Set();
+
+function rebuildDatalist() {
+	const list = document.getElementById('modelList');
+	list.innerHTML = '';
+	for (const id of directSuggestions) {
+		const opt = document.createElement('option');
+		opt.value = id;
+		list.appendChild(opt);
+	}
+	for (const m of availableModels) {
+		const opt = document.createElement('option');
+		opt.value = m.id;
+		list.appendChild(opt);
+	}
+}
+
+// Suggest direct-key model ids in the dropdown; fetch live catalogs where the
+// vendor offers one, with sensible fallbacks when offline.
+async function loadDirectModels() {
+	directSuggestions.clear();
+	if (store.oaiKey) {
+		['gpt:gpt-5.2', 'gpt:gpt-5.1', 'gpt:gpt-4o', 'gpt:gpt-4o-mini'].forEach((s) => directSuggestions.add(s));
+		try {
+			const url = hasProxy ? '/proxy/openai/v1/models' : 'https://api.openai.com/v1/models';
+			const res = await fetch(url, { headers: { Authorization: 'Bearer ' + store.oaiKey } });
+			(await res.json()).data?.forEach((m) => {
+				if (/^(gpt-|o\d|chatgpt)/.test(m.id)) directSuggestions.add('gpt:' + m.id);
+			});
+		} catch {}
+	}
+	if (store.anthKey) {
+		['claude:claude-opus-5', 'claude:claude-sonnet-5', 'claude:claude-haiku-4-5'].forEach((s) => directSuggestions.add(s));
+		try {
+			const res = await fetch('https://api.anthropic.com/v1/models', {
+				headers: {
+					'x-api-key': store.anthKey,
+					'anthropic-version': '2023-06-01',
+					'anthropic-dangerous-direct-browser-access': 'true',
+				},
+			});
+			(await res.json()).data?.forEach((m) => directSuggestions.add('claude:' + m.id));
+		} catch {}
+	}
+	if (store.kimiKey && hasProxy) {
+		directSuggestions.add('kimi:kimi-latest');
+		try {
+			const res = await fetch('/proxy/moonshot/v1/models', {
+				headers: { Authorization: 'Bearer ' + store.kimiKey },
+			});
+			(await res.json()).data?.forEach((m) => directSuggestions.add('kimi:' + m.id));
+		} catch {}
+	}
+	if (store.pplxKey && hasProxy) {
+		['pplx:sonar', 'pplx:sonar-pro', 'pplx:sonar-reasoning-pro'].forEach((s) => directSuggestions.add(s));
+	}
+	rebuildDatalist();
+}
+
+async function detectProxy() {
+	try {
+		const res = await fetch('/proxy/ping');
+		hasProxy = res.ok && (await res.text()) === 'pong';
+	} catch { hasProxy = false; }
+}
+
+async function loadModels() {
+	try {
+		const res = await fetch(API_BASE + '/models');
+		const { data } = await res.json();
+		availableModels = data || [];
+		rebuildDatalist();
+		if (usingDefaults) {
+			models.forEach((m, i) => {
+				if (!DEFAULT_PREFS[i]) return;
+				const better = pickAvailable(DEFAULT_PREFS[i]);
+				if (better !== m.model) {
+					m.model = better;
+					refreshEntry(m, false);
+				}
+			});
+			saveModels();
+		}
+		if (councilEntry && !store.synthCustom) {
+			councilEntry.model = defaultSynthModel();
+			refreshEntry(councilEntry, true);
+		}
+		if (selectedUid) select(selectedUid); // refresh head after upgrades
+	} catch { /* offline or blocked: typed model ids still work */ }
+}
+
+/* ------------------------------- boot ------------------------------- */
+addDefaults();
+lastModelUid = models[0]?.uid || null;
+refreshCouncilUI();
+select(store.council ? COUNCIL_UID : models[0]?.uid);
+loadModels();
+detectProxy().then(loadDirectModels);
+if (session.value) {
+	adoptAccountSettings()
+		.catch(() => {})
+		.then(() => {
+			if (!anyKey()) openSettings();
+		});
+} else if (!anyKey() && !document.body.classList.contains('locked')) {
+	openSettings();
+}
+</script>
+</body>
+</html>
