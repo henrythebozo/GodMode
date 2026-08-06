@@ -8,15 +8,17 @@ This is a dedicated chat browser that only does one thing: help you quickly acce
 
 Whatever is typed at the bottom is entered into all **web apps** simultaneously, however if you wish to explore one further than the other you can do so independently since they are just webviews.
 
-## 🌐 GodMode Web
+## 🌐 Henry OS (web + iPhone)
 
 There is also a browser version in [`docs/index.html`](docs/index.html) — a single
-self-contained HTML file with the same one-prompt-to-many-models experience.
-Because websites cannot embed the ChatGPT/Claude/Gemini web apps (those sites
-block iframes), the web version talks to models through the
-[OpenRouter](https://openrouter.ai) API instead: paste one API key and chat with
-GPT, Claude, Gemini, Grok, DeepSeek and 300+ other models side by side, with
-streaming responses. Your key is stored only in your browser.
+self-contained HTML file with the same one-prompt-to-many-models experience,
+installable to an iPhone home screen. Because websites cannot embed the
+ChatGPT/Claude/Gemini web apps (those sites block iframes), it talks to models
+over their APIs instead: add one [OpenRouter](https://openrouter.ai) key for
+300+ models, and/or your own OpenAI, Anthropic, Moonshot and Perplexity keys.
+Ask once and every model answers at the same time, then Claude writes a Council
+briefing — the combined answer, what each model said, and where they disagree.
+Keys are stored only in your browser.
 
 To host it free with GitHub Pages: repo **Settings → Pages → Deploy from a
 branch → `main` / `docs`**. Or run it on localhost with `npm run web`

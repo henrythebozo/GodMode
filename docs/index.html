@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>GodMode — one prompt, every AI</title>
+<title>Henry OS — one prompt, every AI</title>
 <meta name="theme-color" content="#07070a" />
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="GodMode" />
+<meta name="apple-mobile-web-app-title" content="Henry OS" />
 <link rel="apple-touch-icon" href="icon-180.png" />
 <link rel="icon" type="image/png" href="icon-512.png" />
 <style>
@@ -78,7 +78,9 @@
 		border-radius: 9px;
 		display: grid;
 		place-items: center;
-		font-size: 17px;
+		font-size: 15px;
+		font-weight: 800;
+		color: var(--vio-lift);
 		background: var(--vio-soft);
 		border: 1px solid rgba(123, 92, 240, 0.3);
 		flex: none;
@@ -665,6 +667,9 @@
 		display: grid;
 		place-items: center;
 		font-size: 32px;
+		font-weight: 800;
+		letter-spacing: -1px;
+		color: var(--vio-lift);
 		background: var(--vio-soft);
 		border: 1px solid rgba(123, 92, 240, 0.34);
 	}
@@ -857,8 +862,8 @@
 
 <div id="lock">
 	<form id="lockForm">
-		<div class="mark">🐣</div>
-		<div class="word">GodMode</div>
+		<div class="mark">H</div>
+		<div class="word">Henry OS</div>
 		<p class="sub">Enter your password to continue</p>
 		<div class="field">
 			<span class="lead">
@@ -880,8 +885,8 @@
 
 <aside>
 	<div class="brand">
-		<span class="mark">🐣</span>
-		<span class="word">GodMode</span>
+		<span class="mark">H</span>
+		<span class="word">Henry OS</span>
 	</div>
 	<nav id="railList"></nav>
 	<div class="sidefoot">
@@ -1204,7 +1209,7 @@ function backendFor(modelId) {
 			kind: 'openai',
 			url: API_BASE + '/chat/completions',
 			model: modelId,
-			headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'GodMode Web' },
+			headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'Henry OS' },
 		};
 	}
 	const [, vendor, model] = m;
