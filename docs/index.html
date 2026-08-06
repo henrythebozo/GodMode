@@ -550,6 +550,17 @@
 	}
 	.primary:hover { filter: brightness(1.12); }
 	.primary:disabled { opacity: 0.4; cursor: default; filter: none; }
+	.acctrow {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-top: 18px;
+		padding-top: 14px;
+		border-top: 1px solid var(--surface-2);
+		font-size: 12.5px;
+		color: var(--dim);
+	}
+	.acctrow span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.ghost {
 		background: var(--surface-2);
 		border: none;
@@ -695,6 +706,17 @@
 	}
 	#lock button[type="submit"]:hover { filter: brightness(1.12); }
 	#lock .err { color: var(--err); font-size: 13px; min-height: 15px; margin-top: -8px; }
+	#lock .err.ok { color: var(--ok); }
+	#lock .swap {
+		background: none;
+		border: none;
+		color: var(--dim);
+		font-size: 13.5px;
+		cursor: pointer;
+		padding: 6px;
+	}
+	#lock .swap:hover { color: var(--text); }
+	#lock .field + .field { margin-top: -4px; }
 	#lock.wrong form { animation: shake 0.34s; }
 	@keyframes shake {
 		25% { transform: translateX(-7px); }
@@ -768,14 +790,22 @@
 	<form id="lockForm">
 		<div class="mark">H</div>
 		<div class="word">Henry OS</div>
-		<p class="sub">Enter your password to continue</p>
+		<p class="sub" id="authSub">Sign in to your account</p>
+		<div class="field">
+			<span class="lead">
+				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" />
+				</svg>
+			</span>
+			<input type="email" id="authEmail" autocomplete="email" placeholder="Email" aria-label="Email" required />
+		</div>
 		<div class="field">
 			<span class="lead">
 				<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />
 				</svg>
 			</span>
-			<input type="password" id="lockInput" autocomplete="current-password" placeholder="Password" aria-label="Password" />
+			<input type="password" id="lockInput" autocomplete="current-password" placeholder="Password" aria-label="Password" required />
 			<button type="button" class="peek" id="peekBtn" aria-label="Show password">
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
@@ -783,7 +813,8 @@
 			</button>
 		</div>
 		<p class="err" id="lockErr" role="alert"></p>
-		<button type="submit">Unlock</button>
+		<button type="submit" id="authSubmit">Sign in</button>
+		<button type="button" class="swap" id="authSwap">New here? Create an account</button>
 	</form>
 </div>
 
@@ -881,6 +912,10 @@
 		<label><input type="checkbox" id="enterToSend" checked /> Enter sends</label>
 		<button class="primary" id="saveKeyBtn">Save</button>
 	</div>
+	<div class="acctrow">
+		<span id="acctWho"></span>
+		<button class="linkbtn" id="signOutBtn" type="button">Sign out</button>
+	</div>
 </dialog>
 
 <dialog id="addModal">
@@ -908,71 +943,191 @@
 <script>
 'use strict';
 
-/* ------------------------------- lock -------------------------------
- * A front-door latch, not a vault: this is a static page, so anyone who
- * reads the source can get past it. It keeps passers-by out. The part
- * that actually matters — the API keys — never leaves this device.
- * The password is stored as a SHA-256 hash so it is not sitting in the
- * page in readable form.
+/* ------------------------------ accounts -----------------------------
+ * Real sign-in, so each person's API keys live with their account rather
+ * than on whichever device they happened to use. Keys are stored in a
+ * Supabase row that only that account can read (row level security), and
+ * are still sent straight from the browser to the AI provider — they are
+ * never proxied through anything of ours.
+ *
+ * The key below is Supabase's publishable key. It is meant to be public;
+ * it grants nothing on its own, since every row is gated on the signed-in
+ * user's id.
  */
-const PASS_HASH = 'ba2821250e2900ade91419e78d0b7fe99aa78d1ace8bf48d259157994eb451b3';
+const SB_URL = 'https://gmkpolqeyyoeqqnbskco.supabase.co';
+const SB_KEY = 'sb_publishable_uyHPDaZl638lei5mdWSq2g_vY9CFHIz';
 
-function sha256hex(msg) {
-	const K = [], H = [];
-	for (let n = 2, i = 0; i < 64; n++) {
-		let prime = true;
-		for (let d = 2; d * d <= n; d++) if (n % d === 0) { prime = false; break; }
-		if (!prime) continue;
-		if (i < 8) H.push(((Math.pow(n, 1 / 2) % 1) * 4294967296) >>> 0);
-		K.push(((Math.pow(n, 1 / 3) % 1) * 4294967296) >>> 0);
-		i++;
-	}
-	const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
-	const bytes = new TextEncoder().encode(msg);
-	const blocks = Math.ceil((bytes.length + 9) / 64);
-	const buf = new Uint8Array(blocks * 64);
-	buf.set(bytes);
-	buf[bytes.length] = 0x80;
-	const dv = new DataView(buf.buffer);
-	const bitLen = bytes.length * 8;
-	dv.setUint32(blocks * 64 - 8, Math.floor(bitLen / 4294967296), false);
-	dv.setUint32(blocks * 64 - 4, bitLen >>> 0, false);
-	const w = new Uint32Array(64);
-	for (let b = 0; b < blocks; b++) {
-		for (let i = 0; i < 16; i++) w[i] = dv.getUint32(b * 64 + i * 4, false);
-		for (let i = 16; i < 64; i++) {
-			const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
-			const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
-			w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
-		}
-		let [a, bb, c, d, e, f, g, h] = H;
-		for (let i = 0; i < 64; i++) {
-			const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
-			const ch = (e & f) ^ (~e & g);
-			const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
-			const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
-			const maj = (a & bb) ^ (a & c) ^ (bb & c);
-			const t2 = (S0 + maj) >>> 0;
-			h = g; g = f; f = e; e = (d + t1) >>> 0;
-			d = c; c = bb; bb = a; a = (t1 + t2) >>> 0;
-		}
-		const add = [a, bb, c, d, e, f, g, h];
-		for (let i = 0; i < 8; i++) H[i] = (H[i] + add[i]) >>> 0;
-	}
-	return H.map((x) => x.toString(16).padStart(8, '0')).join('');
+const session = {
+	get value() {
+		try { return JSON.parse(localStorage.getItem('henryos.session')) || null; }
+		catch { return null; }
+	},
+	set value(v) {
+		if (v) localStorage.setItem('henryos.session', JSON.stringify(v));
+		else localStorage.removeItem('henryos.session');
+	},
+};
+
+async function sbAuth(path, body) {
+	const res = await fetch(SB_URL + '/auth/v1/' + path, {
+		method: 'POST',
+		headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(data.msg || data.error_description || data.error || ('sign-in failed (' + res.status + ')'));
+	return data;
 }
 
+function keepSession(data) {
+	if (!data.access_token) return null;
+	const v = {
+		access_token: data.access_token,
+		refresh_token: data.refresh_token,
+		expires_at: Date.now() + (data.expires_in || 3600) * 1000,
+		email: data.user?.email || '',
+		user_id: data.user?.id || '',
+	};
+	session.value = v;
+	return v;
+}
+
+// access tokens are short lived; swap a stale one for a fresh pair
+async function freshToken() {
+	const v = session.value;
+	if (!v) return null;
+	if (Date.now() < v.expires_at - 60000) return v.access_token;
+	try {
+		const data = await sbAuth('token?grant_type=refresh_token', { refresh_token: v.refresh_token });
+		return keepSession(data)?.access_token || null;
+	} catch {
+		session.value = null;
+		return null;
+	}
+}
+
+/* ------------------------- settings sync ---------------------------- */
+function snapshot() {
+	return {
+		keys: {
+			openrouter: store.key, openai: store.oaiKey, anthropic: store.anthKey,
+			kimi: store.kimiKey, pplx: store.pplxKey,
+		},
+		models: store.modelIds || [],
+		prefs: {
+			custom: store.custom, council: store.council, synth: store.synthModel,
+			synthCustom: store.synthCustom, enter: store.enterToSend,
+		},
+	};
+}
+
+function applySnapshot(s) {
+	const k = s.keys || {};
+	store.key = k.openrouter || '';
+	store.oaiKey = k.openai || '';
+	store.anthKey = k.anthropic || '';
+	store.kimiKey = k.kimi || '';
+	store.pplxKey = k.pplx || '';
+	if (Array.isArray(s.models)) store.modelIds = s.models;
+	const p = s.prefs || {};
+	store.custom = !!p.custom;
+	store.council = p.council !== false;
+	if (p.synth) store.synthModel = p.synth;
+	store.synthCustom = !!p.synthCustom;
+	store.enterToSend = p.enter !== false;
+}
+
+function hasAnything(s) {
+	return Object.values(s.keys || {}).some(Boolean) || (s.models || []).length > 0;
+}
+
+function hasKeys(s) {
+	return Object.values(s.keys || {}).some(Boolean);
+}
+
+async function pullSettings() {
+	try {
+		const token = await freshToken();
+		if (!token) return null;
+		const res = await fetch(SB_URL + '/rest/v1/user_settings?select=keys,models,prefs', {
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		});
+		if (!res.ok) return null;
+		const rows = await res.json().catch(() => []);
+		return rows[0] || null;
+	} catch {
+		return null; // offline: carry on with whatever this device already has
+	}
+}
+
+let pushTimer = null;
+async function pushSettings() {
+	let token, v;
+	try {
+		token = await freshToken();
+		v = session.value;
+	} catch { return; }
+	if (!token || !v) return;
+	const body = { user_id: v.user_id, ...snapshot(), updated_at: new Date().toISOString() };
+	await fetch(SB_URL + '/rest/v1/user_settings', {
+		method: 'POST',
+		headers: {
+			apikey: SB_KEY,
+			Authorization: 'Bearer ' + token,
+			'Content-Type': 'application/json',
+			Prefer: 'resolution=merge-duplicates,return=minimal',
+		},
+		body: JSON.stringify(body),
+	}).catch(() => {});
+}
+
+// called wherever settings change; coalesced so typing does not spam the API
+function syncSettings() {
+	if (!session.value) return;
+	clearTimeout(pushTimer);
+	pushTimer = setTimeout(pushSettings, 600);
+}
+
+/* --------------------------- the sign-in gate ------------------------ */
 const lockEl = document.getElementById('lock');
 const lockErr = document.getElementById('lockErr');
+const authEmail = document.getElementById('authEmail');
+const authSub = document.getElementById('authSub');
+const authSubmit = document.getElementById('authSubmit');
+const authSwap = document.getElementById('authSwap');
+let signingUp = false;
 
-function unlock() {
+function setAuthMode(makeAccount) {
+	signingUp = makeAccount;
+	authSub.textContent = makeAccount ? 'Create your account' : 'Sign in to your account';
+	authSubmit.textContent = makeAccount ? 'Create account' : 'Sign in';
+	authSwap.textContent = makeAccount ? 'Already have an account? Sign in' : 'New here? Create an account';
+	document.getElementById('lockInput').autocomplete = makeAccount ? 'new-password' : 'current-password';
+	lockErr.textContent = '';
+	lockErr.classList.remove('ok');
+}
+
+function openApp() {
 	document.body.classList.remove('locked');
 	lockEl.remove();
 	if (!anyKey()) openSettings();
 	promptEl.focus();
 }
 
-if (localStorage.getItem('godmode.unlocked') === '1') {
+// bring the account's saved keys down, or seed the account from this device
+async function adoptAccountSettings() {
+	const row = await pullSettings().catch(() => null);
+	if (!row) return;
+	const remote = { keys: row.keys || {}, models: row.models || [], prefs: row.prefs || {} };
+	if (hasAnything(remote)) {
+		applySnapshot(remote);
+		rebuildFromStore();
+	} else if (hasKeys(snapshot())) {
+		pushSettings();
+	}
+}
+
+if (session.value) {
 	document.body.classList.remove('locked');
 	lockEl.remove();
 } else {
@@ -981,21 +1136,56 @@ if (localStorage.getItem('godmode.unlocked') === '1') {
 		input.type = input.type === 'password' ? 'text' : 'password';
 		input.focus();
 	});
-	document.getElementById('lockForm').addEventListener('submit', (e) => {
+	authSwap.addEventListener('click', () => setAuthMode(!signingUp));
+	document.getElementById('lockForm').addEventListener('submit', async (e) => {
 		e.preventDefault();
-		const input = document.getElementById('lockInput');
-		if (sha256hex(input.value) === PASS_HASH) {
-			localStorage.setItem('godmode.unlocked', '1');
-			unlock();
-		} else {
-			lockErr.textContent = "That's not it — try again.";
+		const email = authEmail.value.trim();
+		const password = document.getElementById('lockInput').value;
+		if (!email || !password) return;
+		authSubmit.disabled = true;
+		lockErr.classList.remove('ok');
+		lockErr.textContent = signingUp ? 'Creating account…' : 'Signing in…';
+		try {
+			if (signingUp) {
+				const data = await sbAuth('signup', { email, password });
+				if (!keepSession(data)) {
+					// confirmation is on, so there is no session until the link is clicked
+					setAuthMode(false); // note: this clears the error line, so message after
+					authEmail.value = email;
+					lockErr.classList.add('ok');
+					lockErr.textContent = 'Check ' + email + ' for a confirmation link, then sign in.';
+					return;
+				}
+			} else {
+				keepSession(await sbAuth('token?grant_type=password', { email, password }));
+			}
+			await adoptAccountSettings();
+			openApp();
+		} catch (err) {
+			lockErr.textContent = String(err.message || err);
 			lockEl.classList.remove('wrong');
-			void lockEl.offsetWidth; // restart the shake
+			void lockEl.offsetWidth;
 			lockEl.classList.add('wrong');
-			input.select();
+		} finally {
+			authSubmit.disabled = false;
 		}
 	});
-	setTimeout(() => document.getElementById('lockInput')?.focus(), 50);
+	setTimeout(() => authEmail.focus(), 50);
+}
+
+async function signOut() {
+	const token = await freshToken();
+	if (token) {
+		fetch(SB_URL + '/auth/v1/logout', {
+			method: 'POST',
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		}).catch(() => {});
+	}
+	session.value = null;
+	// leave no keys behind for whoever opens this device next
+	applySnapshot({ keys: {}, models: [], prefs: {} });
+	localStorage.removeItem('godmode.panes');
+	location.reload();
 }
 
 const API_BASE = 'https://openrouter.ai/api/v1';
@@ -1321,6 +1511,7 @@ function renderRail() {
 
 function saveModels() {
 	store.modelIds = models.map((m) => m.model);
+	syncSettings();
 }
 
 function allEntries() {
@@ -1400,6 +1591,7 @@ headModel.addEventListener('change', () => {
 	if (selectedUid === COUNCIL_UID) {
 		store.synthModel = m.model;
 		store.synthCustom = true;
+		syncSettings();
 	} else {
 		store.custom = true;
 		saveModels();
@@ -1596,6 +1788,7 @@ councilBtn.addEventListener('click', () => {
 	store.council = !store.council;
 	refreshCouncilUI();
 	if (store.council) select(COUNCIL_UID);
+	syncSettings();
 });
 
 async function synthesize(prompt, answers) {
@@ -1719,6 +1912,8 @@ function anyKey() {
 }
 
 function openSettings() {
+	const who = session.value;
+	document.getElementById('acctWho').textContent = who ? 'Signed in as ' + who.email : 'Not signed in';
 	keyInput.value = store.key;
 	oaiKeyInput.value = store.oaiKey;
 	anthKeyInput.value = store.anthKey;
@@ -1731,6 +1926,7 @@ function openSettings() {
 	if (!settingsEl.open) settingsEl.showModal();
 }
 document.getElementById('keyBtn').addEventListener('click', openSettings);
+document.getElementById('signOutBtn').addEventListener('click', signOut);
 document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	store.key = keyInput.value.trim();
 	store.oaiKey = oaiKeyInput.value.trim();
@@ -1741,6 +1937,7 @@ document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	settingsEl.close();
 	applyDefaultModels();
 	loadDirectModels();
+	syncSettings();
 });
 
 /* --------------------------- add-model picker ------------------------
@@ -1901,6 +2098,7 @@ addConfirm.addEventListener('click', () => {
 	const typed = addKeyInput.value.trim();
 	if (typed && !store[need.field]) store[need.field] = typed;
 	store.custom = true;
+	syncSettings();
 	const m = addModel(addSelected);
 	addModal.close();
 	select(m.uid);
@@ -1970,6 +2168,24 @@ function applyDefaultModels() {
 	}
 	renderRail();
 	select(store.council ? COUNCIL_UID : models[0]?.uid);
+}
+
+// re-lay the app out from the store, used after an account's settings arrive
+function rebuildFromStore() {
+	models.forEach((m) => {
+		m.controller?.abort();
+		m.els.thread.remove();
+	});
+	models.length = 0;
+	const saved = store.custom && store.modelIds;
+	(saved && saved.length ? saved : defaultModelList()).forEach((id) => addModel(id));
+	if (councilEntry) {
+		councilEntry.model = (store.synthCustom && store.synthModel) || defaultSynthModel();
+		refreshEntry(councilEntry, true);
+	}
+	refreshCouncilUI();
+	select(store.council ? COUNCIL_UID : models[0]?.uid);
+	loadDirectModels();
 }
 
 const directSuggestions = new Set();
@@ -2070,7 +2286,15 @@ refreshCouncilUI();
 select(store.council ? COUNCIL_UID : models[0]?.uid);
 loadModels();
 detectProxy().then(loadDirectModels);
-if (!anyKey() && !document.body.classList.contains('locked')) openSettings();
+if (session.value) {
+	adoptAccountSettings()
+		.catch(() => {})
+		.then(() => {
+			if (!anyKey()) openSettings();
+		});
+} else if (!anyKey() && !document.body.classList.contains('locked')) {
+	openSettings();
+}
 </script>
 </body>
 </html>
