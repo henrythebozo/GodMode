@@ -34,6 +34,21 @@
 	}
 	* { box-sizing: border-box; margin: 0; }
 	html, body { height: 100dvh; }
+
+	/* scrollbars that belong to the dark ground rather than the OS */
+	* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+	::-webkit-scrollbar { width: 9px; height: 9px; }
+	::-webkit-scrollbar-track { background: transparent; }
+	::-webkit-scrollbar-thumb {
+		background: var(--border);
+		border-radius: 99px;
+		border: 2px solid transparent;
+		background-clip: content-box;
+	}
+	::-webkit-scrollbar-thumb:hover { background: var(--dim); background-clip: content-box; }
+
+	:focus-visible { outline: 2px solid var(--vio-1); outline-offset: 2px; }
+	::selection { background: rgba(140, 92, 252, 0.4); }
 	body {
 		background: var(--bg-glow) fixed, var(--bg);
 		color: var(--text);
@@ -221,7 +236,23 @@
 		min-height: 0;
 	}
 	.thread.active { display: flex; }
-	.msg { max-width: 100%; overflow-wrap: break-word; font-size: 14.5px; }
+	.msg {
+		max-width: 100%;
+		overflow-wrap: break-word;
+		font-size: 14.5px;
+		animation: rise 0.22s ease-out;
+	}
+	@keyframes rise {
+		from { opacity: 0; transform: translateY(6px); }
+		to { opacity: 1; transform: none; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after {
+			animation-duration: 0.001ms !important;
+			transition-duration: 0.001ms !important;
+		}
+		.thread { scroll-behavior: auto; }
+	}
 	.msg.user {
 		background: var(--user-bubble);
 		border: 1px solid rgba(140, 92, 252, 0.3);
@@ -244,8 +275,31 @@
 	.meta {
 		font-size: 11px;
 		color: var(--dim);
-		margin-top: 5px;
+		margin-top: 7px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 15px;
+	}
+	.copybtn {
+		margin-left: auto;
+		background: none;
+		border: 1px solid var(--border);
+		color: var(--dim);
+		border-radius: 7px;
+		padding: 2px 9px;
+		font: inherit;
+		font-size: 10.5px;
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+	}
+	.msg:hover .copybtn,
+	.copybtn:focus-visible { opacity: 1; }
+	.copybtn:hover { color: var(--text); border-color: var(--dim); }
+	@media (hover: none) {
+		.copybtn { opacity: 1; }
 	}
 	.msg .error { color: var(--err); font-size: 13.5px; white-space: pre-wrap; }
 	.placeholder {
@@ -254,10 +308,47 @@
 		margin: auto;
 		text-align: center;
 		padding: 20px;
-		max-width: 420px;
+		max-width: 440px;
 		line-height: 1.7;
 	}
-	.placeholder b { color: var(--text); }
+	.placeholder b {
+		color: var(--text);
+		display: block;
+		font-size: 19px;
+		font-weight: 800;
+		letter-spacing: -0.3px;
+		margin-bottom: 6px;
+	}
+	.placeholder p { font-size: 13.5px; line-height: 1.65; }
+	.placeholder .hero {
+		font-size: 34px;
+		line-height: 1;
+		margin-bottom: 12px;
+		filter: drop-shadow(0 4px 14px rgba(140, 92, 252, 0.5));
+	}
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		justify-content: center;
+		margin-top: 18px;
+	}
+	.chip {
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 999px;
+		padding: 7px 14px;
+		font: inherit;
+		font-size: 12.5px;
+		cursor: pointer;
+		transition: border-color 0.15s, background 0.15s, transform 0.15s;
+	}
+	.chip:hover {
+		border-color: var(--vio-1);
+		background: var(--panel-2);
+		transform: translateY(-1px);
+	}
 
 	/* markdown */
 	.md h1, .md h2, .md h3 { margin: 10px 0 4px; line-height: 1.25; }
@@ -281,6 +372,21 @@
 		padding: 1px 5px;
 	}
 	.md a { color: var(--vio-2); }
+	/* the Council briefing is a three-part report, so its headings read as
+	   section labels rather than ordinary prose headings */
+	.thread.council .md h2 {
+		font-size: 11.5px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.9px;
+		color: var(--vio-2);
+		margin: 18px 0 8px;
+		padding-bottom: 6px;
+		border-bottom: 1px solid var(--border-soft);
+	}
+	.thread.council .md > h2:first-child { margin-top: 2px; }
+	.thread.council .md li { margin: 3px 0; }
+	.thread.council .md li strong { color: var(--text); }
 	.md blockquote { border-left: 3px solid var(--vio-1); margin: 6px 0; padding-left: 10px; color: var(--dim); }
 
 	/* ------------------------------ composer ----------------------------- */
@@ -362,6 +468,72 @@
 	}
 
 	/* ------------------------------- iPhone ------------------------------ */
+	/* ------------------------------- lock ------------------------------- */
+	#lock {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		display: grid;
+		place-items: center;
+		padding: 24px;
+		background: var(--bg-glow), var(--bg);
+	}
+	#lock form {
+		width: min(360px, 100%);
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		text-align: center;
+	}
+	#lock .mark { font-size: 46px; line-height: 1; }
+	#lock h1 {
+		font-size: 25px;
+		font-weight: 800;
+		letter-spacing: -0.5px;
+	}
+	#lock h1 .grad {
+		background: var(--grad);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	#lock p { font-size: 13px; color: var(--dim); margin-bottom: 4px; }
+	#lock input {
+		width: 100%;
+		background: var(--panel);
+		border: 1px solid var(--border);
+		color: var(--text);
+		border-radius: 12px;
+		padding: 12px 14px;
+		font: inherit;
+		text-align: center;
+		letter-spacing: 2px;
+	}
+	#lock input:focus { outline: none; border-color: var(--vio-1); box-shadow: var(--glow); }
+	#lock button {
+		background: var(--grad);
+		color: #fff;
+		border: none;
+		border-radius: 12px;
+		padding: 12px;
+		font: inherit;
+		font-weight: 700;
+		cursor: pointer;
+		box-shadow: var(--glow);
+	}
+	#lock .err {
+		color: var(--err);
+		font-size: 12.5px;
+		min-height: 16px;
+		margin: 0;
+	}
+	#lock.wrong form { animation: shake 0.35s; }
+	@keyframes shake {
+		25% { transform: translateX(-7px); }
+		75% { transform: translateX(7px); }
+	}
+	body.locked > :not(#lock) { display: none; }
+
 	@media (max-width: 760px) {
 		body { flex-direction: column; }
 		aside {
@@ -390,7 +562,18 @@
 	}
 </style>
 </head>
-<body>
+<body class="locked">
+
+<div id="lock">
+	<form id="lockForm">
+		<div class="mark">🐣</div>
+		<h1>God<span class="grad">Mode</span></h1>
+		<p>Enter the password to open your chat.</p>
+		<input type="password" id="lockInput" autocomplete="current-password" placeholder="Password" aria-label="Password" />
+		<p class="err" id="lockErr" role="alert"></p>
+		<button type="submit">Unlock</button>
+	</form>
+</div>
 
 <aside>
 	<div class="rail-top">
@@ -454,6 +637,91 @@
 <script>
 'use strict';
 
+/* ------------------------------- lock -------------------------------
+ * A front-door latch, not a vault: this is a static page, so anyone who
+ * reads the source can get past it. It keeps passers-by out. The part
+ * that actually matters — the API keys — never leaves this device.
+ * The password is stored as a SHA-256 hash so it is not sitting in the
+ * page in readable form.
+ */
+const PASS_HASH = 'ba2821250e2900ade91419e78d0b7fe99aa78d1ace8bf48d259157994eb451b3';
+
+function sha256hex(msg) {
+	const K = [], H = [];
+	for (let n = 2, i = 0; i < 64; n++) {
+		let prime = true;
+		for (let d = 2; d * d <= n; d++) if (n % d === 0) { prime = false; break; }
+		if (!prime) continue;
+		if (i < 8) H.push(((Math.pow(n, 1 / 2) % 1) * 4294967296) >>> 0);
+		K.push(((Math.pow(n, 1 / 3) % 1) * 4294967296) >>> 0);
+		i++;
+	}
+	const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
+	const bytes = new TextEncoder().encode(msg);
+	const blocks = Math.ceil((bytes.length + 9) / 64);
+	const buf = new Uint8Array(blocks * 64);
+	buf.set(bytes);
+	buf[bytes.length] = 0x80;
+	const dv = new DataView(buf.buffer);
+	const bitLen = bytes.length * 8;
+	dv.setUint32(blocks * 64 - 8, Math.floor(bitLen / 4294967296), false);
+	dv.setUint32(blocks * 64 - 4, bitLen >>> 0, false);
+	const w = new Uint32Array(64);
+	for (let b = 0; b < blocks; b++) {
+		for (let i = 0; i < 16; i++) w[i] = dv.getUint32(b * 64 + i * 4, false);
+		for (let i = 16; i < 64; i++) {
+			const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+			const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+			w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+		}
+		let [a, bb, c, d, e, f, g, h] = H;
+		for (let i = 0; i < 64; i++) {
+			const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+			const ch = (e & f) ^ (~e & g);
+			const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+			const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+			const maj = (a & bb) ^ (a & c) ^ (bb & c);
+			const t2 = (S0 + maj) >>> 0;
+			h = g; g = f; f = e; e = (d + t1) >>> 0;
+			d = c; c = bb; bb = a; a = (t1 + t2) >>> 0;
+		}
+		const add = [a, bb, c, d, e, f, g, h];
+		for (let i = 0; i < 8; i++) H[i] = (H[i] + add[i]) >>> 0;
+	}
+	return H.map((x) => x.toString(16).padStart(8, '0')).join('');
+}
+
+const lockEl = document.getElementById('lock');
+const lockErr = document.getElementById('lockErr');
+
+function unlock() {
+	document.body.classList.remove('locked');
+	lockEl.remove();
+	if (!anyKey()) openSettings();
+	promptEl.focus();
+}
+
+if (localStorage.getItem('godmode.unlocked') === '1') {
+	document.body.classList.remove('locked');
+	lockEl.remove();
+} else {
+	document.getElementById('lockForm').addEventListener('submit', (e) => {
+		e.preventDefault();
+		const input = document.getElementById('lockInput');
+		if (sha256hex(input.value) === PASS_HASH) {
+			localStorage.setItem('godmode.unlocked', '1');
+			unlock();
+		} else {
+			lockErr.textContent = "That's not it — try again.";
+			lockEl.classList.remove('wrong');
+			void lockEl.offsetWidth; // restart the shake
+			lockEl.classList.add('wrong');
+			input.select();
+		}
+	});
+	setTimeout(() => document.getElementById('lockInput')?.focus(), 50);
+}
+
 const API_BASE = 'https://openrouter.ai/api/v1';
 const COUNCIL_UID = '__council';
 const store = {
@@ -477,7 +745,11 @@ const store = {
 	// set once the user hand-picks models, so saving keys stops re-lining the rail
 	get custom() { return localStorage.getItem('godmode.custom') === '1'; },
 	set custom(v) { localStorage.setItem('godmode.custom', v ? '1' : '0'); },
-	get council() { return localStorage.getItem('godmode.council') === '1'; },
+	// Council is the landing view unless it has been switched off
+	get council() {
+		const v = localStorage.getItem('godmode.council');
+		return v === null ? true : v === '1';
+	},
 	set council(v) { localStorage.setItem('godmode.council', v ? '1' : '0'); },
 	get synthModel() { return localStorage.getItem('godmode.synth') || ''; },
 	set synthModel(v) { localStorage.setItem('godmode.synth', v); },
@@ -667,6 +939,33 @@ function paintAvatar(el, model, isCouncil) {
 	el.textContent = letter;
 }
 
+const EXAMPLES = [
+	'Explain quantum computing like I am 12',
+	'What can I cook with chicken, rice and a lemon?',
+	'Write a polite email asking for a refund',
+];
+
+function placeholderHTML(m, isCouncil) {
+	if (isCouncil) {
+		return `<div class="placeholder">
+			<div class="hero">🤝</div>
+			<b>One question, every AI</b>
+			<p>Your prompt goes to every model in the sidebar at the same moment. Claude then reads all of their answers and writes the briefing here — the best combined answer, what each model thinks, and anywhere they disagree.</p>
+			<div class="chips">${EXAMPLES.map((x) => '<button class="chip" type="button">' + esc(x) + '</button>').join('')}</div>
+		</div>`;
+	}
+	return `<div class="placeholder"><b>${esc(shortName(m.model))}</b><br>${esc(m.model)}</div>`;
+}
+
+// tapping an example fills the composer and sends it to everyone
+threadsEl.addEventListener('click', (e) => {
+	const chip = e.target.closest('.chip');
+	if (!chip) return;
+	promptEl.value = chip.textContent;
+	autosize();
+	sendAll();
+});
+
 function makeEntry(m, isCouncil) {
 	const entry = document.createElement('div');
 	entry.className = 'entry';
@@ -679,10 +978,8 @@ function makeEntry(m, isCouncil) {
 	entry.addEventListener('click', () => select(m.uid));
 
 	const thread = document.createElement('div');
-	thread.className = 'thread';
-	thread.innerHTML = isCouncil
-		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
-		: `<div class="placeholder"></div>`;
+	thread.className = isCouncil ? 'thread council' : 'thread';
+	thread.innerHTML = placeholderHTML(m, isCouncil);
 	threadsEl.appendChild(thread);
 
 	m.els = {
@@ -805,10 +1102,7 @@ document.getElementById('clearThreadBtn').addEventListener('click', () => {
 function clearThread(m) {
 	m.controller?.abort();
 	m.messages = [];
-	const isCouncil = m.uid === COUNCIL_UID;
-	m.els.thread.innerHTML = isCouncil
-		? `<div class="placeholder">🤝 <b>Council</b><br>After every model answers, the synthesizer reads them all, merges the best parts into one verdict, and flags where the models disagree.</div>`
-		: `<div class="placeholder"><b>${esc(shortName(m.model))}</b><br>${esc(m.model)}</div>`;
+	m.els.thread.innerHTML = placeholderHTML(m, m.uid === COUNCIL_UID);
 	setStatus(m, null, 'ready');
 }
 
@@ -873,14 +1167,34 @@ function streamingShell(container) {
 	cursor.textContent = '▌';
 	const meta = document.createElement('div');
 	meta.className = 'meta';
+	const label = document.createElement('span');
+	const copy = document.createElement('button');
+	copy.className = 'copybtn';
+	copy.type = 'button';
+	copy.textContent = 'Copy';
+	copy.hidden = true;
+	meta.append(label, copy);
 	container.append(md, cursor, meta);
 	container.classList.add('streaming');
+
+	let last = '';
+	copy.addEventListener('click', async () => {
+		try {
+			await navigator.clipboard.writeText(last);
+			copy.textContent = 'Copied';
+		} catch {
+			copy.textContent = 'Copy failed';
+		}
+		setTimeout(() => { copy.textContent = 'Copy'; }, 1400);
+	});
+
 	return {
-		update(text) { md.innerHTML = renderMarkdown(text); },
+		update(text) { last = text; md.innerHTML = renderMarkdown(text); },
 		finish(metaText) {
 			container.classList.remove('streaming');
 			cursor.remove();
-			if (metaText) meta.textContent = metaText;
+			if (metaText) label.textContent = metaText;
+			if (last) copy.hidden = false;
 		},
 		fail(msg) {
 			container.classList.remove('streaming');
@@ -958,10 +1272,13 @@ async function synthesize(prompt, answers) {
 
 	const briefing =
 		'You are the Council synthesizer. ' + answers.length +
-		' AI models each answered the same question independently. Merge their answers into the single best response. ' +
-		'Be concise. If the models disagree on anything substantive, add a short "Disagreements" note at the end saying who said what. Do not review each answer one by one.\n\n' +
-		'## Question\n' + prompt + '\n\n' +
-		answers.map((a) => '## Answer from ' + a.model + '\n' + a.text).join('\n\n');
+		' AI models each answered the same question independently. Write a single briefing with exactly these three sections, using these headings:\n\n' +
+		'## Answer\nThe best combined answer, written as one clean response to the question. Do not mention the models here.\n\n' +
+		'## What each model said\nOne bullet per model, formatted `- **<name>** — its take in one or two sentences`, capturing what is distinctive about that model\'s answer. Use the short model name (e.g. "GPT-5.2", "Claude Opus 5", "Kimi K3").\n\n' +
+		'## Where they differ\nOnly the substantive disagreements, one bullet each, naming who said what. If they all essentially agree, write a single line saying so.\n\n' +
+		'Be concise throughout. Do not add any other sections.\n\n' +
+		'# Question\n' + prompt + '\n\n' +
+		answers.map((a) => '# Answer from ' + a.model + '\n' + a.text).join('\n\n');
 
 	try {
 		await streamCompletion({
@@ -1134,7 +1451,7 @@ function applyDefaultModels() {
 		refreshEntry(councilEntry, true);
 	}
 	renderRail();
-	select(models[0]?.uid);
+	select(store.council ? COUNCIL_UID : models[0]?.uid);
 }
 
 const directSuggestions = new Set();
@@ -1231,10 +1548,10 @@ async function loadModels() {
 /* ------------------------------- boot ------------------------------- */
 addDefaults();
 refreshCouncilUI();
-select(models[0]?.uid);
+select(store.council ? COUNCIL_UID : models[0]?.uid);
 loadModels();
 detectProxy().then(loadDirectModels);
-if (!anyKey()) openSettings();
+if (!anyKey() && !document.body.classList.contains('locked')) openSettings();
 </script>
 </body>
 </html>
