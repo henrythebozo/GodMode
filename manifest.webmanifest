@@ -1,0 +1,21 @@
+{
+	"name": "Henry OS — one prompt, every AI",
+	"short_name": "Henry OS",
+	"description": "Ask GPT, Claude, Gemini, Kimi and 300+ models at once, then read one briefing.",
+	"start_url": ".",
+	"display": "standalone",
+	"background_color": "#07070a",
+	"theme_color": "#07070a",
+	"icons": [
+		{
+			"src": "icon-180.png",
+			"sizes": "180x180",
+			"type": "image/png"
+		},
+		{
+			"src": "icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}
