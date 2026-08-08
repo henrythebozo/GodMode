@@ -184,6 +184,49 @@
 	.entry.add { color: var(--dim); font-weight: 600; font-size: 15px; }
 	.entry.add:hover { color: var(--text); }
 
+	#recents {
+		flex: 1.2;
+		min-height: 0;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding-bottom: 6px;
+	}
+	#recents:empty { display: none; }
+	.crow {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 9px 10px;
+		border-radius: 10px;
+		cursor: pointer;
+		color: var(--text);
+		font-size: 14.5px;
+	}
+	.crow:hover { background: var(--surface); }
+	.crow.on { background: var(--surface); }
+	.crow span {
+		flex: 1;
+		min-width: 0;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.crow button {
+		background: none;
+		border: none;
+		color: var(--dim);
+		cursor: pointer;
+		padding: 4px;
+		border-radius: 6px;
+		opacity: 0;
+		flex: none;
+	}
+	.crow:hover button, .crow.on button { opacity: 1; }
+	.crow button:hover { color: var(--err); }
+	@media (hover: none) { .crow button { opacity: 1; } }
+
 	.dfoot {
 		flex: none;
 		display: flex;
@@ -346,6 +389,17 @@
 		font-size: 12px;
 	}
 	.copybtn:hover { color: var(--text); }
+	.retrybtn {
+		background: var(--surface-2);
+		border: none;
+		color: var(--text);
+		border-radius: 999px;
+		padding: 6px 14px;
+		font-size: 12.5px;
+		cursor: pointer;
+		margin-top: 10px;
+	}
+	.retrybtn:hover { background: var(--surface-3); }
 	.msg .error { color: var(--err); white-space: pre-wrap; font-size: 14px; }
 
 	.placeholder {
@@ -815,6 +869,7 @@
 		<p class="err" id="lockErr" role="alert"></p>
 		<button type="submit" id="authSubmit">Sign in</button>
 		<button type="button" class="swap" id="authSwap">New here? Create an account</button>
+		<button type="button" class="swap" id="authForgot">Forgot your password?</button>
 	</form>
 </div>
 
@@ -830,6 +885,7 @@
 		</button>
 	</div>
 	<nav id="railList"></nav>
+	<div id="recents"></div>
 	<div class="dfoot">
 		<button class="pill" id="newChatBtn">
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1088,6 +1144,146 @@ function syncSettings() {
 	pushTimer = setTimeout(pushSettings, 600);
 }
 
+/* ------------------------- saved conversations ----------------------- */
+let convId = null;
+let convTitle = '';
+let convList = [];
+
+function convData() {
+	const data = { models: {}, council: [] };
+	models.forEach((m) => {
+		if (m.messages.length) data.models[m.model] = m.messages;
+	});
+	if (councilEntry && councilEntry.messages.length) data.council = councilEntry.messages;
+	return data;
+}
+
+function convIsEmpty() {
+	return !models.some((m) => m.messages.length) && !(councilEntry && councilEntry.messages.length);
+}
+
+async function saveConversation() {
+	const token = await freshToken().catch(() => null);
+	const v = session.value;
+	if (!token || !v || convIsEmpty()) return;
+	const body = {
+		user_id: v.user_id,
+		title: convTitle || 'New chat',
+		data: convData(),
+		updated_at: new Date().toISOString(),
+	};
+	if (convId) body.id = convId;
+	try {
+		const res = await fetch(SB_URL + '/rest/v1/conversations', {
+			method: 'POST',
+			headers: {
+				apikey: SB_KEY,
+				Authorization: 'Bearer ' + token,
+				'Content-Type': 'application/json',
+				Prefer: 'resolution=merge-duplicates,return=representation',
+			},
+			body: JSON.stringify(body),
+		});
+		const rows = await res.json().catch(() => []);
+		if (rows[0]?.id) convId = rows[0].id;
+		listConversations();
+	} catch { /* offline: the chat stays on screen, it just is not saved */ }
+}
+
+async function listConversations() {
+	const token = await freshToken().catch(() => null);
+	if (!token) return;
+	try {
+		const res = await fetch(SB_URL + '/rest/v1/conversations?select=id,title,updated_at&order=updated_at.desc&limit=25', {
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		});
+		convList = (await res.json().catch(() => [])) || [];
+		renderRecents();
+	} catch { /* leave whatever is already listed */ }
+}
+
+async function openConversation(id) {
+	const token = await freshToken().catch(() => null);
+	if (!token) return;
+	setDrawer(false);
+	try {
+		const res = await fetch(SB_URL + '/rest/v1/conversations?select=id,title,data&id=eq.' + id, {
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		});
+		const row = (await res.json().catch(() => []))[0];
+		if (!row) return;
+		convId = row.id;
+		convTitle = row.title;
+		const data = row.data || {};
+		models.forEach((m) => {
+			clearThread(m);
+			const turns = (data.models || {})[m.model];
+			if (!turns) return;
+			m.messages = turns.slice();
+			turns.forEach((t) => renderStored(m, t.role, t.content, false));
+		});
+		if (councilEntry) {
+			clearThread(councilEntry);
+			if ((data.council || []).length) {
+				councilEntry.messages = data.council.slice();
+				data.council.forEach((t) => renderStored(councilEntry, t.role, t.content, true));
+			}
+		}
+		select(store.council && councilEntry ? COUNCIL_UID : models[0]?.uid);
+		renderRecents();
+	} catch { /* nothing to reopen */ }
+}
+
+async function deleteConversation(id) {
+	const token = await freshToken().catch(() => null);
+	if (!token) return;
+	convList = convList.filter((c) => c.id !== id);
+	renderRecents();
+	try {
+		await fetch(SB_URL + '/rest/v1/conversations?id=eq.' + id, {
+			method: 'DELETE',
+			headers: { apikey: SB_KEY, Authorization: 'Bearer ' + token },
+		});
+	} catch {}
+	if (convId === id) newConversation();
+}
+
+function newConversation() {
+	convId = null;
+	convTitle = '';
+	models.forEach(clearThread);
+	if (councilEntry) clearThread(councilEntry);
+	refreshSuggest();
+	renderRecents();
+}
+
+function renderRecents() {
+	const box = document.getElementById('recents');
+	box.innerHTML = '';
+	if (!convList.length) return;
+	const label = document.createElement('div');
+	label.className = 'navlabel';
+	label.textContent = 'Recents';
+	box.appendChild(label);
+	convList.forEach((c) => {
+		const row = document.createElement('div');
+		row.className = 'crow' + (c.id === convId ? ' on' : '');
+		const name = document.createElement('span');
+		name.textContent = c.title || 'New chat';
+		const del = document.createElement('button');
+		del.type = 'button';
+		del.title = 'Delete chat';
+		del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>';
+		del.addEventListener('click', (e) => {
+			e.stopPropagation();
+			deleteConversation(c.id);
+		});
+		row.append(name, del);
+		row.addEventListener('click', () => openConversation(c.id));
+		box.appendChild(row);
+	});
+}
+
 /* --------------------------- the sign-in gate ------------------------ */
 const lockEl = document.getElementById('lock');
 const lockErr = document.getElementById('lockErr');
@@ -1125,6 +1321,7 @@ async function adoptAccountSettings() {
 	} else if (hasKeys(snapshot())) {
 		pushSettings();
 	}
+	listConversations();
 }
 
 if (session.value) {
@@ -1137,6 +1334,22 @@ if (session.value) {
 		input.focus();
 	});
 	authSwap.addEventListener('click', () => setAuthMode(!signingUp));
+	document.getElementById('authForgot').addEventListener('click', async () => {
+		const email = authEmail.value.trim();
+		if (!email) {
+			lockErr.classList.remove('ok');
+			lockErr.textContent = 'Enter your email first, then tap this again.';
+			return;
+		}
+		try {
+			await sbAuth('recover', { email });
+			lockErr.classList.add('ok');
+			lockErr.textContent = 'If that address has an account, a reset link is on its way.';
+		} catch (err) {
+			lockErr.classList.remove('ok');
+			lockErr.textContent = String(err.message || err);
+		}
+	});
 	document.getElementById('lockForm').addEventListener('submit', async (e) => {
 		e.preventDefault();
 		const email = authEmail.value.trim();
@@ -1600,9 +1813,7 @@ headModel.addEventListener('change', () => {
 });
 removeModelBtn.addEventListener('click', () => removeModel(selectedUid));
 document.getElementById('newChatBtn').addEventListener('click', () => {
-	models.forEach(clearThread);
-	if (councilEntry) clearThread(councilEntry);
-	refreshSuggest();
+	newConversation();
 	setDrawer(false);
 });
 
@@ -1611,6 +1822,22 @@ function clearThread(m) {
 	m.messages = [];
 	m.els.thread.innerHTML = placeholderHTML(m, m.uid === COUNCIL_UID);
 	setStatus(m, null, 'ready');
+}
+
+// paint a message that already exists (used when reopening a saved chat)
+function renderStored(m, role, text, isCouncil) {
+	if (role === 'user') {
+		const u = addMessage(m, 'user');
+		const bubble = document.createElement('div');
+		bubble.className = 'bubble';
+		bubble.textContent = text;
+		u.append(bubble);
+		return;
+	}
+	const el = addMessage(m, 'assistant');
+	const shell = streamingShell(el, m.model, isCouncil);
+	shell.update(text);
+	shell.finish('', false);
 }
 
 function addMessage(m, role) {
@@ -1674,6 +1901,7 @@ function streamingShell(container, model, isCouncil) {
 	paintAvatar(who, model, isCouncil);
 	const bodyEl = document.createElement('div');
 	bodyEl.className = 'body';
+	bodyEl.setAttribute('aria-live', 'polite');
 	const md = document.createElement('span');
 	md.className = 'md';
 	const cursor = document.createElement('span');
@@ -1718,10 +1946,20 @@ function streamingShell(container, model, isCouncil) {
 			}
 			if (last) copy.hidden = false;
 		},
-		fail(msg) {
+		fail(msg, retry) {
 			container.classList.remove('streaming');
 			cursor.remove();
 			md.innerHTML = '<div class="error">⚠ ' + esc(msg) + '</div>';
+			if (!retry) return;
+			const again = document.createElement('button');
+			again.className = 'retrybtn';
+			again.type = 'button';
+			again.textContent = 'Try again';
+			again.addEventListener('click', () => {
+				container.remove();
+				retry();
+			});
+			bodyEl.appendChild(again);
 		},
 	};
 }
@@ -1766,7 +2004,13 @@ async function streamChat(m, prompt) {
 			return text;
 		}
 		m.messages.pop(); // let the user retry the failed turn
-		shell.fail(String(err.message || err));
+		// note: :last-of-type would match the last div, not the last user bubble
+		const users = m.els.thread.querySelectorAll('.msg.user');
+		const lastUser = users[users.length - 1];
+		shell.fail(String(err.message || err), () => {
+			lastUser?.remove();
+			streamChat(m, prompt).then(saveConversation);
+		});
 		setStatus(m, 'error', 'error');
 		if (/auth|key|401/i.test(String(err.message))) openSettings();
 		return '';
@@ -1812,12 +2056,14 @@ async function synthesize(prompt, answers) {
 		answers.map((a) => '# Answer from ' + a.model + '\n' + a.text).join('\n\n');
 
 	try {
-		await streamCompletion({
+		const text = await streamCompletion({
 			model: c.model,
 			messages: [{ role: 'user', content: briefing }],
 			signal: c.controller.signal,
 			onDelta: (t) => { shell.update(t); c.els.thread.scrollTop = c.els.thread.scrollHeight; },
 		});
+		// only the briefing is kept — it is what gets saved and reopened later
+		c.messages.push({ role: 'assistant', content: text });
 		const secs = ((Date.now() - started) / 1000).toFixed(1);
 		shell.finish(nowTime() + ' · ' + secs + 's', true);
 		setStatus(c, 'done', secs + 's');
@@ -1844,6 +2090,7 @@ async function sendAll() {
 	const prompt = promptEl.value.trim();
 	if (!prompt) return;
 	if (!anyKey()) { openSettings(); return; }
+	if (!convTitle) convTitle = prompt.slice(0, 60);
 	promptEl.value = '';
 	autosize();
 	suggestEl.classList.add('hide');
@@ -1863,6 +2110,7 @@ async function sendAll() {
 		generating = false;
 		sendBtn.classList.remove('stop');
 		sendBtn.innerHTML = SEND_ICON;
+		saveConversation();
 	}
 }
 
