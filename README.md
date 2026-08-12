@@ -25,6 +25,14 @@ branch → `main` / `docs`**. Or run it on localhost with `npm run web`
 (no install needed — plain Node) and open `http://localhost:8741`; the
 command also prints a Wi-Fi address you can open from your phone.
 
+## 🧩 Chrome extension
+
+[`extension/`](extension/README.md) is a Manifest V3 Chrome extension: hit a
+keyboard shortcut (`Ctrl+Shift+Y` / `Cmd+Shift+Y`) on any page to screenshot
+it, send it to Claude with a question, and get the answer back in a floating
+card on the page — no server, your API key stays in the browser. See
+[`extension/README.md`](extension/README.md) to load it unpacked.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.
