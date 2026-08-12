@@ -25,6 +25,26 @@ branch → `main` / `docs`**. Or run it on localhost with `npm run web`
 (no install needed — plain Node) and open `http://localhost:8741`; the
 command also prints a Wi-Fi address you can open from your phone.
 
+## 🎙️ Jarvis (voice assistant)
+
+[`docs/jarvis.html`](docs/jarvis.html) is a second, self-contained page — a
+voice-first personal assistant in the style of Iron Man's Jarvis. Open it from
+the button next to "Henry OS" in the sidebar, or go straight to
+`/jarvis.html`. It's a single AI model (no Council) with a very different job:
+
+- **Talk to it.** Tap the mic and speak, hold a conversation with "wake word"
+  mode (say "Jarvis" to wake it, hands-free), or just type. It answers out
+  loud with the browser's built-in text-to-speech — pick a voice, rate, and
+  pitch in Settings.
+- **It remembers you.** Ask it to remember a fact ("remember that I'm
+  allergic to shellfish") and it'll recall it in every future conversation.
+- **It gets things done.** Built-in tools for reminders ("remind me to call
+  Sam in 20 minutes"), quick notes, live weather (no API key needed), the
+  time, a system status readout, and opening links or web searches. Everything
+  it does is visible in the Log/Memory/Reminders/Notes panel.
+- Same bring-your-own-key model as Henry OS — an OpenRouter key or your own
+  OpenAI/Anthropic key, stored only on your device.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.

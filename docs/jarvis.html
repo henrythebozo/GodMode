@@ -1,0 +1,1314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Jarvis — voice assistant</title>
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="jarvis-manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Jarvis" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
+<style>
+	:root {
+		--bg: #000;
+		--surface: #111214;
+		--surface-2: #1b1d20;
+		--surface-3: #26292d;
+		--line: #232527;
+		--line-soft: #191a1c;
+		--text: #eef6ff;
+		--dim: #7c8894;
+		--core: #4fd8ff;
+		--core-lift: #8fe9ff;
+		--core-soft: rgba(79, 216, 255, 0.14);
+		--vio: #7b5cf0;
+		--vio-lift: #a58bff;
+		--ok: #32d74b;
+		--warn: #ffb648;
+		--err: #ff6b81;
+		--shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100dvh; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		overscroll-behavior: none;
+		-webkit-font-smoothing: antialiased;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	* { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+	::-webkit-scrollbar { width: 8px; height: 8px; }
+	::-webkit-scrollbar-track { background: transparent; }
+	::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+	:focus-visible { outline: 2px solid var(--core); outline-offset: 2px; }
+	::selection { background: rgba(79, 216, 255, 0.32); }
+	button { font: inherit; color: inherit; }
+	svg { display: block; }
+	a { color: var(--core-lift); }
+
+	/* ambient backdrop */
+	body::before {
+		content: "";
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		background:
+			radial-gradient(60% 42% at 50% 18%, rgba(79, 216, 255, 0.10) 0%, transparent 65%),
+			radial-gradient(55% 40% at 50% 100%, rgba(123, 92, 240, 0.10) 0%, transparent 65%),
+			var(--bg);
+	}
+
+	/* ------------------------------- topbar ------------------------------- */
+	#topbar {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: calc(12px + env(safe-area-inset-top)) 14px 8px;
+	}
+	.iconbtn {
+		width: 38px;
+		height: 38px;
+		border-radius: 50%;
+		background: var(--surface);
+		border: none;
+		color: var(--text);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+		transition: background 0.15s, color 0.15s;
+	}
+	.iconbtn:hover { background: var(--surface-2); }
+	.iconbtn.on { background: var(--core-soft); color: var(--core-lift); }
+	.brand {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.22em;
+		color: var(--dim);
+		text-transform: uppercase;
+	}
+	.brand b { color: var(--text); letter-spacing: 0.22em; }
+	.brand .statusdot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; }
+	.brand .statusdot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+	.brand .statusdot.busy { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+	/* -------------------------------- stage -------------------------------- */
+	#stage {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 22px;
+		padding: 10px 22px;
+		text-align: center;
+	}
+	#orbWrap { position: relative; width: 200px; height: 200px; flex: none; }
+	#orbWrap svg { width: 100%; height: 100%; overflow: visible; }
+	.ring { fill: none; stroke-width: 1; opacity: 0.35; transform-origin: 100px 100px; }
+	#ring1 { stroke: var(--core); }
+	#ring2 { stroke: var(--vio); stroke-dasharray: 4 10; }
+	#ring3 { stroke: var(--core-lift); stroke-dasharray: 1 3; opacity: 0.5; }
+	#core {
+		position: absolute;
+		inset: 44px;
+		border-radius: 50%;
+		background: radial-gradient(circle at 38% 32%, var(--core-lift), var(--core) 42%, #0a3a49 100%);
+		box-shadow: 0 0 40px 6px var(--core-soft), inset 0 0 30px rgba(0, 0, 0, 0.35);
+		transition: box-shadow 0.4s, filter 0.4s;
+		animation: breathe 3.6s ease-in-out infinite;
+	}
+	@keyframes breathe { 0%, 100% { transform: scale(0.97); } 50% { transform: scale(1.03); } }
+	#ring1 { animation: spin 18s linear infinite; }
+	#ring2 { animation: spin 26s linear infinite reverse; }
+	#ring3 { animation: spin 11s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+
+	#orbWrap.listening #core { animation: pulseFast 0.9s ease-in-out infinite; box-shadow: 0 0 55px 14px rgba(255, 182, 72, 0.35); background: radial-gradient(circle at 38% 32%, #ffe3ad, var(--warn) 42%, #4a2c07 100%); }
+	#orbWrap.listening .ring { animation-duration: 4s, 6s, 3s; }
+	@keyframes pulseFast { 0%, 100% { transform: scale(0.95); } 50% { transform: scale(1.09); } }
+	#orbWrap.thinking #core { animation: pulseThink 1.1s ease-in-out infinite; box-shadow: 0 0 45px 10px rgba(123, 92, 240, 0.4); background: radial-gradient(circle at 38% 32%, var(--vio-lift), var(--vio) 42%, #241448 100%); }
+	@keyframes pulseThink { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+	#orbWrap.speaking #core { animation: pulseTalk 0.45s ease-in-out infinite alternate; box-shadow: 0 0 55px 14px rgba(50, 215, 75, 0.32); background: radial-gradient(circle at 38% 32%, #baffc8, var(--ok) 42%, #063317 100%); }
+	@keyframes pulseTalk { from { transform: scale(0.98); } to { transform: scale(1.06); } }
+	#orbWrap.error #core { background: radial-gradient(circle at 38% 32%, #ffc2cb, var(--err) 42%, #430b13 100%); box-shadow: 0 0 45px 10px rgba(255, 107, 129, 0.32); animation: none; }
+
+	#bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 26px; }
+	#bars span { width: 4px; border-radius: 3px; background: var(--core-lift); opacity: 0.55; height: 6px; transition: height 0.12s ease; }
+	#orbWrap.listening ~ #bars span { background: var(--warn); }
+	#orbWrap.speaking ~ #bars span { background: var(--ok); }
+
+	#stateLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim); }
+	#stateLabel.listening { color: var(--warn); }
+	#stateLabel.thinking { color: var(--vio-lift); }
+	#stateLabel.speaking { color: var(--ok); }
+	#stateLabel.error { color: var(--err); }
+
+	#caption {
+		max-width: 640px;
+		min-height: 1.6em;
+		font-size: clamp(16px, 3vw, 21px);
+		line-height: 1.5;
+		color: var(--text);
+	}
+	#caption.dim { color: var(--dim); font-size: clamp(14px, 2.4vw, 17px); }
+	#caption .cursor { display: inline-block; color: var(--core-lift); animation: blink 1s step-end infinite; }
+	@keyframes blink { 50% { opacity: 0; } }
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 6px 13px;
+		font-size: 12.5px;
+		color: var(--core-lift);
+		margin: 4px 4px 0;
+		cursor: pointer;
+	}
+	.chip:hover { background: var(--surface-2); }
+
+	/* ------------------------------- dock ------------------------------- */
+	#dock {
+		flex: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 16px;
+		padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+	}
+	#micBtn {
+		width: 74px;
+		height: 74px;
+		border-radius: 50%;
+		background: var(--core);
+		border: none;
+		color: #001217;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+		box-shadow: 0 6px 26px rgba(79, 216, 255, 0.35);
+		transition: filter 0.15s, transform 0.1s, background 0.2s;
+	}
+	#micBtn:hover { filter: brightness(1.08); }
+	#micBtn:active { transform: scale(0.96); }
+	#micBtn.live { background: var(--warn); box-shadow: 0 6px 30px rgba(255, 182, 72, 0.45); animation: micPulse 1.4s ease-in-out infinite; }
+	@keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 182, 72, 0.4); } 50% { box-shadow: 0 0 0 16px rgba(255, 182, 72, 0); } }
+	#micBtn:disabled { background: var(--surface-3); color: var(--dim); box-shadow: none; cursor: not-allowed; }
+	.dockside { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+	.dockside .iconbtn { width: 46px; height: 46px; }
+	.docklabel { font-size: 10px; color: var(--dim); letter-spacing: 0.04em; }
+
+	#textRow { flex: none; padding: 0 16px 10px; display: none; }
+	#textRow.show { display: flex; gap: 8px; }
+	#textInput {
+		flex: 1;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 20px;
+		padding: 12px 16px;
+		color: var(--text);
+		font: inherit;
+	}
+	#textInput:focus { outline: none; border-color: var(--core); }
+	#textSend {
+		background: var(--core);
+		color: #001217;
+		border: none;
+		border-radius: 50%;
+		width: 42px;
+		height: 42px;
+		flex: none;
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+	}
+
+	/* ------------------------------- drawer ------------------------------ */
+	#scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 40; }
+	body.drawer #scrim { opacity: 1; pointer-events: auto; }
+	#drawer {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(380px, 92vw);
+		background: var(--bg);
+		border-left: 1px solid var(--line-soft);
+		z-index: 50;
+		transform: translateX(102%);
+		transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+		display: flex;
+		flex-direction: column;
+		padding: calc(14px + env(safe-area-inset-top)) 0 14px;
+	}
+	body.drawer #drawer { transform: none; }
+	.dhead { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
+	.dhead b { font-size: 18px; letter-spacing: -0.2px; flex: 1; }
+	.tabs { display: flex; gap: 6px; padding: 0 16px 12px; flex: none; }
+	.tabs button {
+		flex: 1;
+		background: var(--surface);
+		border: none;
+		color: var(--dim);
+		border-radius: 10px;
+		padding: 8px 6px;
+		font-size: 12.5px;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.tabs button.on { background: var(--core-soft); color: var(--core-lift); }
+	.panels { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; }
+	.panel { display: none; flex-direction: column; gap: 8px; }
+	.panel.on { display: flex; }
+	.panel .empty { color: var(--dim); font-size: 13.5px; text-align: center; padding: 30px 10px; }
+	.row-item {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		background: var(--surface);
+		border-radius: 12px;
+		padding: 10px 12px;
+	}
+	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
+	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; }
+	.row-item button:hover { color: var(--err); }
+	.logmsg { font-size: 13.5px; padding: 4px 0; }
+	.logmsg .role { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 2px; }
+	.logmsg.user .role { color: var(--vio-lift); }
+	.logmsg.assistant .role { color: var(--core-lift); }
+
+	/* -------------------------------- dialog ------------------------------ */
+	dialog {
+		background: var(--surface);
+		color: var(--text);
+		border: none;
+		border-radius: 20px;
+		padding: 24px;
+		max-width: 460px;
+		width: calc(100vw - 36px);
+		box-shadow: var(--shadow);
+		margin: auto;
+		max-height: 88dvh;
+		overflow-y: auto;
+	}
+	dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+	dialog h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin: 18px 0 8px; }
+	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
+	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+	dialog input[type="text"], dialog input[type="password"], dialog select {
+		width: 100%;
+		background: var(--surface-2);
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 12px;
+		padding: 11px 13px;
+		font: inherit;
+		font-size: 13.5px;
+	}
+	dialog input:focus, dialog select:focus { outline: none; border-color: var(--core); }
+	dialog input[type="range"] { width: 100%; accent-color: var(--core); }
+	dialog .rangerow { display: flex; align-items: center; gap: 10px; }
+	dialog .rangerow span { flex: none; width: 34px; font-size: 12px; color: var(--dim); text-align: right; }
+	.seg2 { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; margin: 8px 0; }
+	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+	.seg2 button.on { background: var(--surface-3); color: var(--text); }
+	.row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+	.row label.inline { flex-direction: row; align-items: center; margin: 0 auto 0 0; }
+	.primary { background: var(--core); color: #001217; border: none; border-radius: 999px; padding: 12px 22px; font-weight: 650; cursor: pointer; }
+	.primary:hover { filter: brightness(1.08); }
+	.ghost { background: var(--surface-2); border: none; color: var(--text); border-radius: 999px; padding: 12px 22px; cursor: pointer; }
+	.ghost:hover { background: var(--surface-3); }
+	dialog code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+	.hint { font-size: 11.5px; color: var(--dim); margin-top: -4px; }
+
+	/* -------------------------------- toasts ------------------------------ */
+	#toasts { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 80; display: flex; flex-direction: column; gap: 8px; max-width: min(320px, 88vw); }
+	.toast {
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		padding: 12px 14px;
+		font-size: 13px;
+		box-shadow: var(--shadow);
+		animation: toastIn 0.25s ease-out;
+		display: flex;
+		gap: 10px;
+		align-items: flex-start;
+	}
+	.toast b { display: block; font-size: 11px; color: var(--core-lift); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+	@keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+	}
+	@media (max-width: 640px) {
+		#orbWrap { width: 160px; height: 160px; }
+		#core { inset: 34px; }
+		dialog { margin: auto auto 0; width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); }
+		dialog::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 99px; background: var(--surface-3); margin: 0 auto 14px; }
+	}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+	<a class="iconbtn" href="index.html" title="Back to Henry OS" aria-label="Back to Henry OS">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6" /></svg>
+	</a>
+	<div class="brand"><span class="statusdot" id="statusDot"></span><b id="assistantNameLabel">JARVIS</b></div>
+	<button class="iconbtn" id="drawerBtn" title="Log, memory, reminders, notes" aria-label="Open panels">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+	</button>
+	<button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<circle cx="12" cy="12" r="3" />
+			<path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+		</svg>
+	</button>
+</div>
+
+<div id="stage">
+	<div id="orbWrap" class="idle">
+		<svg viewBox="0 0 200 200">
+			<circle id="ring1" class="ring" cx="100" cy="100" r="92" />
+			<circle id="ring2" class="ring" cx="100" cy="100" r="78" />
+			<circle id="ring3" class="ring" cx="100" cy="100" r="64" />
+		</svg>
+		<div id="core"></div>
+	</div>
+	<div id="bars"></div>
+	<div id="stateLabel">Standby</div>
+	<div id="caption" class="dim">Tap the mic, or type below, to talk to Jarvis.</div>
+</div>
+
+<div id="textRow">
+	<input type="text" id="textInput" placeholder="Type a command…" autocomplete="off" />
+	<button id="textSend" title="Send" aria-label="Send">
+		<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg>
+	</button>
+</div>
+
+<div id="dock">
+	<div class="dockside">
+		<button class="iconbtn" id="keyboardBtn" title="Type instead" aria-label="Type instead">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h6" /></svg>
+		</button>
+		<span class="docklabel">Type</span>
+	</div>
+	<button id="micBtn" title="Talk to Jarvis" aria-label="Talk to Jarvis">
+		<svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" />
+		</svg>
+	</button>
+	<div class="dockside">
+		<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+		</button>
+		<span class="docklabel">Voice</span>
+	</div>
+</div>
+
+<div id="toasts"></div>
+<div id="scrim"></div>
+
+<aside id="drawer">
+	<div class="dhead">
+		<b>Panels</b>
+		<button class="iconbtn" id="drawerClose" aria-label="Close panels">
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+		</button>
+	</div>
+	<div class="tabs">
+		<button data-tab="log" class="on">Log</button>
+		<button data-tab="memory">Memory</button>
+		<button data-tab="reminders">Reminders</button>
+		<button data-tab="notes">Notes</button>
+	</div>
+	<div class="panels">
+		<div class="panel on" id="panel-log"></div>
+		<div class="panel" id="panel-memory"></div>
+		<div class="panel" id="panel-reminders"></div>
+		<div class="panel" id="panel-notes"></div>
+	</div>
+</aside>
+
+<dialog id="settings">
+	<h2>Configure Jarvis</h2>
+	<p>
+		Bring your own API key — either an
+		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a> key (300+ models) or your
+		own OpenAI / Anthropic key. Everything — keys, memory, reminders, notes — is stored only on this device.
+	</p>
+	<label>OpenRouter key<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" /></label>
+	<label><span>OpenAI key <span class="hint">(optional — enables model id <code>gpt:gpt-5.2</code> etc.)</span></span>
+		<input type="password" id="oaiKeyInput" placeholder="sk-…" autocomplete="off" />
+	</label>
+	<label><span>Anthropic key <span class="hint">(optional — enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
+		<input type="password" id="anthKeyInput" placeholder="sk-ant-…" autocomplete="off" />
+	</label>
+	<label>Model<input type="text" id="modelInput" placeholder="anthropic/claude-sonnet-5" autocomplete="off" /></label>
+
+	<h3>Persona</h3>
+	<label>Jarvis' name<input type="text" id="assistantNameInput" placeholder="Jarvis" autocomplete="off" /></label>
+	<label><span>Your name <span class="hint">(so Jarvis can address you)</span></span><input type="text" id="userNameInput" placeholder="Sir" autocomplete="off" /></label>
+
+	<h3>Voice</h3>
+	<label>Speaking voice<select id="voiceSelect"></select></label>
+	<label>Rate<div class="rangerow"><input type="range" id="rateInput" min="0.6" max="1.6" step="0.05" /><span id="rateVal"></span></div></label>
+	<label>Pitch<div class="rangerow"><input type="range" id="pitchInput" min="0.5" max="1.6" step="0.05" /><span id="pitchVal"></span></div></label>
+
+	<h3>Listening</h3>
+	<div class="seg2" id="modeSeg">
+		<button type="button" data-mode="push">Push to talk</button>
+		<button type="button" data-mode="wake">Wake word</button>
+		<button type="button" data-mode="text">Text only</button>
+	</div>
+	<label>Wake word<input type="text" id="wakeWordInput" placeholder="jarvis" autocomplete="off" /></label>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="autoListenInput" /> Keep listening after each reply</label>
+	</div>
+	<p class="hint" id="speechSupportHint"></p>
+
+	<div class="row">
+		<button class="ghost" id="settingsCancel" type="button">Close</button>
+		<button class="primary" id="settingsSave" type="button">Save</button>
+	</div>
+</dialog>
+
+<script>
+'use strict';
+
+/* ================================ store ================================ */
+const store = {
+	get key() { return localStorage.getItem('jarvis.key') || ''; },
+	set key(v) { localStorage.setItem('jarvis.key', v); },
+	get oaiKey() { return localStorage.getItem('jarvis.key.openai') || ''; },
+	set oaiKey(v) { localStorage.setItem('jarvis.key.openai', v); },
+	get anthKey() { return localStorage.getItem('jarvis.key.anthropic') || ''; },
+	set anthKey(v) { localStorage.setItem('jarvis.key.anthropic', v); },
+	get model() { return localStorage.getItem('jarvis.model') || 'anthropic/claude-sonnet-5'; },
+	set model(v) { localStorage.setItem('jarvis.model', v); },
+	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
+	set assistantName(v) { localStorage.setItem('jarvis.assistantName', v); },
+	get userName() { return localStorage.getItem('jarvis.userName') || ''; },
+	set userName(v) { localStorage.setItem('jarvis.userName', v); },
+	get voiceName() { return localStorage.getItem('jarvis.voiceName') || ''; },
+	set voiceName(v) { localStorage.setItem('jarvis.voiceName', v); },
+	get rate() { return parseFloat(localStorage.getItem('jarvis.rate') || '1'); },
+	set rate(v) { localStorage.setItem('jarvis.rate', String(v)); },
+	get pitch() { return parseFloat(localStorage.getItem('jarvis.pitch') || '1'); },
+	set pitch(v) { localStorage.setItem('jarvis.pitch', String(v)); },
+	get mode() { return localStorage.getItem('jarvis.mode') || 'push'; },
+	set mode(v) { localStorage.setItem('jarvis.mode', v); },
+	get wakeWord() { return (localStorage.getItem('jarvis.wakeWord') || 'jarvis').toLowerCase(); },
+	set wakeWord(v) { localStorage.setItem('jarvis.wakeWord', v); },
+	get autoListen() { return localStorage.getItem('jarvis.autoListen') === '1'; },
+	set autoListen(v) { localStorage.setItem('jarvis.autoListen', v ? '1' : '0'); },
+	get muted() { return localStorage.getItem('jarvis.muted') === '1'; },
+	set muted(v) { localStorage.setItem('jarvis.muted', v ? '1' : '0'); },
+	get memory() { try { return JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch { return []; } },
+	set memory(v) { localStorage.setItem('jarvis.memory', JSON.stringify(v)); },
+	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
+	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
+	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
+	set notes(v) { localStorage.setItem('jarvis.notes', JSON.stringify(v)); },
+	get history() { try { return JSON.parse(localStorage.getItem('jarvis.history')) || []; } catch { return []; } },
+	set history(v) { localStorage.setItem('jarvis.history', JSON.stringify(v)); },
+};
+
+function esc(s) {
+	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ============================== elements ================================ */
+const orbWrap = document.getElementById('orbWrap');
+const stateLabel = document.getElementById('stateLabel');
+const captionEl = document.getElementById('caption');
+const statusDot = document.getElementById('statusDot');
+const assistantNameLabel = document.getElementById('assistantNameLabel');
+const micBtn = document.getElementById('micBtn');
+const muteBtn = document.getElementById('muteBtn');
+const barsEl = document.getElementById('bars');
+const textRow = document.getElementById('textRow');
+const textInput = document.getElementById('textInput');
+const toastsEl = document.getElementById('toasts');
+
+for (let i = 0; i < 20; i++) {
+	const bar = document.createElement('span');
+	barsEl.appendChild(bar);
+}
+const barEls = [...barsEl.children];
+let barTimer = null;
+function animateBars(active) {
+	clearInterval(barTimer);
+	if (!active) { barEls.forEach((b) => (b.style.height = '6px')); return; }
+	barTimer = setInterval(() => {
+		barEls.forEach((b) => { b.style.height = 6 + Math.random() * 22 + 'px'; });
+	}, 110);
+}
+
+function setState(kind, label) {
+	orbWrap.className = kind;
+	stateLabel.className = kind === 'idle' ? '' : kind;
+	stateLabel.textContent = label;
+	statusDot.className = 'statusdot' + (kind === 'thinking' || kind === 'listening' ? ' busy' : kind === 'idle' ? '' : ' live');
+	animateBars(kind === 'listening' || kind === 'speaking');
+}
+setState('idle', 'Standby');
+assistantNameLabel.textContent = store.assistantName.toUpperCase();
+muteBtn.classList.toggle('on', store.muted);
+
+function setCaption(text, dim) {
+	captionEl.classList.toggle('dim', !!dim);
+	captionEl.textContent = text;
+}
+
+function toast(title, body, ms) {
+	const el = document.createElement('div');
+	el.className = 'toast';
+	el.innerHTML = '<div><b>' + esc(title) + '</b>' + esc(body) + '</div>';
+	toastsEl.appendChild(el);
+	setTimeout(() => el.remove(), ms || 6000);
+}
+
+/* ================================ drawer ================================ */
+document.getElementById('drawerBtn').addEventListener('click', () => { document.body.classList.add('drawer'); renderPanels(); });
+document.getElementById('drawerClose').addEventListener('click', () => document.body.classList.remove('drawer'));
+document.getElementById('scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
+document.querySelectorAll('.tabs button').forEach((btn) => {
+	btn.addEventListener('click', () => {
+		document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b === btn));
+		document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'panel-' + btn.dataset.tab));
+	});
+});
+
+function renderPanels() {
+	renderLog();
+	renderMemory();
+	renderReminders();
+	renderNotes();
+}
+
+function renderLog() {
+	const box = document.getElementById('panel-log');
+	const hist = store.history;
+	if (!hist.length) { box.innerHTML = '<div class="empty">Nothing said yet.</div>'; return; }
+	box.innerHTML = '';
+	hist.forEach((m) => {
+		if (m.role !== 'user' && m.role !== 'assistant') return;
+		const row = document.createElement('div');
+		row.className = 'logmsg ' + m.role;
+		const role = document.createElement('div');
+		role.className = 'role';
+		role.textContent = m.role === 'user' ? (store.userName || 'You') : store.assistantName;
+		const body = document.createElement('div');
+		body.textContent = stripActions(m.content).cleaned || m.content;
+		row.append(role, body);
+		box.appendChild(row);
+	});
+	box.scrollTop = box.scrollHeight;
+}
+
+function renderMemory() {
+	const box = document.getElementById('panel-memory');
+	const mem = store.memory;
+	if (!mem.length) { box.innerHTML = '<div class="empty">Jarvis hasn\'t learned anything about you yet. Try “remember that I…”.</div>'; return; }
+	box.innerHTML = '';
+	mem.forEach((fact, i) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(fact) + '</div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Forget';
+		del.addEventListener('click', () => { const m = store.memory; m.splice(i, 1); store.memory = m; renderMemory(); });
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+function renderReminders() {
+	const box = document.getElementById('panel-reminders');
+	const list = store.reminders;
+	if (!list.length) { box.innerHTML = '<div class="empty">No reminders set.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().sort((a, b) => a.at - b.at).forEach((r) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(r.text) + '<small>' + new Date(r.at).toLocaleString() + '</small></div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Cancel';
+		del.addEventListener('click', () => cancelReminder(r.id));
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+function renderNotes() {
+	const box = document.getElementById('panel-notes');
+	const list = store.notes;
+	if (!list.length) { box.innerHTML = '<div class="empty">No notes yet.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().reverse().forEach((n) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(n.text) + '<small>' + new Date(n.at).toLocaleString() + '</small></div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Delete';
+		del.addEventListener('click', () => { store.notes = store.notes.filter((x) => x.id !== n.id); renderNotes(); });
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+/* ============================== settings ============================== */
+const settingsDlg = document.getElementById('settings');
+function openSettings() {
+	document.getElementById('keyInput').value = store.key;
+	document.getElementById('oaiKeyInput').value = store.oaiKey;
+	document.getElementById('anthKeyInput').value = store.anthKey;
+	document.getElementById('modelInput').value = store.model;
+	document.getElementById('assistantNameInput').value = store.assistantName;
+	document.getElementById('userNameInput').value = store.userName;
+	document.getElementById('rateInput').value = store.rate;
+	document.getElementById('pitchInput').value = store.pitch;
+	document.getElementById('rateVal').textContent = store.rate.toFixed(2) + 'x';
+	document.getElementById('pitchVal').textContent = store.pitch.toFixed(2);
+	document.getElementById('wakeWordInput').value = store.wakeWord;
+	document.getElementById('autoListenInput').checked = store.autoListen;
+	document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === store.mode));
+	populateVoices();
+	const hint = document.getElementById('speechSupportHint');
+	hint.textContent = SR ? 'Voice recognition is supported in this browser.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).';
+	settingsDlg.showModal();
+}
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsCancel').addEventListener('click', () => settingsDlg.close());
+document.querySelectorAll('#modeSeg button').forEach((b) => {
+	b.addEventListener('click', () => document.querySelectorAll('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b)));
+});
+document.getElementById('rateInput').addEventListener('input', (e) => (document.getElementById('rateVal').textContent = parseFloat(e.target.value).toFixed(2) + 'x'));
+document.getElementById('pitchInput').addEventListener('input', (e) => (document.getElementById('pitchVal').textContent = parseFloat(e.target.value).toFixed(2)));
+
+document.getElementById('settingsSave').addEventListener('click', () => {
+	store.key = document.getElementById('keyInput').value.trim();
+	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
+	store.anthKey = document.getElementById('anthKeyInput').value.trim();
+	store.model = document.getElementById('modelInput').value.trim() || store.model;
+	store.assistantName = document.getElementById('assistantNameInput').value.trim() || 'Jarvis';
+	store.userName = document.getElementById('userNameInput').value.trim();
+	store.rate = parseFloat(document.getElementById('rateInput').value);
+	store.pitch = parseFloat(document.getElementById('pitchInput').value);
+	store.wakeWord = (document.getElementById('wakeWordInput').value.trim() || 'jarvis').toLowerCase();
+	store.autoListen = document.getElementById('autoListenInput').checked;
+	store.voiceName = selectedVoiceName;
+	store.mode = document.querySelector('#modeSeg button.on')?.dataset.mode || 'push';
+	assistantNameLabel.textContent = store.assistantName.toUpperCase();
+	applyListenMode();
+	settingsDlg.close();
+	if (!anyKey()) toast('Setup needed', 'Add an API key above to start talking to ' + store.assistantName + '.');
+});
+
+let selectedVoiceName = store.voiceName;
+function populateVoices() {
+	const sel = document.getElementById('voiceSelect');
+	const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+	sel.innerHTML = '';
+	if (!voices.length) {
+		const opt = document.createElement('option');
+		opt.textContent = 'Default voice';
+		sel.appendChild(opt);
+		return;
+	}
+	voices.forEach((v) => {
+		const opt = document.createElement('option');
+		opt.value = v.name;
+		opt.textContent = v.name + ' (' + v.lang + ')';
+		if (v.name === store.voiceName) opt.selected = true;
+		sel.appendChild(opt);
+	});
+	sel.onchange = () => (selectedVoiceName = sel.value);
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = populateVoices;
+
+function anyKey() { return !!(store.key || store.oaiKey || store.anthKey); }
+
+/* ============================ text-to-speech ============================ */
+let speaking = false;
+function speak(text, onDone) {
+	if (!window.speechSynthesis || store.muted || !text.trim()) { if (onDone) onDone(); return; }
+	speechSynthesis.cancel();
+	const utter = new SpeechSynthesisUtterance(text);
+	const voices = speechSynthesis.getVoices();
+	const v = voices.find((x) => x.name === store.voiceName);
+	if (v) utter.voice = v;
+	utter.rate = store.rate;
+	utter.pitch = store.pitch;
+	speaking = true;
+	setState('speaking', 'Speaking');
+	utter.onend = utter.onerror = () => {
+		speaking = false;
+		setState('idle', 'Standby');
+		if (onDone) onDone();
+	};
+	speechSynthesis.speak(utter);
+}
+muteBtn.addEventListener('click', () => {
+	store.muted = !store.muted;
+	muteBtn.classList.toggle('on', store.muted);
+	if (store.muted && window.speechSynthesis) speechSynthesis.cancel();
+});
+
+/* ============================ speech recognition ========================= */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null;
+let listening = false;
+let armTimer = null;
+
+function makeRecognizer() {
+	const r = new SR();
+	r.lang = navigator.language || 'en-US';
+	r.interimResults = true;
+	r.continuous = false;
+	r.maxAlternatives = 1;
+	return r;
+}
+
+function startListening(opts) {
+	if (!SR) { toast('No voice input', 'This browser has no speech recognition. Use the keyboard instead.'); return; }
+	if (speaking) speechSynthesis.cancel();
+	if (listening) return;
+	listening = true;
+	micBtn.classList.add('live');
+	setState('listening', opts && opts.wake ? 'Listening for “' + store.wakeWord + '”' : 'Listening');
+	setCaption(opts && opts.wake ? 'Say “' + store.wakeWord + '”…' : 'Listening…', true);
+	recog = makeRecognizer();
+	recog.onresult = (e) => {
+		let interim = '', final = '';
+		for (let i = e.resultIndex; i < e.results.length; i++) {
+			const t = e.results[i][0].transcript;
+			if (e.results[i].isFinal) final += t; else interim += t;
+		}
+		if (interim) setCaption(interim, true);
+		if (final) handleFinalTranscript(final.trim(), opts);
+	};
+	recog.onerror = (e) => {
+		listening = false;
+		micBtn.classList.remove('live');
+		if (e.error === 'no-speech' || e.error === 'aborted') { setState('idle', 'Standby'); if (opts && opts.wake) armWake(); return; }
+		setState('error', 'Mic error');
+		setCaption(e.error === 'not-allowed' ? 'Microphone access was denied.' : 'Voice error: ' + e.error, true);
+		setTimeout(() => setState('idle', 'Standby'), 2200);
+	};
+	recog.onend = () => {
+		listening = false;
+		micBtn.classList.remove('live');
+		if (store.mode === 'wake' && !busy && !speaking) { setState('idle', 'Standby'); armWake(); }
+	};
+	try { recog.start(); } catch { listening = false; micBtn.classList.remove('live'); }
+}
+
+function stopListening() {
+	if (recog) { try { recog.stop(); } catch {} }
+	listening = false;
+	micBtn.classList.remove('live');
+}
+
+function handleFinalTranscript(text, opts) {
+	stopListening();
+	if (opts && opts.wake) {
+		const wake = store.wakeWord;
+		const stripped = stripWakeWord(text, wake);
+		if (stripped === null) {
+			// wake word not heard; go back to ambient listening
+			setState('idle', 'Standby');
+			armWake();
+			return;
+		}
+		if (!stripped) {
+			// bare wake word — chime and open a short window for the command
+			toast(store.assistantName, 'Yes?', 2500);
+			setState('idle', 'Standby');
+			clearTimeout(armTimer);
+			armTimer = setTimeout(() => startListening({ wake: false }), 250);
+			return;
+		}
+		submitCommand(stripped);
+		return;
+	}
+	if (text) submitCommand(text);
+	else setState('idle', 'Standby');
+}
+
+function stripWakeWord(text, wake) {
+	const norm = text.toLowerCase().trim();
+	if (norm.startsWith(wake)) return text.slice(wake.length).replace(/^[\s,.:!-]+/, '').trim();
+	return null;
+}
+
+function armWake() {
+	clearTimeout(armTimer);
+	armTimer = setTimeout(() => { if (store.mode === 'wake' && !listening && !speaking && !busy) startListening({ wake: true }); }, 400);
+}
+
+function applyListenMode() {
+	stopListening();
+	clearTimeout(armTimer);
+	textRow.classList.toggle('show', store.mode === 'text' || !SR);
+	micBtn.disabled = !SR;
+	if (store.mode === 'wake' && SR) armWake();
+}
+
+micBtn.addEventListener('click', () => {
+	if (listening) { stopListening(); setState('idle', 'Standby'); return; }
+	startListening({ wake: false });
+});
+document.getElementById('keyboardBtn').addEventListener('click', () => {
+	textRow.classList.toggle('show');
+	if (textRow.classList.contains('show')) textInput.focus();
+});
+document.getElementById('textSend').addEventListener('click', sendTyped);
+textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendTyped(); });
+function sendTyped() {
+	const v = textInput.value.trim();
+	if (!v) return;
+	textInput.value = '';
+	submitCommand(v);
+}
+
+/* ================================ tools ================================ */
+const WMO = {
+	0: 'clear sky', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast',
+	45: 'fog', 48: 'depositing rime fog', 51: 'light drizzle', 53: 'drizzle', 55: 'dense drizzle',
+	61: 'light rain', 63: 'rain', 65: 'heavy rain', 71: 'light snow', 73: 'snow', 75: 'heavy snow',
+	80: 'light rain showers', 81: 'rain showers', 82: 'violent rain showers',
+	95: 'thunderstorm', 96: 'thunderstorm with hail', 99: 'severe thunderstorm with hail',
+};
+
+function getBrowserLocation() {
+	return new Promise((resolve) => {
+		if (!navigator.geolocation) return resolve(null);
+		navigator.geolocation.getCurrentPosition(
+			(pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+			() => resolve(null),
+			{ timeout: 4000 },
+		);
+	});
+}
+
+async function toolGetWeather(args) {
+	let lat, lon, label = args.location || '';
+	if (args.location) {
+		const geo = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(args.location)).then((r) => r.json()).catch(() => null);
+		const hit = geo && geo.results && geo.results[0];
+		if (!hit) return { ok: false, message: 'Could not find a place called "' + args.location + '".' };
+		lat = hit.latitude; lon = hit.longitude;
+		label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(', ');
+	} else {
+		const loc = await getBrowserLocation();
+		if (!loc) return { ok: false, message: 'No location given and browser location is unavailable — ask the user which city.' };
+		lat = loc.lat; lon = loc.lon; label = 'your location';
+	}
+	const data = await fetch(
+		'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+		'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph',
+	).then((r) => r.json()).catch(() => null);
+	if (!data || !data.current) return { ok: false, message: 'Weather service did not respond.' };
+	const c = data.current;
+	return {
+		ok: true,
+		message: 'Weather for ' + label + ': ' + Math.round(c.temperature_2m) + '°F, feels like ' + Math.round(c.apparent_temperature) +
+			'°F, ' + (WMO[c.weather_code] || 'conditions code ' + c.weather_code) + ', humidity ' + c.relative_humidity_2m +
+			'%, wind ' + Math.round(c.wind_speed_10m) + ' mph.',
+	};
+}
+
+async function toolGetStatus() {
+	let battery = 'unavailable';
+	try {
+		if (navigator.getBattery) {
+			const b = await navigator.getBattery();
+			battery = Math.round(b.level * 100) + '%' + (b.charging ? ' (charging)' : '');
+		}
+	} catch {}
+	const parts = [
+		'online: ' + navigator.onLine,
+		'battery: ' + battery,
+		'model: ' + store.model,
+		'memory facts: ' + store.memory.length,
+		'active reminders: ' + store.reminders.length,
+		'notes: ' + store.notes.length,
+		'voice input supported: ' + !!SR,
+	];
+	return { ok: true, message: 'System status — ' + parts.join(', ') + '.' };
+}
+
+function toolRemember(args) {
+	const fact = (args.fact || '').trim();
+	if (!fact) return { ok: false, message: 'No fact given.' };
+	const mem = store.memory;
+	mem.push(fact);
+	store.memory = mem.slice(-60);
+	renderMemory();
+	return { ok: true, message: 'Remembered: ' + fact };
+}
+function toolForget(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	let mem = store.memory;
+	if (!q || q === 'all' || q === 'everything') { store.memory = []; renderMemory(); return { ok: true, message: 'Cleared everything from memory.' }; }
+	const before = mem.length;
+	mem = mem.filter((f) => !f.toLowerCase().includes(q));
+	store.memory = mem;
+	renderMemory();
+	return { ok: true, message: before === mem.length ? 'Nothing matched "' + args.query + '".' : 'Forgot it.' };
+}
+function toolRecallMemory() {
+	const mem = store.memory;
+	return { ok: true, message: mem.length ? 'Remembered facts: ' + mem.join('; ') : 'Nothing remembered yet.' };
+}
+
+let reminderTimers = {};
+function scheduleReminderTimer(r) {
+	const delay = r.at - Date.now();
+	if (delay <= 0) { fireReminder(r); return; }
+	if (delay > 2147000000) return; // setTimeout overflow guard (~24.8 days)
+	reminderTimers[r.id] = setTimeout(() => fireReminder(r), delay);
+}
+function fireReminder(r) {
+	store.reminders = store.reminders.filter((x) => x.id !== r.id);
+	delete reminderTimers[r.id];
+	renderReminders();
+	toast('Reminder', r.text, 12000);
+	if (window.Notification && Notification.permission === 'granted') {
+		try { new Notification(store.assistantName + ' reminder', { body: r.text }); } catch {}
+	}
+	speak('Reminder: ' + r.text);
+}
+function toolSetReminder(args) {
+	const minutes = Number(args.minutes);
+	const text = (args.text || '').trim();
+	if (!text || !Number.isFinite(minutes) || minutes <= 0) return { ok: false, message: 'Need reminder text and a positive number of minutes.' };
+	if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+	const r = { id: uid(), text, at: Date.now() + minutes * 60000 };
+	const list = store.reminders;
+	list.push(r);
+	store.reminders = list;
+	scheduleReminderTimer(r);
+	renderReminders();
+	const when = minutes < 60 ? minutes + ' minute' + (minutes === 1 ? '' : 's') : (minutes / 60).toFixed(1) + ' hours';
+	return { ok: true, message: 'Reminder set for ' + when + ' from now: ' + text };
+}
+function cancelReminder(id) {
+	clearTimeout(reminderTimers[id]);
+	delete reminderTimers[id];
+	store.reminders = store.reminders.filter((r) => r.id !== id);
+	renderReminders();
+}
+function toolCancelReminder(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	const list = store.reminders;
+	if (!q || q === 'all') { list.forEach((r) => clearTimeout(reminderTimers[r.id])); reminderTimers = {}; store.reminders = []; renderReminders(); return { ok: true, message: 'Cancelled all reminders.' }; }
+	const match = list.find((r) => r.text.toLowerCase().includes(q));
+	if (!match) return { ok: false, message: 'No reminder matched "' + args.query + '".' };
+	cancelReminder(match.id);
+	return { ok: true, message: 'Cancelled: ' + match.text };
+}
+function toolListReminders() {
+	const list = store.reminders.slice().sort((a, b) => a.at - b.at);
+	return { ok: true, message: list.length ? 'Reminders: ' + list.map((r) => r.text + ' at ' + new Date(r.at).toLocaleTimeString()).join('; ') : 'No reminders set.' };
+}
+
+function toolAddNote(args) {
+	const text = (args.text || '').trim();
+	if (!text) return { ok: false, message: 'No note text given.' };
+	const list = store.notes;
+	list.push({ id: uid(), text, at: Date.now() });
+	store.notes = list;
+	renderNotes();
+	return { ok: true, message: 'Noted: ' + text };
+}
+function toolListNotes() {
+	const list = store.notes;
+	return { ok: true, message: list.length ? 'Notes: ' + list.map((n) => n.text).join('; ') : 'No notes yet.' };
+}
+function toolDeleteNote(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	let list = store.notes;
+	if (!q || q === 'all') { store.notes = []; renderNotes(); return { ok: true, message: 'Deleted all notes.' }; }
+	const before = list.length;
+	list = list.filter((n) => !n.text.toLowerCase().includes(q));
+	store.notes = list;
+	renderNotes();
+	return { ok: true, message: before === list.length ? 'No note matched "' + args.query + '".' : 'Deleted it.' };
+}
+
+function toolGetTime() {
+	const now = new Date();
+	return { ok: true, message: 'It is ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' on ' + now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + '.' };
+}
+
+function addLinkChip(url, label) {
+	const chip = document.createElement('button');
+	chip.className = 'chip';
+	chip.type = 'button';
+	chip.textContent = '↗ ' + (label || url);
+	chip.addEventListener('click', () => window.open(url, '_blank', 'noopener'));
+	captionEl.parentElement.insertBefore(chip, captionEl.nextSibling);
+	setTimeout(() => chip.remove(), 30000);
+}
+function toolOpenLink(args) {
+	const url = /^https?:\/\//i.test(args.url || '') ? args.url : 'https://' + (args.url || '');
+	window.open(url, '_blank', 'noopener');
+	addLinkChip(url, args.label);
+	return { ok: true, message: 'Opened ' + (args.label || url) + '.' };
+}
+function toolWebSearch(args) {
+	const q = args.query || '';
+	const url = 'https://duckduckgo.com/?q=' + encodeURIComponent(q);
+	window.open(url, '_blank', 'noopener');
+	addLinkChip(url, 'search: ' + q);
+	return { ok: true, message: 'Searching the web for "' + q + '".' };
+}
+
+async function runTool(action) {
+	const name = action && action.tool;
+	const args = (action && action.args) || {};
+	try {
+		switch (name) {
+			case 'get_time': return toolGetTime();
+			case 'get_weather': return await toolGetWeather(args);
+			case 'get_status': return await toolGetStatus();
+			case 'remember': return toolRemember(args);
+			case 'forget': return toolForget(args);
+			case 'recall_memory': return toolRecallMemory();
+			case 'set_reminder': return toolSetReminder(args);
+			case 'cancel_reminder': return toolCancelReminder(args);
+			case 'list_reminders': return toolListReminders();
+			case 'add_note': return toolAddNote(args);
+			case 'delete_note': return toolDeleteNote(args);
+			case 'list_notes': return toolListNotes();
+			case 'open_link': return toolOpenLink(args);
+			case 'web_search': return toolWebSearch(args);
+			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
+		}
+	} catch (err) {
+		return { ok: false, message: 'Tool "' + name + '" failed: ' + (err && err.message ? err.message : err) };
+	}
+}
+
+function stripActions(text) {
+	const re = /```jarvis-action\s*\n?([\s\S]*?)```/g;
+	const actions = [];
+	let m;
+	while ((m = re.exec(text))) {
+		try { actions.push(JSON.parse(m[1])); } catch {}
+	}
+	return { actions, cleaned: text.replace(re, '').trim() };
+}
+
+/* re-arm reminders that were still pending from a previous visit */
+(function restoreReminders() {
+	const now = Date.now();
+	store.reminders.forEach((r) => {
+		if (r.at <= now) fireReminder(r);
+		else scheduleReminderTimer(r);
+	});
+})();
+
+/* ============================== backend/LLM ============================== */
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+function backendFor(modelId) {
+	const m = (modelId || '').match(/^(gpt|claude):(.*)$/);
+	if (!m) {
+		if (!store.key) throw new Error('Add your OpenRouter API key in Settings');
+		return { kind: 'openai', url: OPENROUTER_BASE + '/chat/completions', model: modelId, headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'Jarvis' } };
+	}
+	const [, vendor, model] = m;
+	if (vendor === 'gpt') {
+		if (!store.oaiKey) throw new Error('Add your OpenAI API key in Settings');
+		return { kind: 'openai', url: 'https://api.openai.com/v1/chat/completions', model, headers: { Authorization: 'Bearer ' + store.oaiKey, 'Content-Type': 'application/json' } };
+	}
+	if (!store.anthKey) throw new Error('Add your Anthropic API key in Settings');
+	return {
+		kind: 'anthropic',
+		url: 'https://api.anthropic.com/v1/messages',
+		model,
+		headers: { 'x-api-key': store.anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
+	};
+}
+function parseDelta(kind, data) {
+	if (kind === 'anthropic') {
+		const ev = JSON.parse(data);
+		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
+	}
+	return JSON.parse(data).choices?.[0]?.delta?.content;
+}
+async function streamCompletion(model, messages, onDelta) {
+	const backend = backendFor(model);
+	let sysMsg = null, chatMsgs = messages;
+	if (backend.kind === 'anthropic') {
+		sysMsg = messages.find((m) => m.role === 'system');
+		chatMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+	}
+	const body = { model: backend.model, messages: chatMsgs, stream: true };
+	if (backend.kind === 'anthropic') { body.max_tokens = 1024; if (sysMsg) body.system = sysMsg.content; }
+	const res = await fetch(backend.url, { method: 'POST', headers: backend.headers, body: JSON.stringify(body) });
+	if (!res.ok) {
+		let detail = res.status + ' ' + res.statusText;
+		try { detail = (await res.json()).error?.message || detail; } catch {}
+		throw new Error(detail);
+	}
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = '', text = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split('\n');
+		buf = lines.pop();
+		for (const line of lines) {
+			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+			if (!data || data === '[DONE]') continue;
+			try {
+				const delta = parseDelta(backend.kind, data);
+				if (delta) { text += delta; onDelta(text); }
+			} catch {}
+		}
+	}
+	return text;
+}
+
+const TOOL_DOCS = [
+	'get_time {} — current local date and time.',
+	'get_weather {"location": string optional} — current weather; omit location to use the browser\'s location.',
+	'get_status {} — battery, connectivity, model, and memory/reminder/note counts.',
+	'remember {"fact": string} — permanently remember a fact about the user.',
+	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
+	'recall_memory {} — list everything currently remembered about the user.',
+	'set_reminder {"text": string, "minutes": number} — remind the user in N minutes.',
+	'list_reminders {} — list active reminders.',
+	'cancel_reminder {"query": string} — cancel a reminder matching this text, or "all".',
+	'add_note {"text": string} — save a quick note.',
+	'list_notes {} — list saved notes.',
+	'delete_note {"query": string} — delete notes matching this text, or "all".',
+	'open_link {"url": string, "label": string optional} — open a URL in a new tab.',
+	'web_search {"query": string} — search the web for this query in a new tab.',
+].join('\n- ');
+
+function buildSystemPrompt() {
+	const mem = store.memory;
+	const memText = mem.length ? mem.map((f) => '- ' + f).join('\n') : '(nothing remembered yet)';
+	const who = store.userName ? store.userName : 'the user';
+	return [
+		'You are ' + store.assistantName + ', a witty, unflappable, extremely capable voice-first personal assistant in the spirit of the AI from Iron Man.',
+		'You are speaking out loud to ' + who + ' through a browser voice interface, so keep replies short and conversational — one to three sentences unless real detail was asked for. Never use markdown formatting, headers, or bullet lists in your spoken reply, since it will be read aloud as plain speech. Address them as "sir" sparingly, not every line; stay warm and dry, never obsequious.',
+		'',
+		'You have tools. To call one, output ONLY a fenced block shaped exactly like this, and nothing else in the message:',
+		'```jarvis-action',
+		'{"tool": "tool_name", "args": {}}',
+		'```',
+		'You may include more than one such block to call multiple tools in one turn.',
+		'',
+		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
+		'For tools that fetch information you need before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'',
+		'Available tools:',
+		'- ' + TOOL_DOCS,
+		'',
+		'Facts remembered about ' + who + ':',
+		memText,
+		'',
+		'Current date/time: ' + new Date().toString(),
+	].join('\n');
+}
+
+/* ================================ pipeline ================================ */
+let busy = false;
+async function submitCommand(text, depth) {
+	depth = depth || 0;
+	if (depth === 0) {
+		if (!text) return;
+		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); openSettings(); return; }
+		if (busy) return;
+		busy = true;
+		const hist = store.history;
+		hist.push({ role: 'user', content: text });
+		store.history = hist.slice(-40);
+		setCaption(text);
+	}
+
+	setState('thinking', 'Thinking');
+	const messages = [{ role: 'system', content: buildSystemPrompt() }, ...store.history.slice(-24)];
+	let raw = '';
+	try {
+		raw = await streamCompletion(store.model, messages, (partial) => {
+			const { cleaned } = stripActions(partial);
+			if (cleaned) setCaption(cleaned);
+		});
+	} catch (err) {
+		busy = false;
+		setState('error', 'Error');
+		setCaption(String(err && err.message ? err.message : err));
+		toast('Jarvis had trouble', String(err && err.message ? err.message : err));
+		setTimeout(() => setState('idle', 'Standby'), 2600);
+		return;
+	}
+
+	const hist = store.history;
+	hist.push({ role: 'assistant', content: raw });
+	store.history = hist.slice(-40);
+	renderLog();
+
+	const { actions, cleaned } = stripActions(raw);
+	if (actions.length) {
+		const results = [];
+		for (const action of actions) results.push({ action, result: await runTool(action) });
+		if (!cleaned && depth < 3) {
+			const summary = results.map((r) => (r.result.ok ? 'OK: ' : 'ERROR: ') + r.result.message).join('\n');
+			const hist2 = store.history;
+			hist2.push({ role: 'user', content: '[Tool results — speak your reply now, plainly, with no further tool calls unless truly necessary]\n' + summary });
+			store.history = hist2.slice(-40);
+			return submitCommand(undefined, depth + 1);
+		}
+	}
+
+	busy = false;
+	const finalText = cleaned || (actions.length ? actions.map((a) => a.tool).join(', ') + ' done.' : raw);
+	setCaption(finalText || '…');
+	renderPanels();
+	speak(finalText, () => {
+		if (store.autoListen && store.mode !== 'text' && SR) startListening({ wake: store.mode === 'wake' });
+		else if (store.mode === 'wake' && SR) armWake();
+	});
+}
+
+/* ================================ boot ================================ */
+applyListenMode();
+if (!anyKey()) setTimeout(openSettings, 300);
+</script>
+</body>
+</html>
