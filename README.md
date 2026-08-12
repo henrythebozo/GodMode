@@ -30,7 +30,7 @@ command also prints a Wi-Fi address you can open from your phone.
 [`docs/jarvis.html`](docs/jarvis.html) is a second, self-contained page — a
 voice-first personal assistant in the style of Iron Man's Jarvis. Open it from
 the button next to "Henry OS" in the sidebar, or go straight to
-`/jarvis.html`. It's a single AI model (no Council) with a very different job:
+`/jarvis.html`.
 
 - **Talk to it.** Tap the mic and speak, hold a conversation with "wake word"
   mode (say "Jarvis" to wake it, hands-free), or just type. It answers out
@@ -40,8 +40,21 @@ the button next to "Henry OS" in the sidebar, or go straight to
   allergic to shellfish") and it'll recall it in every future conversation.
 - **It gets things done.** Built-in tools for reminders ("remind me to call
   Sam in 20 minutes"), quick notes, live weather (no API key needed), the
-  time, a system status readout, and opening links or web searches. Everything
-  it does is visible in the Log/Memory/Reminders/Notes panel.
+  time, a system status readout, and opening links or web searches.
+- **It takes and analyzes notes, Otter-style.** Tap the record button to
+  transcribe a conversation or meeting live (separate from the command mic),
+  then hit "Analyze" on a saved recording for an AI summary, key points, and
+  action items. Ask Jarvis "what did we cover in that meeting?" and it'll
+  pull the answer straight from a saved recording.
+- **It runs your smart home.** A virtual home (lights, a lock, a thermostat,
+  "Good Morning"/"Good Night" scenes) works immediately by voice or from the
+  Home panel — no setup. Flip on Home Assistant in Settings to control real
+  devices instead (Hue, Nest, SmartThings-paired gear, Sonos, and most other
+  brands go through it).
+- **It can put multiple AIs to work together.** Add more than one model in
+  Settings and turn on Team mode: Jarvis quietly consults every model on your
+  question in parallel, then answers you in one voice using the best of what
+  they said. Switch which model leads at any time.
 - Same bring-your-own-key model as Henry OS — an OpenRouter key or your own
   OpenAI/Anthropic key, stored only on your device.
 

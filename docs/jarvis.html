@@ -89,6 +89,8 @@
 	}
 	.iconbtn:hover { background: var(--surface-2); }
 	.iconbtn.on { background: var(--core-soft); color: var(--core-lift); }
+	.iconbtn.recording { background: rgba(255, 107, 129, 0.16); color: var(--err); animation: recPulse 1.2s ease-in-out infinite; }
+	@keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 	.brand {
 		flex: 1;
 		display: flex;
@@ -147,17 +149,20 @@
 	#orbWrap.speaking #core { animation: pulseTalk 0.45s ease-in-out infinite alternate; box-shadow: 0 0 55px 14px rgba(50, 215, 75, 0.32); background: radial-gradient(circle at 38% 32%, #baffc8, var(--ok) 42%, #063317 100%); }
 	@keyframes pulseTalk { from { transform: scale(0.98); } to { transform: scale(1.06); } }
 	#orbWrap.error #core { background: radial-gradient(circle at 38% 32%, #ffc2cb, var(--err) 42%, #430b13 100%); box-shadow: 0 0 45px 10px rgba(255, 107, 129, 0.32); animation: none; }
+	#orbWrap.recording #core { animation: pulseFast 0.9s ease-in-out infinite; box-shadow: 0 0 55px 14px rgba(255, 107, 129, 0.35); background: radial-gradient(circle at 38% 32%, #ffc2cb, var(--err) 42%, #43060f 100%); }
 
 	#bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 26px; }
 	#bars span { width: 4px; border-radius: 3px; background: var(--core-lift); opacity: 0.55; height: 6px; transition: height 0.12s ease; }
 	#orbWrap.listening ~ #bars span { background: var(--warn); }
 	#orbWrap.speaking ~ #bars span { background: var(--ok); }
+	#orbWrap.recording ~ #bars span { background: var(--err); }
 
 	#stateLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim); }
 	#stateLabel.listening { color: var(--warn); }
 	#stateLabel.thinking { color: var(--vio-lift); }
 	#stateLabel.speaking { color: var(--ok); }
 	#stateLabel.error { color: var(--err); }
+	#stateLabel.recording { color: var(--err); }
 
 	#caption {
 		max-width: 640px;
@@ -262,9 +267,10 @@
 	body.drawer #drawer { transform: none; }
 	.dhead { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
 	.dhead b { font-size: 18px; letter-spacing: -0.2px; flex: 1; }
-	.tabs { display: flex; gap: 6px; padding: 0 16px 12px; flex: none; }
+	.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; flex: none; }
 	.tabs button {
-		flex: 1;
+		flex: 1 1 30%;
+		min-width: 76px;
 		background: var(--surface);
 		border: none;
 		color: var(--dim);
@@ -289,12 +295,46 @@
 	}
 	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
 	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+	.row-item .txt b { font-size: 13.5px; }
 	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; }
 	.row-item button:hover { color: var(--err); }
 	.logmsg { font-size: 13.5px; padding: 4px 0; }
 	.logmsg .role { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 2px; }
 	.logmsg.user .role { color: var(--vio-lift); }
 	.logmsg.assistant .role { color: var(--core-lift); }
+
+	/* -- home devices -- */
+	.devctrl { display: flex; align-items: center; gap: 8px; flex: none; }
+	.toggle { width: 42px; height: 25px; border-radius: 999px; background: var(--surface-3); border: none; cursor: pointer; position: relative; flex: none; transition: background 0.15s; }
+	.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: var(--text); transition: transform 0.15s; }
+	.toggle.on { background: var(--core); }
+	.toggle.on::after { transform: translateX(17px); background: #001217; }
+	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--surface-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; }
+	.stepbtn:hover { background: var(--line); }
+	.ghost.small { padding: 6px 14px; font-size: 12px; border-radius: 999px; }
+	.addrow { display: flex; gap: 8px; margin-top: 4px; }
+	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; }
+	.addrow select { flex: 0 0 108px; }
+	.addrow button { flex: none; }
+
+	/* -- transcripts -- */
+	.row-item.trow { flex-direction: column; align-items: stretch; }
+	.trow-head { display: flex; align-items: center; gap: 6px; }
+	.ttitle { width: 100%; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-size: 14px; font-weight: 650; padding: 2px 0; }
+	.ttitle:focus { outline: none; border-bottom-color: var(--core); }
+	.tmeta { color: var(--dim); font-size: 11px; margin-top: 2px; }
+	.ttext { max-height: 120px; overflow-y: auto; font-size: 12.5px; color: var(--text); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; }
+	.tanalysis { margin-top: 8px; font-size: 12.5px; background: var(--core-soft); color: var(--core-lift); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
+	.tactions { margin-top: 8px; display: flex; gap: 8px; }
+
+	/* -- models manager -- */
+	.modelrow { display: flex; align-items: center; gap: 6px; background: var(--surface); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
+	.modelrow.lead { outline: 1px solid var(--core-soft); }
+	.modelrow .mname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.modelrow button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px 6px; border-radius: 6px; flex: none; }
+	.modelrow button:hover { color: var(--text); }
+	.modelrow button.leadbtn.on { color: var(--warn); }
+	.modelrow button.rmbtn:hover { color: var(--err); }
 
 	/* -------------------------------- dialog ------------------------------ */
 	dialog {
@@ -376,7 +416,10 @@
 		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6" /></svg>
 	</a>
 	<div class="brand"><span class="statusdot" id="statusDot"></span><b id="assistantNameLabel">JARVIS</b></div>
-	<button class="iconbtn" id="drawerBtn" title="Log, memory, reminders, notes" aria-label="Open panels">
+	<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record">
+		<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg>
+	</button>
+	<button class="iconbtn" id="drawerBtn" title="Log, memory, reminders, notes, home, recordings" aria-label="Open panels">
 		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
 	</button>
 	<button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">
@@ -443,12 +486,28 @@
 		<button data-tab="memory">Memory</button>
 		<button data-tab="reminders">Reminders</button>
 		<button data-tab="notes">Notes</button>
+		<button data-tab="home">Home</button>
+		<button data-tab="transcripts">Recordings</button>
 	</div>
 	<div class="panels">
 		<div class="panel on" id="panel-log"></div>
 		<div class="panel" id="panel-memory"></div>
 		<div class="panel" id="panel-reminders"></div>
 		<div class="panel" id="panel-notes"></div>
+		<div class="panel" id="panel-home">
+			<div id="homeList"></div>
+			<div class="addrow" id="addDeviceRow">
+				<input type="text" id="newDeviceName" placeholder="Device name" autocomplete="off" />
+				<select id="newDeviceType">
+					<option value="light">Light</option>
+					<option value="switch">Switch</option>
+					<option value="lock">Lock</option>
+					<option value="thermostat">Thermostat</option>
+				</select>
+				<button type="button" class="ghost small" id="addDeviceBtn">Add</button>
+			</div>
+		</div>
+		<div class="panel" id="panel-transcripts"></div>
 	</div>
 </aside>
 
@@ -466,7 +525,16 @@
 	<label><span>Anthropic key <span class="hint">(optional — enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
 		<input type="password" id="anthKeyInput" placeholder="sk-ant-…" autocomplete="off" />
 	</label>
-	<label>Model<input type="text" id="modelInput" placeholder="anthropic/claude-sonnet-5" autocomplete="off" /></label>
+	<h3>Models <span class="hint">— add more than one and Jarvis can consult them together</span></h3>
+	<div id="modelRows"></div>
+	<div class="addrow">
+		<input type="text" id="newModelInput" placeholder="anthropic/claude-sonnet-5, gpt:gpt-5.2, claude:claude-opus-5…" autocomplete="off" />
+		<button type="button" class="ghost small" id="addModelBtn">Add</button>
+	</div>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="teamModeInput" /> Team mode — consult every model, Jarvis answers as one</label>
+	</div>
+	<p class="hint">The star marks the lead — it speaks for Jarvis and uses tools. In Team mode the rest are quietly consulted first and their answers are handed to the lead.</p>
 
 	<h3>Persona</h3>
 	<label>Jarvis' name<input type="text" id="assistantNameInput" placeholder="Jarvis" autocomplete="off" /></label>
@@ -489,6 +557,26 @@
 	</div>
 	<p class="hint" id="speechSupportHint"></p>
 
+	<h3>Smart Home</h3>
+	<p>
+		A virtual home (lights, a lock, a thermostat, two scenes) works out of the box in the Home panel and by voice —
+		no setup needed. To control <b>real</b> devices, connect a
+		<a href="https://www.home-assistant.io" target="_blank" rel="noreferrer">Home Assistant</a> instance — it bridges
+		Hue, Nest, SmartThings-paired devices, Sonos and most other smart-home brands through one local API.
+	</p>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="haEnabledInput" /> Control real devices via Home Assistant</label>
+	</div>
+	<label>Home Assistant URL<input type="text" id="haUrlInput" placeholder="https://homeassistant.local:8123" autocomplete="off" /></label>
+	<label><span>Long-lived access token <span class="hint">(Home Assistant → your profile → Security)</span></span>
+		<input type="password" id="haTokenInput" placeholder="Paste token" autocomplete="off" />
+	</label>
+	<div class="row">
+		<button class="ghost" id="haTestBtn" type="button">Test connection</button>
+		<span class="hint" id="haTestResult"></span>
+	</div>
+	<p class="hint">Your Home Assistant instance must allow requests from this page's origin (set <code>http.cors_allowed_origins</code> in <code>configuration.yaml</code>, or use a Nabu Casa URL).</p>
+
 	<div class="row">
 		<button class="ghost" id="settingsCancel" type="button">Close</button>
 		<button class="primary" id="settingsSave" type="button">Save</button>
@@ -506,8 +594,16 @@ const store = {
 	set oaiKey(v) { localStorage.setItem('jarvis.key.openai', v); },
 	get anthKey() { return localStorage.getItem('jarvis.key.anthropic') || ''; },
 	set anthKey(v) { localStorage.setItem('jarvis.key.anthropic', v); },
-	get model() { return localStorage.getItem('jarvis.model') || 'anthropic/claude-sonnet-5'; },
-	set model(v) { localStorage.setItem('jarvis.model', v); },
+	get models() {
+		try {
+			const v = JSON.parse(localStorage.getItem('jarvis.models'));
+			if (Array.isArray(v) && v.length) return v;
+		} catch {}
+		return [localStorage.getItem('jarvis.model') || 'anthropic/claude-sonnet-5']; // migrate the old single-model setting
+	},
+	set models(v) { localStorage.setItem('jarvis.models', JSON.stringify(v)); },
+	get teamMode() { return localStorage.getItem('jarvis.teamMode') === '1'; },
+	set teamMode(v) { localStorage.setItem('jarvis.teamMode', v ? '1' : '0'); },
 	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
 	set assistantName(v) { localStorage.setItem('jarvis.assistantName', v); },
 	get userName() { return localStorage.getItem('jarvis.userName') || ''; },
@@ -534,7 +630,51 @@ const store = {
 	set notes(v) { localStorage.setItem('jarvis.notes', JSON.stringify(v)); },
 	get history() { try { return JSON.parse(localStorage.getItem('jarvis.history')) || []; } catch { return []; } },
 	set history(v) { localStorage.setItem('jarvis.history', JSON.stringify(v)); },
+	get transcripts() { try { return JSON.parse(localStorage.getItem('jarvis.transcripts')) || []; } catch { return []; } },
+	set transcripts(v) { localStorage.setItem('jarvis.transcripts', JSON.stringify(v)); },
+	get devices() {
+		try {
+			const v = JSON.parse(localStorage.getItem('jarvis.devices'));
+			if (Array.isArray(v) && v.length) return v;
+		} catch {}
+		const seeded = seedDevices();
+		localStorage.setItem('jarvis.devices', JSON.stringify(seeded));
+		return seeded;
+	},
+	set devices(v) { localStorage.setItem('jarvis.devices', JSON.stringify(v)); },
+	get haEnabled() { return localStorage.getItem('jarvis.haEnabled') === '1'; },
+	set haEnabled(v) { localStorage.setItem('jarvis.haEnabled', v ? '1' : '0'); },
+	get haUrl() { return localStorage.getItem('jarvis.haUrl') || ''; },
+	set haUrl(v) { localStorage.setItem('jarvis.haUrl', v); },
+	get haToken() { return localStorage.getItem('jarvis.haToken') || ''; },
+	set haToken(v) { localStorage.setItem('jarvis.haToken', v); },
 };
+
+function seedDevices() {
+	return [
+		{ id: uid(), name: 'Living Room Lights', type: 'light', power: 'on', brightness: 80 },
+		{ id: uid(), name: 'Bedroom Lights', type: 'light', power: 'off', brightness: 60 },
+		{ id: uid(), name: 'Kitchen Lights', type: 'light', power: 'off', brightness: 100 },
+		{ id: uid(), name: 'Thermostat', type: 'thermostat', temp: 70 },
+		{ id: uid(), name: 'Front Door', type: 'lock', lockState: 'locked' },
+		{
+			id: uid(), name: 'Good Night', type: 'scene', actions: [
+				{ name: 'Living Room Lights', power: 'off' },
+				{ name: 'Bedroom Lights', power: 'off' },
+				{ name: 'Kitchen Lights', power: 'off' },
+				{ name: 'Front Door', lockState: 'locked' },
+				{ name: 'Thermostat', temp: 65 },
+			],
+		},
+		{
+			id: uid(), name: 'Good Morning', type: 'scene', actions: [
+				{ name: 'Kitchen Lights', power: 'on', brightness: 100 },
+				{ name: 'Living Room Lights', power: 'on', brightness: 80 },
+				{ name: 'Thermostat', temp: 72 },
+			],
+		},
+	];
+}
 
 function esc(s) {
 	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -549,6 +689,7 @@ const statusDot = document.getElementById('statusDot');
 const assistantNameLabel = document.getElementById('assistantNameLabel');
 const micBtn = document.getElementById('micBtn');
 const muteBtn = document.getElementById('muteBtn');
+const recordBtn = document.getElementById('recordBtn');
 const barsEl = document.getElementById('bars');
 const textRow = document.getElementById('textRow');
 const textInput = document.getElementById('textInput');
@@ -572,8 +713,8 @@ function setState(kind, label) {
 	orbWrap.className = kind;
 	stateLabel.className = kind === 'idle' ? '' : kind;
 	stateLabel.textContent = label;
-	statusDot.className = 'statusdot' + (kind === 'thinking' || kind === 'listening' ? ' busy' : kind === 'idle' ? '' : ' live');
-	animateBars(kind === 'listening' || kind === 'speaking');
+	statusDot.className = 'statusdot' + (kind === 'thinking' || kind === 'listening' || kind === 'recording' ? ' busy' : kind === 'idle' ? '' : ' live');
+	animateBars(kind === 'listening' || kind === 'speaking' || kind === 'recording');
 }
 setState('idle', 'Standby');
 assistantNameLabel.textContent = store.assistantName.toUpperCase();
@@ -604,10 +745,13 @@ document.querySelectorAll('.tabs button').forEach((btn) => {
 });
 
 function renderPanels() {
+	if (!document.body.classList.contains('drawer')) return; // nothing visible to update, and avoids polling Home Assistant needlessly
 	renderLog();
 	renderMemory();
 	renderReminders();
 	renderNotes();
+	renderHome();
+	renderTranscripts();
 }
 
 function renderLog() {
@@ -684,13 +828,275 @@ function renderNotes() {
 	});
 }
 
+/* -------------------------------- home -------------------------------- */
+async function renderHome() {
+	const box = document.getElementById('homeList');
+	const addRow = document.getElementById('addDeviceRow');
+	addRow.style.display = store.haEnabled ? 'none' : 'flex';
+	if (store.haEnabled) {
+		if (!store.haUrl || !store.haToken) { box.innerHTML = '<div class="empty">Add your Home Assistant URL and token in Settings.</div>'; return; }
+		box.innerHTML = '<div class="empty">Loading Home Assistant entities…</div>';
+		try {
+			const ents = await haListEntities();
+			if (!ents.length) { box.innerHTML = '<div class="empty">Connected, but no controllable entities were found.</div>'; return; }
+			box.innerHTML = '';
+			ents.forEach((e) => box.appendChild(haDeviceRow(e)));
+		} catch (err) {
+			box.innerHTML = '<div class="empty">Could not reach Home Assistant: ' + esc(err.message) + '</div>';
+		}
+		return;
+	}
+	const list = store.devices;
+	if (!list.length) { box.innerHTML = '<div class="empty">No devices yet — add one below.</div>'; return; }
+	box.innerHTML = '';
+	list.forEach((d) => box.appendChild(deviceRow(d)));
+}
+
+function deviceRow(d) {
+	const row = document.createElement('div');
+	row.className = 'row-item';
+	const txt = document.createElement('div');
+	txt.className = 'txt';
+	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(describeDevice(d)) + '</small>';
+	const ctrl = document.createElement('div');
+	ctrl.className = 'devctrl';
+	if (d.type === 'light' || d.type === 'switch') {
+		const sw = document.createElement('button');
+		sw.type = 'button';
+		sw.className = 'toggle' + (d.power === 'on' ? ' on' : '');
+		sw.setAttribute('aria-label', 'Toggle ' + d.name);
+		sw.addEventListener('click', async () => { await toolSetDevice({ name: d.name, power: d.power === 'on' ? 'off' : 'on' }); renderHome(); });
+		ctrl.appendChild(sw);
+	} else if (d.type === 'lock') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = d.lockState === 'locked' ? 'Unlock' : 'Lock';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name: d.name, lock: d.lockState === 'locked' ? 'unlocked' : 'locked' }); renderHome(); });
+		ctrl.appendChild(btn);
+	} else if (d.type === 'thermostat') {
+		const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'stepbtn'; minus.textContent = '−';
+		const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'stepbtn'; plus.textContent = '+';
+		minus.addEventListener('click', async () => { await toolSetDevice({ name: d.name, temperature: d.temp - 1 }); renderHome(); });
+		plus.addEventListener('click', async () => { await toolSetDevice({ name: d.name, temperature: d.temp + 1 }); renderHome(); });
+		ctrl.append(minus, plus);
+	} else if (d.type === 'scene') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Run';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name: d.name }); renderHome(); });
+		ctrl.appendChild(btn);
+	}
+	const del = document.createElement('button');
+	del.innerHTML = '✕';
+	del.title = 'Remove device';
+	del.addEventListener('click', () => { store.devices = store.devices.filter((x) => x.id !== d.id); renderHome(); });
+	row.append(txt, ctrl, del);
+	return row;
+}
+
+function haDeviceRow(e) {
+	const domain = e.entity_id.split('.')[0];
+	const name = e.attributes.friendly_name || e.entity_id;
+	const row = document.createElement('div');
+	row.className = 'row-item';
+	const txt = document.createElement('div');
+	txt.className = 'txt';
+	txt.innerHTML = '<b>' + esc(name) + '</b><small>' + esc(haDescribe(e)) + '</small>';
+	const ctrl = document.createElement('div');
+	ctrl.className = 'devctrl';
+	if (domain === 'light' || domain === 'switch' || domain === 'fan') {
+		const sw = document.createElement('button');
+		sw.type = 'button';
+		sw.className = 'toggle' + (e.state === 'on' ? ' on' : '');
+		sw.setAttribute('aria-label', 'Toggle ' + name);
+		sw.addEventListener('click', async () => { await toolSetDevice({ name, power: e.state === 'on' ? 'off' : 'on' }); renderHome(); });
+		ctrl.appendChild(sw);
+	} else if (domain === 'lock') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = e.state === 'locked' ? 'Unlock' : 'Lock';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name, lock: e.state === 'locked' ? 'unlocked' : 'locked' }); renderHome(); });
+		ctrl.appendChild(btn);
+	} else if (domain === 'climate') {
+		const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'stepbtn'; minus.textContent = '−';
+		const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'stepbtn'; plus.textContent = '+';
+		const cur = Number(e.attributes.temperature) || 70;
+		minus.addEventListener('click', async () => { await toolSetDevice({ name, temperature: cur - 1 }); renderHome(); });
+		plus.addEventListener('click', async () => { await toolSetDevice({ name, temperature: cur + 1 }); renderHome(); });
+		ctrl.append(minus, plus);
+	} else if (domain === 'scene') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Run';
+		btn.addEventListener('click', async () => { await toolRunScene({ name }); renderHome(); });
+		ctrl.appendChild(btn);
+	}
+	row.append(txt, ctrl);
+	return row;
+}
+
+document.getElementById('addDeviceBtn').addEventListener('click', () => {
+	const nameInput = document.getElementById('newDeviceName');
+	const typeInput = document.getElementById('newDeviceType');
+	const name = nameInput.value.trim();
+	if (!name) return;
+	const type = typeInput.value;
+	const d = { id: uid(), name, type };
+	if (type === 'light') { d.power = 'off'; d.brightness = 100; }
+	else if (type === 'switch') d.power = 'off';
+	else if (type === 'lock') d.lockState = 'locked';
+	else if (type === 'thermostat') d.temp = 70;
+	const list = store.devices;
+	list.push(d);
+	store.devices = list;
+	nameInput.value = '';
+	renderHome();
+});
+
+/* ----------------------------- transcripts ----------------------------- */
+function formatDuration(ms) {
+	const s = Math.max(0, Math.round(ms / 1000));
+	const m = Math.floor(s / 60);
+	return m ? m + 'm ' + (s % 60) + 's' : s + 's';
+}
+
+function renderTranscripts() {
+	const box = document.getElementById('panel-transcripts');
+	const list = store.transcripts;
+	if (!list.length) { box.innerHTML = '<div class="empty">No recordings yet. Tap the record button up top to capture a conversation or meeting — Jarvis can transcribe and analyze it.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().reverse().forEach((t) => box.appendChild(transcriptRow(t)));
+}
+
+function transcriptRow(t) {
+	const wrap = document.createElement('div');
+	wrap.className = 'row-item trow';
+	const head = document.createElement('div');
+	head.className = 'trow-head';
+	const title = document.createElement('input');
+	title.type = 'text';
+	title.className = 'ttitle';
+	title.value = t.title;
+	title.addEventListener('change', () => {
+		const list = store.transcripts;
+		const x = list.find((y) => y.id === t.id);
+		if (x) { x.title = title.value.trim() || x.title; store.transcripts = list; }
+		title.value = x ? x.title : t.title;
+	});
+	const del = document.createElement('button');
+	del.innerHTML = '✕';
+	del.title = 'Delete recording';
+	del.addEventListener('click', () => { store.transcripts = store.transcripts.filter((x) => x.id !== t.id); renderTranscripts(); });
+	head.append(title, del);
+	const meta = document.createElement('div');
+	meta.className = 'tmeta';
+	meta.textContent = new Date(t.startedAt).toLocaleString() + ' · ' + formatDuration((t.endedAt || t.startedAt) - t.startedAt);
+	const body = document.createElement('div');
+	body.className = 'ttext';
+	body.textContent = t.text;
+	wrap.append(head, meta, body);
+	if (t.analysis) {
+		const an = document.createElement('div');
+		an.className = 'tanalysis';
+		an.textContent = t.analysis;
+		wrap.appendChild(an);
+	}
+	const actions = document.createElement('div');
+	actions.className = 'tactions';
+	const analyzeBtn = document.createElement('button');
+	analyzeBtn.type = 'button';
+	analyzeBtn.className = 'ghost small';
+	analyzeBtn.textContent = t.analyzing ? 'Analyzing…' : t.analysis ? 'Re-analyze' : 'Analyze';
+	analyzeBtn.disabled = !!t.analyzing;
+	analyzeBtn.addEventListener('click', () => analyzeTranscript(t.id));
+	actions.appendChild(analyzeBtn);
+	wrap.appendChild(actions);
+	return wrap;
+}
+
+async function analyzeTranscript(id) {
+	if (!anyKey()) { toast('Setup needed', 'Add an API key in Settings first.'); return; }
+	let list = store.transcripts;
+	const t = list.find((x) => x.id === id);
+	if (!t || !t.text.trim()) return;
+	t.analyzing = true;
+	store.transcripts = list;
+	renderTranscripts();
+	const prompt = 'Analyze this transcript of a recorded conversation or meeting. Reply in plain text with no markdown, using exactly these three labeled sections on their own lines:\nSummary: a 2-4 sentence summary.\nKey Points: the important points, semicolon-separated.\nAction Items: who owes what, semicolon-separated, or "none" if there are none.\n\nTranscript:\n' + t.text.slice(0, 12000);
+	try {
+		const out = await streamCompletion(store.models[0], [
+			{ role: 'system', content: 'You are a precise meeting-notes analyst. Be concise and factual; never invent details not present in the transcript.' },
+			{ role: 'user', content: prompt },
+		], () => {});
+		list = store.transcripts;
+		const x = list.find((y) => y.id === id);
+		if (x) { x.analysis = out.trim(); delete x.analyzing; store.transcripts = list; }
+	} catch (err) {
+		list = store.transcripts;
+		const x = list.find((y) => y.id === id);
+		if (x) { delete x.analyzing; store.transcripts = list; }
+		toast('Analysis failed', String(err && err.message ? err.message : err));
+	}
+	renderTranscripts();
+}
+
 /* ============================== settings ============================== */
 const settingsDlg = document.getElementById('settings');
+let draftModels = store.models.slice();
+
+function renderModelRows() {
+	const box = document.getElementById('modelRows');
+	box.innerHTML = '';
+	draftModels.forEach((m, i) => {
+		const row = document.createElement('div');
+		row.className = 'modelrow' + (i === 0 ? ' lead' : '');
+		const name = document.createElement('span');
+		name.className = 'mname';
+		name.textContent = m;
+		const lead = document.createElement('button');
+		lead.type = 'button';
+		lead.className = 'leadbtn' + (i === 0 ? ' on' : '');
+		lead.title = i === 0 ? 'This is the lead model' : 'Make this the lead model';
+		lead.textContent = '★';
+		lead.addEventListener('click', () => {
+			draftModels.splice(i, 1);
+			draftModels.unshift(m);
+			renderModelRows();
+		});
+		const rm = document.createElement('button');
+		rm.type = 'button';
+		rm.className = 'rmbtn';
+		rm.title = 'Remove';
+		rm.textContent = '✕';
+		rm.addEventListener('click', () => {
+			if (draftModels.length <= 1) return;
+			draftModels.splice(i, 1);
+			renderModelRows();
+		});
+		row.append(name, lead, rm);
+		box.appendChild(row);
+	});
+}
+document.getElementById('addModelBtn').addEventListener('click', () => {
+	const input = document.getElementById('newModelInput');
+	const v = input.value.trim();
+	if (!v || draftModels.includes(v)) return;
+	draftModels.push(v);
+	input.value = '';
+	renderModelRows();
+});
+
 function openSettings() {
 	document.getElementById('keyInput').value = store.key;
 	document.getElementById('oaiKeyInput').value = store.oaiKey;
 	document.getElementById('anthKeyInput').value = store.anthKey;
-	document.getElementById('modelInput').value = store.model;
+	draftModels = store.models.slice();
+	renderModelRows();
+	document.getElementById('teamModeInput').checked = store.teamMode;
 	document.getElementById('assistantNameInput').value = store.assistantName;
 	document.getElementById('userNameInput').value = store.userName;
 	document.getElementById('rateInput').value = store.rate;
@@ -700,6 +1106,10 @@ function openSettings() {
 	document.getElementById('wakeWordInput').value = store.wakeWord;
 	document.getElementById('autoListenInput').checked = store.autoListen;
 	document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === store.mode));
+	document.getElementById('haEnabledInput').checked = store.haEnabled;
+	document.getElementById('haUrlInput').value = store.haUrl;
+	document.getElementById('haTokenInput').value = store.haToken;
+	document.getElementById('haTestResult').textContent = '';
 	populateVoices();
 	const hint = document.getElementById('speechSupportHint');
 	hint.textContent = SR ? 'Voice recognition is supported in this browser.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).';
@@ -712,12 +1122,30 @@ document.querySelectorAll('#modeSeg button').forEach((b) => {
 });
 document.getElementById('rateInput').addEventListener('input', (e) => (document.getElementById('rateVal').textContent = parseFloat(e.target.value).toFixed(2) + 'x'));
 document.getElementById('pitchInput').addEventListener('input', (e) => (document.getElementById('pitchVal').textContent = parseFloat(e.target.value).toFixed(2)));
+document.getElementById('haTestBtn').addEventListener('click', async () => {
+	const out = document.getElementById('haTestResult');
+	const url = document.getElementById('haUrlInput').value.trim();
+	const token = document.getElementById('haTokenInput').value.trim();
+	if (!url || !token) { out.textContent = 'Add a URL and token first.'; out.style.color = 'var(--err)'; return; }
+	out.textContent = 'Testing…';
+	out.style.color = 'var(--dim)';
+	try {
+		const res = await fetch(url.replace(/\/+$/, '') + '/api/', { headers: { Authorization: 'Bearer ' + token } });
+		if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+		out.textContent = 'Connected ✓';
+		out.style.color = 'var(--ok)';
+	} catch (err) {
+		out.textContent = 'Failed: ' + (err && err.message ? err.message : err);
+		out.style.color = 'var(--err)';
+	}
+});
 
 document.getElementById('settingsSave').addEventListener('click', () => {
 	store.key = document.getElementById('keyInput').value.trim();
 	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
 	store.anthKey = document.getElementById('anthKeyInput').value.trim();
-	store.model = document.getElementById('modelInput').value.trim() || store.model;
+	if (draftModels.length) store.models = draftModels.slice();
+	store.teamMode = document.getElementById('teamModeInput').checked;
 	store.assistantName = document.getElementById('assistantNameInput').value.trim() || 'Jarvis';
 	store.userName = document.getElementById('userNameInput').value.trim();
 	store.rate = parseFloat(document.getElementById('rateInput').value);
@@ -726,8 +1154,12 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.autoListen = document.getElementById('autoListenInput').checked;
 	store.voiceName = selectedVoiceName;
 	store.mode = document.querySelector('#modeSeg button.on')?.dataset.mode || 'push';
+	store.haEnabled = document.getElementById('haEnabledInput').checked;
+	store.haUrl = document.getElementById('haUrlInput').value.trim();
+	store.haToken = document.getElementById('haTokenInput').value.trim();
 	assistantNameLabel.textContent = store.assistantName.toUpperCase();
 	applyListenMode();
+	renderHome();
 	settingsDlg.close();
 	if (!anyKey()) toast('Setup needed', 'Add an API key above to start talking to ' + store.assistantName + '.');
 });
@@ -799,6 +1231,7 @@ function makeRecognizer() {
 
 function startListening(opts) {
 	if (!SR) { toast('No voice input', 'This browser has no speech recognition. Use the keyboard instead.'); return; }
+	if (recording) return;
 	if (speaking) speechSynthesis.cancel();
 	if (listening) return;
 	listening = true;
@@ -826,7 +1259,7 @@ function startListening(opts) {
 	recog.onend = () => {
 		listening = false;
 		micBtn.classList.remove('live');
-		if (store.mode === 'wake' && !busy && !speaking) { setState('idle', 'Standby'); armWake(); }
+		if (store.mode === 'wake' && !busy && !speaking && !recording) { setState('idle', 'Standby'); armWake(); }
 	};
 	try { recog.start(); } catch { listening = false; micBtn.classList.remove('live'); }
 }
@@ -871,7 +1304,7 @@ function stripWakeWord(text, wake) {
 
 function armWake() {
 	clearTimeout(armTimer);
-	armTimer = setTimeout(() => { if (store.mode === 'wake' && !listening && !speaking && !busy) startListening({ wake: true }); }, 400);
+	armTimer = setTimeout(() => { if (store.mode === 'wake' && !listening && !speaking && !busy && !recording) startListening({ wake: true }); }, 400);
 }
 
 function applyListenMode() {
@@ -886,6 +1319,82 @@ micBtn.addEventListener('click', () => {
 	if (listening) { stopListening(); setState('idle', 'Standby'); return; }
 	startListening({ wake: false });
 });
+
+/* -------------------------- meeting/note recorder ------------------------- */
+let recording = false;
+let recordRecog = null;
+let recordText = '';
+let recordStartedAt = 0;
+let recordTimer = null;
+
+function startRecording() {
+	if (!SR) { toast('No voice input', 'This browser has no speech recognition, so recording is unavailable.'); return; }
+	if (recording) return;
+	stopListening();
+	clearTimeout(armTimer);
+	recording = true;
+	recordText = '';
+	recordStartedAt = Date.now();
+	recordBtn.classList.add('recording');
+	micBtn.disabled = true;
+	setState('recording', 'Recording — 0:00');
+	setCaption('Listening for the conversation…', true);
+	recordTimer = setInterval(() => {
+		if (orbWrap.classList.contains('recording')) stateLabel.textContent = 'Recording — ' + formatDuration(Date.now() - recordStartedAt);
+	}, 1000);
+	armRecordRecognizer();
+}
+
+function armRecordRecognizer() {
+	recordRecog = makeRecognizer();
+	recordRecog.continuous = true;
+	recordRecog.onresult = (e) => {
+		let interim = '';
+		for (let i = e.resultIndex; i < e.results.length; i++) {
+			const t = e.results[i][0].transcript;
+			if (e.results[i].isFinal) recordText += (recordText ? ' ' : '') + t.trim();
+			else interim += t;
+		}
+		setCaption((recordText + ' ' + interim).trim() || 'Listening for the conversation…', true);
+	};
+	recordRecog.onerror = (e) => {
+		if (e.error === 'not-allowed') { toast('Microphone blocked', 'Recording needs microphone access.'); stopRecording(false); }
+		// other errors (no-speech/aborted/network) are recovered by onend's auto-restart below
+	};
+	recordRecog.onend = () => { if (recording) { try { recordRecog.start(); } catch {} } };
+	try { recordRecog.start(); } catch {}
+}
+
+function stopRecording(save) {
+	if (!recording) return;
+	recording = false;
+	clearInterval(recordTimer);
+	recordBtn.classList.remove('recording');
+	micBtn.disabled = !SR;
+	const rr = recordRecog;
+	recordRecog = null;
+	if (rr) { rr.onend = null; try { rr.stop(); } catch {} }
+	const endedAt = Date.now();
+	if (save !== false && recordText.trim()) {
+		const list = store.transcripts;
+		list.push({
+			id: uid(),
+			title: 'Recording — ' + new Date(recordStartedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+			startedAt: recordStartedAt,
+			endedAt,
+			text: recordText.trim(),
+			analysis: null,
+		});
+		store.transcripts = list.slice(-100);
+		renderTranscripts();
+		toast('Saved recording', formatDuration(endedAt - recordStartedAt) + ' transcribed — see it in the Recordings panel.');
+	}
+	setState('idle', 'Standby');
+	setCaption('Tap the mic, or type below, to talk to ' + store.assistantName + '.', true);
+	if (store.mode === 'wake' && SR) armWake();
+}
+
+recordBtn.addEventListener('click', () => { if (recording) stopRecording(true); else startRecording(); });
 document.getElementById('keyboardBtn').addEventListener('click', () => {
 	textRow.classList.toggle('show');
 	if (textRow.classList.contains('show')) textInput.focus();
@@ -957,10 +1466,12 @@ async function toolGetStatus() {
 	const parts = [
 		'online: ' + navigator.onLine,
 		'battery: ' + battery,
-		'model: ' + store.model,
+		'model: ' + store.models[0] + (store.teamMode && store.models.length > 1 ? ' (+' + (store.models.length - 1) + ' teammates)' : ''),
 		'memory facts: ' + store.memory.length,
 		'active reminders: ' + store.reminders.length,
 		'notes: ' + store.notes.length,
+		'devices: ' + (store.haEnabled ? 'via Home Assistant' : store.devices.length),
+		'recordings: ' + store.transcripts.length,
 		'voice input supported: ' + !!SR,
 	];
 	return { ok: true, message: 'System status — ' + parts.join(', ') + '.' };
@@ -1005,7 +1516,7 @@ function fireReminder(r) {
 	if (window.Notification && Notification.permission === 'granted') {
 		try { new Notification(store.assistantName + ' reminder', { body: r.text }); } catch {}
 	}
-	speak('Reminder: ' + r.text);
+	if (!recording) speak('Reminder: ' + r.text); // don't talk over — or get picked up by — an active recording
 }
 function toolSetReminder(args) {
 	const minutes = Number(args.minutes);
@@ -1093,6 +1604,163 @@ function toolWebSearch(args) {
 	return { ok: true, message: 'Searching the web for "' + q + '".' };
 }
 
+/* ----------------------------- smart home ------------------------------ */
+function describeDevice(d) {
+	if (d.type === 'light' || d.type === 'switch') return d.name + ' (' + d.power + (d.type === 'light' && d.power === 'on' ? ', ' + d.brightness + '% brightness' : '') + ')';
+	if (d.type === 'lock') return d.name + ' (' + d.lockState + ')';
+	if (d.type === 'thermostat') return d.name + ' (set to ' + d.temp + '°F)';
+	if (d.type === 'scene') return d.name + ' (scene)';
+	return d.name;
+}
+function findDevice(list, name) {
+	const q = (name || '').toLowerCase().trim();
+	if (!q) return null;
+	return list.find((d) => d.name.toLowerCase() === q) || list.find((d) => d.name.toLowerCase().includes(q) || q.includes(d.name.toLowerCase()));
+}
+function runSceneLocal(scene, list) {
+	list = list || store.devices;
+	(scene.actions || []).forEach((patch) => {
+		const target = list.find((x) => x.name === patch.name);
+		if (!target) return;
+		if (patch.power) target.power = patch.power;
+		if (typeof patch.brightness === 'number') target.brightness = patch.brightness;
+		if (typeof patch.temp === 'number') target.temp = patch.temp;
+		if (patch.lockState) target.lockState = patch.lockState;
+	});
+	store.devices = list;
+	renderHome();
+	return { ok: true, message: 'Ran scene "' + scene.name + '".' };
+}
+
+async function toolListDevices() {
+	if (store.haEnabled) return haListDevices();
+	const list = store.devices;
+	if (!list.length) return { ok: true, message: 'No smart home devices configured.' };
+	return { ok: true, message: 'Devices: ' + list.map(describeDevice).join('; ') };
+}
+async function toolGetDevice(args) {
+	if (store.haEnabled) return haGetDevice(args);
+	const list = store.devices;
+	const d = findDevice(list, args.name);
+	if (!d) return { ok: false, message: 'No device matched "' + args.name + '". Devices: ' + list.map((x) => x.name).join(', ') };
+	return { ok: true, message: describeDevice(d) };
+}
+async function toolSetDevice(args) {
+	if (store.haEnabled) return haSetDevice(args);
+	const list = store.devices;
+	const d = findDevice(list, args.name);
+	if (!d) return { ok: false, message: 'No device matched "' + args.name + '". Devices: ' + list.map((x) => x.name).join(', ') };
+	if (d.type === 'scene') return runSceneLocal(d, list);
+	if (args.power === 'on' || args.power === 'off') d.power = args.power;
+	if (typeof args.brightness === 'number' && d.type === 'light') d.brightness = Math.max(0, Math.min(100, Math.round(args.brightness)));
+	if (typeof args.temperature === 'number' && d.type === 'thermostat') d.temp = Math.round(args.temperature);
+	if (args.lock === 'locked' || args.lock === 'unlocked') d.lockState = args.lock;
+	store.devices = list;
+	renderHome();
+	return { ok: true, message: describeDevice(d) };
+}
+async function toolRunScene(args) {
+	if (store.haEnabled) return haRunScene(args);
+	const list = store.devices;
+	const scene = list.find((x) => x.type === 'scene' && x.name.toLowerCase().includes((args.name || '').toLowerCase()));
+	if (!scene) return { ok: false, message: 'No scene matched "' + args.name + '". Scenes: ' + list.filter((x) => x.type === 'scene').map((x) => x.name).join(', ') };
+	return runSceneLocal(scene, list);
+}
+
+/* -- optional Home Assistant backend (real devices) -- */
+function haBase() { return (store.haUrl || '').replace(/\/+$/, ''); }
+async function haFetch(path, opts) {
+	const res = await fetch(haBase() + path, {
+		...opts,
+		headers: { Authorization: 'Bearer ' + store.haToken, 'Content-Type': 'application/json', ...((opts && opts.headers) || {}) },
+	});
+	if (!res.ok) throw new Error('Home Assistant returned ' + res.status + ' ' + res.statusText);
+	return res.json().catch(() => null);
+}
+const HA_DOMAINS = ['light', 'switch', 'lock', 'climate', 'scene', 'fan'];
+async function haListEntities() {
+	const states = await haFetch('/api/states');
+	return (states || []).filter((s) => HA_DOMAINS.includes(s.entity_id.split('.')[0]));
+}
+function haDescribe(e) {
+	const domain = e.entity_id.split('.')[0];
+	const name = e.attributes.friendly_name || e.entity_id;
+	if (domain === 'climate') return name + ' (' + e.state + ', target ' + (e.attributes.temperature ?? '?') + '°)';
+	if (domain === 'lock') return name + ' (' + e.state + ')';
+	return name + ' (' + e.state + (e.attributes.brightness ? ', ' + Math.round((e.attributes.brightness / 255) * 100) + '% brightness' : '') + ')';
+}
+async function haFindEntity(name) {
+	const ents = await haListEntities();
+	const q = (name || '').toLowerCase().trim();
+	return ents.find((e) => (e.attributes.friendly_name || '').toLowerCase() === q) ||
+		ents.find((e) => (e.attributes.friendly_name || e.entity_id).toLowerCase().includes(q));
+}
+async function haCallService(domain, service, data) {
+	return haFetch('/api/services/' + domain + '/' + service, { method: 'POST', body: JSON.stringify(data) });
+}
+async function haListDevices() {
+	try {
+		const ents = await haListEntities();
+		if (!ents.length) return { ok: true, message: 'No controllable Home Assistant entities found.' };
+		return { ok: true, message: 'Devices: ' + ents.map(haDescribe).join('; ') };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haGetDevice(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e) return { ok: false, message: 'No Home Assistant entity matched "' + args.name + '".' };
+		return { ok: true, message: haDescribe(e) };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haSetDevice(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e) return { ok: false, message: 'No Home Assistant entity matched "' + args.name + '".' };
+		const domain = e.entity_id.split('.')[0];
+		if (domain === 'lock' && (args.lock === 'locked' || args.lock === 'unlocked')) {
+			await haCallService('lock', args.lock === 'locked' ? 'lock' : 'unlock', { entity_id: e.entity_id });
+		} else if (domain === 'climate' && typeof args.temperature === 'number') {
+			await haCallService('climate', 'set_temperature', { entity_id: e.entity_id, temperature: args.temperature });
+		} else if (domain === 'scene') {
+			await haCallService('scene', 'turn_on', { entity_id: e.entity_id });
+		} else if (domain === 'light' || domain === 'switch' || domain === 'fan') {
+			if (args.power === 'off') {
+				await haCallService(domain, 'turn_off', { entity_id: e.entity_id });
+			} else if (args.power === 'on' || typeof args.brightness === 'number') {
+				const data = { entity_id: e.entity_id };
+				if (typeof args.brightness === 'number' && domain === 'light') data.brightness_pct = Math.max(0, Math.min(100, Math.round(args.brightness)));
+				await haCallService(domain, 'turn_on', data);
+			}
+		} else {
+			return { ok: false, message: 'Do not know how to control "' + e.entity_id + '".' };
+		}
+		return { ok: true, message: (args.name || e.attributes.friendly_name) + ' updated.' };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haRunScene(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e || e.entity_id.split('.')[0] !== 'scene') return { ok: false, message: 'No Home Assistant scene matched "' + args.name + '".' };
+		await haCallService('scene', 'turn_on', { entity_id: e.entity_id });
+		return { ok: true, message: 'Ran scene "' + (e.attributes.friendly_name || e.entity_id) + '".' };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+
+/* ----------------------------- transcripts ------------------------------ */
+function toolListTranscripts() {
+	const list = store.transcripts;
+	if (!list.length) return { ok: true, message: 'No recordings saved yet.' };
+	return { ok: true, message: 'Recordings: ' + list.map((t) => t.title + ' (' + formatDuration((t.endedAt || t.startedAt) - t.startedAt) + ')').join('; ') };
+}
+function toolGetTranscript(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	const list = store.transcripts;
+	const t = list.find((x) => x.title.toLowerCase().includes(q)) || list[list.length - 1];
+	if (!t) return { ok: false, message: 'No recordings saved yet.' };
+	const body = t.analysis ? t.analysis : t.text.slice(0, 2500);
+	return { ok: true, message: 'Recording "' + t.title + '": ' + body };
+}
+
 async function runTool(action) {
 	const name = action && action.tool;
 	const args = (action && action.args) || {};
@@ -1112,6 +1780,12 @@ async function runTool(action) {
 			case 'list_notes': return toolListNotes();
 			case 'open_link': return toolOpenLink(args);
 			case 'web_search': return toolWebSearch(args);
+			case 'list_devices': return await toolListDevices();
+			case 'get_device': return await toolGetDevice(args);
+			case 'set_device': return await toolSetDevice(args);
+			case 'run_scene': return await toolRunScene(args);
+			case 'list_transcripts': return toolListTranscripts();
+			case 'get_transcript': return toolGetTranscript(args);
 			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
 		}
 	} catch (err) {
@@ -1217,6 +1891,12 @@ const TOOL_DOCS = [
 	'delete_note {"query": string} — delete notes matching this text, or "all".',
 	'open_link {"url": string, "label": string optional} — open a URL in a new tab.',
 	'web_search {"query": string} — search the web for this query in a new tab.',
+	'list_devices {} — list smart home devices and their current state.',
+	'get_device {"name": string} — get one smart home device\'s current state.',
+	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock.',
+	'run_scene {"name": string} — run a smart home scene, e.g. "Good Night" or "Good Morning".',
+	'list_transcripts {} — list recorded conversation/meeting transcripts with title and length.',
+	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
 ].join('\n- ');
 
 function buildSystemPrompt() {
@@ -1233,8 +1913,8 @@ function buildSystemPrompt() {
 		'```',
 		'You may include more than one such block to call multiple tools in one turn.',
 		'',
-		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
-		'For tools that fetch information you need before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
+		'For tools that fetch information you need before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
 		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
@@ -1246,12 +1926,37 @@ function buildSystemPrompt() {
 	].join('\n');
 }
 
+function shortModelName(id) {
+	const s = String(id || '');
+	return (s.includes(':') ? s.split(':')[1] : s.split('/')[1] || s) || s;
+}
+
+/* consult every non-lead model in parallel and hand their answers to the lead */
+async function consultTeam(question) {
+	const models = store.models;
+	if (!store.teamMode || models.length < 2) return '';
+	const others = models.slice(1);
+	const opinions = await Promise.all(others.map(async (m) => {
+		try {
+			const text = await streamCompletion(m, [
+				{ role: 'system', content: 'Answer the user\'s question directly and concisely in one to three plain sentences, no markdown, no preamble. You are one of several AI models being privately consulted; another assistant will read your answer and decide what to use from it.' },
+				{ role: 'user', content: question },
+			], () => {});
+			return { model: m, text: text.trim() };
+		} catch (err) {
+			return { model: m, text: null, error: String(err && err.message ? err.message : err) };
+		}
+	}));
+	return opinions.map((o) => shortModelName(o.model) + ': ' + (o.text || '(no answer — ' + o.error + ')')).join('\n');
+}
+
 /* ================================ pipeline ================================ */
 let busy = false;
 async function submitCommand(text, depth) {
 	depth = depth || 0;
 	if (depth === 0) {
 		if (!text) return;
+		if (recording) { toast('Still recording', 'Stop the recording first, then talk to ' + store.assistantName + '.'); return; }
 		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); openSettings(); return; }
 		if (busy) return;
 		busy = true;
@@ -1261,11 +1966,24 @@ async function submitCommand(text, depth) {
 		setCaption(text);
 	}
 
+	const messages = [{ role: 'system', content: buildSystemPrompt() }];
+	if (depth === 0 && store.teamMode && store.models.length > 1) {
+		setState('thinking', 'Consulting the team');
+		const teamNotes = await consultTeam(text);
+		if (teamNotes) {
+			messages.push({
+				role: 'system',
+				content: 'Other AI models were privately consulted on this question and answered:\n' + teamNotes +
+					'\n\nUse these if helpful, but answer in your own voice as ' + store.assistantName + '. Do not mention that you consulted other models unless asked.',
+			});
+		}
+	}
+	messages.push(...store.history.slice(-24));
+
 	setState('thinking', 'Thinking');
-	const messages = [{ role: 'system', content: buildSystemPrompt() }, ...store.history.slice(-24)];
 	let raw = '';
 	try {
-		raw = await streamCompletion(store.model, messages, (partial) => {
+		raw = await streamCompletion(store.models[0], messages, (partial) => {
 			const { cleaned } = stripActions(partial);
 			if (cleaned) setCaption(cleaned);
 		});
