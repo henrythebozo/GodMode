@@ -1,0 +1,16 @@
+{
+	"appId": "com.henrythebozo.jarvis",
+	"appName": "Jarvis",
+	"webDir": "www",
+	"backgroundColor": "#000000",
+	"ios": {
+		"contentInset": "always",
+		"backgroundColor": "#000000"
+	},
+	"plugins": {
+		"LocalNotifications": {
+			"smallIcon": "ic_stat_jarvis",
+			"iconColor": "#4fd8ff"
+		}
+	}
+}

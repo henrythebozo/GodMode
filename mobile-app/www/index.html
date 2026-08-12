@@ -1,0 +1,2172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Jarvis — voice assistant</title>
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="jarvis-manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Jarvis" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
+<style>
+	:root {
+		--bg: #000;
+		--surface: #111214;
+		--surface-2: #1b1d20;
+		--surface-3: #26292d;
+		--line: #232527;
+		--line-soft: #191a1c;
+		--text: #eef6ff;
+		--dim: #7c8894;
+		--core: #4fd8ff;
+		--core-lift: #8fe9ff;
+		--core-soft: rgba(79, 216, 255, 0.14);
+		--vio: #7b5cf0;
+		--vio-lift: #a58bff;
+		--ok: #32d74b;
+		--warn: #ffb648;
+		--err: #ff6b81;
+		--shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100dvh; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		overscroll-behavior: none;
+		-webkit-font-smoothing: antialiased;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+	* { scrollbar-width: thin; scrollbar-color: var(--surface-3) transparent; }
+	::-webkit-scrollbar { width: 8px; height: 8px; }
+	::-webkit-scrollbar-track { background: transparent; }
+	::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+	:focus-visible { outline: 2px solid var(--core); outline-offset: 2px; }
+	::selection { background: rgba(79, 216, 255, 0.32); }
+	button { font: inherit; color: inherit; }
+	svg { display: block; }
+	a { color: var(--core-lift); }
+
+	/* ambient backdrop */
+	body::before {
+		content: "";
+		position: fixed;
+		inset: 0;
+		z-index: -1;
+		background:
+			radial-gradient(60% 42% at 50% 18%, rgba(79, 216, 255, 0.10) 0%, transparent 65%),
+			radial-gradient(55% 40% at 50% 100%, rgba(123, 92, 240, 0.10) 0%, transparent 65%),
+			var(--bg);
+	}
+
+	/* ------------------------------- topbar ------------------------------- */
+	#topbar {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: calc(12px + env(safe-area-inset-top)) 14px 8px;
+	}
+	.iconbtn {
+		width: 38px;
+		height: 38px;
+		border-radius: 50%;
+		background: var(--surface);
+		border: none;
+		color: var(--text);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+		transition: background 0.15s, color 0.15s;
+	}
+	.iconbtn:hover { background: var(--surface-2); }
+	.iconbtn.on { background: var(--core-soft); color: var(--core-lift); }
+	.iconbtn.recording { background: rgba(255, 107, 129, 0.16); color: var(--err); animation: recPulse 1.2s ease-in-out infinite; }
+	@keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+	.brand {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		font-size: 13px;
+		font-weight: 700;
+		letter-spacing: 0.22em;
+		color: var(--dim);
+		text-transform: uppercase;
+	}
+	.brand b { color: var(--text); letter-spacing: 0.22em; }
+	.brand .statusdot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; }
+	.brand .statusdot.live { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+	.brand .statusdot.busy { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+	/* -------------------------------- stage -------------------------------- */
+	#stage {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 22px;
+		padding: 10px 22px;
+		text-align: center;
+	}
+	#orbWrap { position: relative; width: 200px; height: 200px; flex: none; }
+	#orbWrap svg { width: 100%; height: 100%; overflow: visible; }
+	.ring { fill: none; stroke-width: 1; opacity: 0.35; transform-origin: 100px 100px; }
+	#ring1 { stroke: var(--core); }
+	#ring2 { stroke: var(--vio); stroke-dasharray: 4 10; }
+	#ring3 { stroke: var(--core-lift); stroke-dasharray: 1 3; opacity: 0.5; }
+	#core {
+		position: absolute;
+		inset: 44px;
+		border-radius: 50%;
+		background: radial-gradient(circle at 38% 32%, var(--core-lift), var(--core) 42%, #0a3a49 100%);
+		box-shadow: 0 0 40px 6px var(--core-soft), inset 0 0 30px rgba(0, 0, 0, 0.35);
+		transition: box-shadow 0.4s, filter 0.4s;
+		animation: breathe 3.6s ease-in-out infinite;
+	}
+	@keyframes breathe { 0%, 100% { transform: scale(0.97); } 50% { transform: scale(1.03); } }
+	#ring1 { animation: spin 18s linear infinite; }
+	#ring2 { animation: spin 26s linear infinite reverse; }
+	#ring3 { animation: spin 11s linear infinite; }
+	@keyframes spin { to { transform: rotate(360deg); } }
+
+	#orbWrap.listening #core { animation: pulseFast 0.9s ease-in-out infinite; box-shadow: 0 0 55px 14px rgba(255, 182, 72, 0.35); background: radial-gradient(circle at 38% 32%, #ffe3ad, var(--warn) 42%, #4a2c07 100%); }
+	#orbWrap.listening .ring { animation-duration: 4s, 6s, 3s; }
+	@keyframes pulseFast { 0%, 100% { transform: scale(0.95); } 50% { transform: scale(1.09); } }
+	#orbWrap.thinking #core { animation: pulseThink 1.1s ease-in-out infinite; box-shadow: 0 0 45px 10px rgba(123, 92, 240, 0.4); background: radial-gradient(circle at 38% 32%, var(--vio-lift), var(--vio) 42%, #241448 100%); }
+	@keyframes pulseThink { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+	#orbWrap.speaking #core { animation: pulseTalk 0.45s ease-in-out infinite alternate; box-shadow: 0 0 55px 14px rgba(50, 215, 75, 0.32); background: radial-gradient(circle at 38% 32%, #baffc8, var(--ok) 42%, #063317 100%); }
+	@keyframes pulseTalk { from { transform: scale(0.98); } to { transform: scale(1.06); } }
+	#orbWrap.error #core { background: radial-gradient(circle at 38% 32%, #ffc2cb, var(--err) 42%, #430b13 100%); box-shadow: 0 0 45px 10px rgba(255, 107, 129, 0.32); animation: none; }
+	#orbWrap.recording #core { animation: pulseFast 0.9s ease-in-out infinite; box-shadow: 0 0 55px 14px rgba(255, 107, 129, 0.35); background: radial-gradient(circle at 38% 32%, #ffc2cb, var(--err) 42%, #43060f 100%); }
+
+	#bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 26px; }
+	#bars span { width: 4px; border-radius: 3px; background: var(--core-lift); opacity: 0.55; height: 6px; transition: height 0.12s ease; }
+	#orbWrap.listening ~ #bars span { background: var(--warn); }
+	#orbWrap.speaking ~ #bars span { background: var(--ok); }
+	#orbWrap.recording ~ #bars span { background: var(--err); }
+
+	#stateLabel { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim); }
+	#stateLabel.listening { color: var(--warn); }
+	#stateLabel.thinking { color: var(--vio-lift); }
+	#stateLabel.speaking { color: var(--ok); }
+	#stateLabel.error { color: var(--err); }
+	#stateLabel.recording { color: var(--err); }
+
+	#caption {
+		max-width: 640px;
+		min-height: 1.6em;
+		font-size: clamp(16px, 3vw, 21px);
+		line-height: 1.5;
+		color: var(--text);
+	}
+	#caption.dim { color: var(--dim); font-size: clamp(14px, 2.4vw, 17px); }
+	#caption .cursor { display: inline-block; color: var(--core-lift); animation: blink 1s step-end infinite; }
+	@keyframes blink { 50% { opacity: 0; } }
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 999px;
+		padding: 6px 13px;
+		font-size: 12.5px;
+		color: var(--core-lift);
+		margin: 4px 4px 0;
+		cursor: pointer;
+	}
+	.chip:hover { background: var(--surface-2); }
+
+	/* ------------------------------- dock ------------------------------- */
+	#dock {
+		flex: none;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 16px;
+		padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
+	}
+	#micBtn {
+		width: 74px;
+		height: 74px;
+		border-radius: 50%;
+		background: var(--core);
+		border: none;
+		color: #001217;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+		flex: none;
+		box-shadow: 0 6px 26px rgba(79, 216, 255, 0.35);
+		transition: filter 0.15s, transform 0.1s, background 0.2s;
+	}
+	#micBtn:hover { filter: brightness(1.08); }
+	#micBtn:active { transform: scale(0.96); }
+	#micBtn.live { background: var(--warn); box-shadow: 0 6px 30px rgba(255, 182, 72, 0.45); animation: micPulse 1.4s ease-in-out infinite; }
+	@keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 182, 72, 0.4); } 50% { box-shadow: 0 0 0 16px rgba(255, 182, 72, 0); } }
+	#micBtn:disabled { background: var(--surface-3); color: var(--dim); box-shadow: none; cursor: not-allowed; }
+	.dockside { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+	.dockside .iconbtn { width: 46px; height: 46px; }
+	.docklabel { font-size: 10px; color: var(--dim); letter-spacing: 0.04em; }
+
+	#textRow { flex: none; padding: 0 16px 10px; display: none; }
+	#textRow.show { display: flex; gap: 8px; }
+	#textInput {
+		flex: 1;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-radius: 20px;
+		padding: 12px 16px;
+		color: var(--text);
+		font: inherit;
+	}
+	#textInput:focus { outline: none; border-color: var(--core); }
+	#textSend {
+		background: var(--core);
+		color: #001217;
+		border: none;
+		border-radius: 50%;
+		width: 42px;
+		height: 42px;
+		flex: none;
+		cursor: pointer;
+		display: grid;
+		place-items: center;
+	}
+
+	/* ------------------------------- drawer ------------------------------ */
+	#scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 40; }
+	body.drawer #scrim { opacity: 1; pointer-events: auto; }
+	#drawer {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(380px, 92vw);
+		background: var(--bg);
+		border-left: 1px solid var(--line-soft);
+		z-index: 50;
+		transform: translateX(102%);
+		transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+		display: flex;
+		flex-direction: column;
+		padding: calc(14px + env(safe-area-inset-top)) 0 14px;
+	}
+	body.drawer #drawer { transform: none; }
+	.dhead { display: flex; align-items: center; gap: 10px; padding: 0 16px 12px; }
+	.dhead b { font-size: 18px; letter-spacing: -0.2px; flex: 1; }
+	.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 12px; flex: none; }
+	.tabs button {
+		flex: 1 1 30%;
+		min-width: 76px;
+		background: var(--surface);
+		border: none;
+		color: var(--dim);
+		border-radius: 10px;
+		padding: 8px 6px;
+		font-size: 12.5px;
+		font-weight: 650;
+		cursor: pointer;
+	}
+	.tabs button.on { background: var(--core-soft); color: var(--core-lift); }
+	.panels { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px; }
+	.panel { display: none; flex-direction: column; gap: 8px; }
+	.panel.on { display: flex; }
+	.panel .empty { color: var(--dim); font-size: 13.5px; text-align: center; padding: 30px 10px; }
+	.row-item {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+		background: var(--surface);
+		border-radius: 12px;
+		padding: 10px 12px;
+	}
+	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
+	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+	.row-item .txt b { font-size: 13.5px; }
+	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; }
+	.row-item button:hover { color: var(--err); }
+	.logmsg { font-size: 13.5px; padding: 4px 0; }
+	.logmsg .role { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-bottom: 2px; }
+	.logmsg.user .role { color: var(--vio-lift); }
+	.logmsg.assistant .role { color: var(--core-lift); }
+
+	/* -- home devices -- */
+	.devctrl { display: flex; align-items: center; gap: 8px; flex: none; }
+	.toggle { width: 42px; height: 25px; border-radius: 999px; background: var(--surface-3); border: none; cursor: pointer; position: relative; flex: none; transition: background 0.15s; }
+	.toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: var(--text); transition: transform 0.15s; }
+	.toggle.on { background: var(--core); }
+	.toggle.on::after { transform: translateX(17px); background: #001217; }
+	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--surface-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; }
+	.stepbtn:hover { background: var(--line); }
+	.ghost.small { padding: 6px 14px; font-size: 12px; border-radius: 999px; }
+	.addrow { display: flex; gap: 8px; margin-top: 4px; }
+	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--surface-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; }
+	.addrow select { flex: 0 0 108px; }
+	.addrow button { flex: none; }
+
+	/* -- transcripts -- */
+	.row-item.trow { flex-direction: column; align-items: stretch; }
+	.trow-head { display: flex; align-items: center; gap: 6px; }
+	.ttitle { width: 100%; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-size: 14px; font-weight: 650; padding: 2px 0; }
+	.ttitle:focus { outline: none; border-bottom-color: var(--core); }
+	.tmeta { color: var(--dim); font-size: 11px; margin-top: 2px; }
+	.ttext { max-height: 120px; overflow-y: auto; font-size: 12.5px; color: var(--text); background: var(--surface-2); border-radius: 10px; padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; }
+	.tanalysis { margin-top: 8px; font-size: 12.5px; background: var(--core-soft); color: var(--core-lift); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
+	.tactions { margin-top: 8px; display: flex; gap: 8px; }
+
+	/* -- models manager -- */
+	.modelrow { display: flex; align-items: center; gap: 6px; background: var(--surface); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
+	.modelrow.lead { outline: 1px solid var(--core-soft); }
+	.modelrow .mname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.modelrow button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px 6px; border-radius: 6px; flex: none; }
+	.modelrow button:hover { color: var(--text); }
+	.modelrow button.leadbtn.on { color: var(--warn); }
+	.modelrow button.rmbtn:hover { color: var(--err); }
+
+	/* -------------------------------- dialog ------------------------------ */
+	dialog {
+		background: var(--surface);
+		color: var(--text);
+		border: none;
+		border-radius: 20px;
+		padding: 24px;
+		max-width: 460px;
+		width: calc(100vw - 36px);
+		box-shadow: var(--shadow);
+		margin: auto;
+		max-height: 88dvh;
+		overflow-y: auto;
+	}
+	dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+	dialog h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin: 18px 0 8px; }
+	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
+	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+	dialog input[type="text"], dialog input[type="password"], dialog select {
+		width: 100%;
+		background: var(--surface-2);
+		border: 1px solid transparent;
+		color: var(--text);
+		border-radius: 12px;
+		padding: 11px 13px;
+		font: inherit;
+		font-size: 13.5px;
+	}
+	dialog input:focus, dialog select:focus { outline: none; border-color: var(--core); }
+	dialog input[type="range"] { width: 100%; accent-color: var(--core); }
+	dialog .rangerow { display: flex; align-items: center; gap: 10px; }
+	dialog .rangerow span { flex: none; width: 34px; font-size: 12px; color: var(--dim); text-align: right; }
+	.seg2 { display: flex; background: var(--surface-2); border-radius: 999px; padding: 3px; margin: 8px 0; }
+	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+	.seg2 button.on { background: var(--surface-3); color: var(--text); }
+	.row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+	.row label.inline { flex-direction: row; align-items: center; margin: 0 auto 0 0; }
+	.primary { background: var(--core); color: #001217; border: none; border-radius: 999px; padding: 12px 22px; font-weight: 650; cursor: pointer; }
+	.primary:hover { filter: brightness(1.08); }
+	.ghost { background: var(--surface-2); border: none; color: var(--text); border-radius: 999px; padding: 12px 22px; cursor: pointer; }
+	.ghost:hover { background: var(--surface-3); }
+	dialog code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+	.hint { font-size: 11.5px; color: var(--dim); margin-top: -4px; }
+
+	/* -------------------------------- toasts ------------------------------ */
+	#toasts { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 80; display: flex; flex-direction: column; gap: 8px; max-width: min(320px, 88vw); }
+	.toast {
+		background: var(--surface-2);
+		border: 1px solid var(--line);
+		border-radius: 14px;
+		padding: 12px 14px;
+		font-size: 13px;
+		box-shadow: var(--shadow);
+		animation: toastIn 0.25s ease-out;
+		display: flex;
+		gap: 10px;
+		align-items: flex-start;
+	}
+	.toast b { display: block; font-size: 11px; color: var(--core-lift); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
+	@keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+	}
+	@media (max-width: 640px) {
+		#orbWrap { width: 160px; height: 160px; }
+		#core { inset: 34px; }
+		dialog { margin: auto auto 0; width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); }
+		dialog::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 99px; background: var(--surface-3); margin: 0 auto 14px; }
+	}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+	<a class="iconbtn" href="index.html" title="Back to Henry OS" aria-label="Back to Henry OS">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6" /></svg>
+	</a>
+	<div class="brand"><span class="statusdot" id="statusDot"></span><b id="assistantNameLabel">JARVIS</b></div>
+	<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record">
+		<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg>
+	</button>
+	<button class="iconbtn" id="drawerBtn" title="Log, memory, reminders, notes, home, recordings" aria-label="Open panels">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+	</button>
+	<button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">
+		<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<circle cx="12" cy="12" r="3" />
+			<path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" />
+		</svg>
+	</button>
+</div>
+
+<div id="stage">
+	<div id="orbWrap" class="idle">
+		<svg viewBox="0 0 200 200">
+			<circle id="ring1" class="ring" cx="100" cy="100" r="92" />
+			<circle id="ring2" class="ring" cx="100" cy="100" r="78" />
+			<circle id="ring3" class="ring" cx="100" cy="100" r="64" />
+		</svg>
+		<div id="core"></div>
+	</div>
+	<div id="bars"></div>
+	<div id="stateLabel">Standby</div>
+	<div id="caption" class="dim">Tap the mic, or type below, to talk to Jarvis.</div>
+</div>
+
+<div id="textRow">
+	<input type="text" id="textInput" placeholder="Type a command…" autocomplete="off" />
+	<button id="textSend" title="Send" aria-label="Send">
+		<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg>
+	</button>
+</div>
+
+<div id="dock">
+	<div class="dockside">
+		<button class="iconbtn" id="keyboardBtn" title="Type instead" aria-label="Type instead">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h.01M11 10h.01M15 10h.01M7 14h6" /></svg>
+		</button>
+		<span class="docklabel">Type</span>
+	</div>
+	<button id="micBtn" title="Talk to Jarvis" aria-label="Talk to Jarvis">
+		<svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+			<rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" />
+		</svg>
+	</button>
+	<div class="dockside">
+		<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+		</button>
+		<span class="docklabel">Voice</span>
+	</div>
+</div>
+
+<div id="toasts"></div>
+<div id="scrim"></div>
+
+<aside id="drawer">
+	<div class="dhead">
+		<b>Panels</b>
+		<button class="iconbtn" id="drawerClose" aria-label="Close panels">
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+		</button>
+	</div>
+	<div class="tabs">
+		<button data-tab="log" class="on">Log</button>
+		<button data-tab="memory">Memory</button>
+		<button data-tab="reminders">Reminders</button>
+		<button data-tab="notes">Notes</button>
+		<button data-tab="home">Home</button>
+		<button data-tab="transcripts">Recordings</button>
+	</div>
+	<div class="panels">
+		<div class="panel on" id="panel-log"></div>
+		<div class="panel" id="panel-memory"></div>
+		<div class="panel" id="panel-reminders"></div>
+		<div class="panel" id="panel-notes"></div>
+		<div class="panel" id="panel-home">
+			<div id="homeList"></div>
+			<div class="addrow" id="addDeviceRow">
+				<input type="text" id="newDeviceName" placeholder="Device name" autocomplete="off" />
+				<select id="newDeviceType">
+					<option value="light">Light</option>
+					<option value="switch">Switch</option>
+					<option value="lock">Lock</option>
+					<option value="thermostat">Thermostat</option>
+				</select>
+				<button type="button" class="ghost small" id="addDeviceBtn">Add</button>
+			</div>
+		</div>
+		<div class="panel" id="panel-transcripts"></div>
+	</div>
+</aside>
+
+<dialog id="settings">
+	<h2>Configure Jarvis</h2>
+	<p>
+		Bring your own API key — either an
+		<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a> key (300+ models) or your
+		own OpenAI / Anthropic key. Everything — keys, memory, reminders, notes — is stored only on this device.
+	</p>
+	<label>OpenRouter key<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" /></label>
+	<label><span>OpenAI key <span class="hint">(optional — enables model id <code>gpt:gpt-5.2</code> etc.)</span></span>
+		<input type="password" id="oaiKeyInput" placeholder="sk-…" autocomplete="off" />
+	</label>
+	<label><span>Anthropic key <span class="hint">(optional — enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
+		<input type="password" id="anthKeyInput" placeholder="sk-ant-…" autocomplete="off" />
+	</label>
+	<h3>Models <span class="hint">— add more than one and Jarvis can consult them together</span></h3>
+	<div id="modelRows"></div>
+	<div class="addrow">
+		<input type="text" id="newModelInput" placeholder="anthropic/claude-sonnet-5, gpt:gpt-5.2, claude:claude-opus-5…" autocomplete="off" />
+		<button type="button" class="ghost small" id="addModelBtn">Add</button>
+	</div>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="teamModeInput" /> Team mode — consult every model, Jarvis answers as one</label>
+	</div>
+	<p class="hint">The star marks the lead — it speaks for Jarvis and uses tools. In Team mode the rest are quietly consulted first and their answers are handed to the lead.</p>
+
+	<h3>Persona</h3>
+	<label>Jarvis' name<input type="text" id="assistantNameInput" placeholder="Jarvis" autocomplete="off" /></label>
+	<label><span>Your name <span class="hint">(so Jarvis can address you)</span></span><input type="text" id="userNameInput" placeholder="Sir" autocomplete="off" /></label>
+
+	<h3>Voice</h3>
+	<label>Speaking voice<select id="voiceSelect"></select></label>
+	<label>Rate<div class="rangerow"><input type="range" id="rateInput" min="0.6" max="1.6" step="0.05" /><span id="rateVal"></span></div></label>
+	<label>Pitch<div class="rangerow"><input type="range" id="pitchInput" min="0.5" max="1.6" step="0.05" /><span id="pitchVal"></span></div></label>
+
+	<h3>Listening</h3>
+	<div class="seg2" id="modeSeg">
+		<button type="button" data-mode="push">Push to talk</button>
+		<button type="button" data-mode="wake">Wake word</button>
+		<button type="button" data-mode="text">Text only</button>
+	</div>
+	<label>Wake word<input type="text" id="wakeWordInput" placeholder="jarvis" autocomplete="off" /></label>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="autoListenInput" /> Keep listening after each reply</label>
+	</div>
+	<p class="hint" id="speechSupportHint"></p>
+
+	<h3>Smart Home</h3>
+	<p>
+		A virtual home (lights, a lock, a thermostat, two scenes) works out of the box in the Home panel and by voice —
+		no setup needed. To control <b>real</b> devices, connect a
+		<a href="https://www.home-assistant.io" target="_blank" rel="noreferrer">Home Assistant</a> instance — it bridges
+		Hue, Nest, SmartThings-paired devices, Sonos and most other smart-home brands through one local API.
+	</p>
+	<div class="row">
+		<label class="inline"><input type="checkbox" id="haEnabledInput" /> Control real devices via Home Assistant</label>
+	</div>
+	<label>Home Assistant URL<input type="text" id="haUrlInput" placeholder="https://homeassistant.local:8123" autocomplete="off" /></label>
+	<label><span>Long-lived access token <span class="hint">(Home Assistant → your profile → Security)</span></span>
+		<input type="password" id="haTokenInput" placeholder="Paste token" autocomplete="off" />
+	</label>
+	<div class="row">
+		<button class="ghost" id="haTestBtn" type="button">Test connection</button>
+		<span class="hint" id="haTestResult"></span>
+	</div>
+	<p class="hint">Your Home Assistant instance must allow requests from this page's origin (set <code>http.cors_allowed_origins</code> in <code>configuration.yaml</code>, or use a Nabu Casa URL).</p>
+
+	<div class="row">
+		<button class="ghost" id="settingsCancel" type="button">Close</button>
+		<button class="primary" id="settingsSave" type="button">Save</button>
+	</div>
+</dialog>
+
+<script>
+'use strict';
+
+/* ================================ store ================================ */
+const store = {
+	get key() { return localStorage.getItem('jarvis.key') || ''; },
+	set key(v) { localStorage.setItem('jarvis.key', v); },
+	get oaiKey() { return localStorage.getItem('jarvis.key.openai') || ''; },
+	set oaiKey(v) { localStorage.setItem('jarvis.key.openai', v); },
+	get anthKey() { return localStorage.getItem('jarvis.key.anthropic') || ''; },
+	set anthKey(v) { localStorage.setItem('jarvis.key.anthropic', v); },
+	get models() {
+		try {
+			const v = JSON.parse(localStorage.getItem('jarvis.models'));
+			if (Array.isArray(v) && v.length) return v;
+		} catch {}
+		return [localStorage.getItem('jarvis.model') || 'anthropic/claude-sonnet-5']; // migrate the old single-model setting
+	},
+	set models(v) { localStorage.setItem('jarvis.models', JSON.stringify(v)); },
+	get teamMode() { return localStorage.getItem('jarvis.teamMode') === '1'; },
+	set teamMode(v) { localStorage.setItem('jarvis.teamMode', v ? '1' : '0'); },
+	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
+	set assistantName(v) { localStorage.setItem('jarvis.assistantName', v); },
+	get userName() { return localStorage.getItem('jarvis.userName') || ''; },
+	set userName(v) { localStorage.setItem('jarvis.userName', v); },
+	get voiceName() { return localStorage.getItem('jarvis.voiceName') || ''; },
+	set voiceName(v) { localStorage.setItem('jarvis.voiceName', v); },
+	get rate() { return parseFloat(localStorage.getItem('jarvis.rate') || '1'); },
+	set rate(v) { localStorage.setItem('jarvis.rate', String(v)); },
+	get pitch() { return parseFloat(localStorage.getItem('jarvis.pitch') || '1'); },
+	set pitch(v) { localStorage.setItem('jarvis.pitch', String(v)); },
+	get mode() { return localStorage.getItem('jarvis.mode') || 'push'; },
+	set mode(v) { localStorage.setItem('jarvis.mode', v); },
+	get wakeWord() { return (localStorage.getItem('jarvis.wakeWord') || 'jarvis').toLowerCase(); },
+	set wakeWord(v) { localStorage.setItem('jarvis.wakeWord', v); },
+	get autoListen() { return localStorage.getItem('jarvis.autoListen') === '1'; },
+	set autoListen(v) { localStorage.setItem('jarvis.autoListen', v ? '1' : '0'); },
+	get muted() { return localStorage.getItem('jarvis.muted') === '1'; },
+	set muted(v) { localStorage.setItem('jarvis.muted', v ? '1' : '0'); },
+	get memory() { try { return JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch { return []; } },
+	set memory(v) { localStorage.setItem('jarvis.memory', JSON.stringify(v)); },
+	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
+	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
+	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
+	set notes(v) { localStorage.setItem('jarvis.notes', JSON.stringify(v)); },
+	get history() { try { return JSON.parse(localStorage.getItem('jarvis.history')) || []; } catch { return []; } },
+	set history(v) { localStorage.setItem('jarvis.history', JSON.stringify(v)); },
+	get transcripts() { try { return JSON.parse(localStorage.getItem('jarvis.transcripts')) || []; } catch { return []; } },
+	set transcripts(v) { localStorage.setItem('jarvis.transcripts', JSON.stringify(v)); },
+	get devices() {
+		try {
+			const v = JSON.parse(localStorage.getItem('jarvis.devices'));
+			if (Array.isArray(v) && v.length) return v;
+		} catch {}
+		const seeded = seedDevices();
+		localStorage.setItem('jarvis.devices', JSON.stringify(seeded));
+		return seeded;
+	},
+	set devices(v) { localStorage.setItem('jarvis.devices', JSON.stringify(v)); },
+	get haEnabled() { return localStorage.getItem('jarvis.haEnabled') === '1'; },
+	set haEnabled(v) { localStorage.setItem('jarvis.haEnabled', v ? '1' : '0'); },
+	get haUrl() { return localStorage.getItem('jarvis.haUrl') || ''; },
+	set haUrl(v) { localStorage.setItem('jarvis.haUrl', v); },
+	get haToken() { return localStorage.getItem('jarvis.haToken') || ''; },
+	set haToken(v) { localStorage.setItem('jarvis.haToken', v); },
+};
+
+function seedDevices() {
+	return [
+		{ id: uid(), name: 'Living Room Lights', type: 'light', power: 'on', brightness: 80 },
+		{ id: uid(), name: 'Bedroom Lights', type: 'light', power: 'off', brightness: 60 },
+		{ id: uid(), name: 'Kitchen Lights', type: 'light', power: 'off', brightness: 100 },
+		{ id: uid(), name: 'Thermostat', type: 'thermostat', temp: 70 },
+		{ id: uid(), name: 'Front Door', type: 'lock', lockState: 'locked' },
+		{
+			id: uid(), name: 'Good Night', type: 'scene', actions: [
+				{ name: 'Living Room Lights', power: 'off' },
+				{ name: 'Bedroom Lights', power: 'off' },
+				{ name: 'Kitchen Lights', power: 'off' },
+				{ name: 'Front Door', lockState: 'locked' },
+				{ name: 'Thermostat', temp: 65 },
+			],
+		},
+		{
+			id: uid(), name: 'Good Morning', type: 'scene', actions: [
+				{ name: 'Kitchen Lights', power: 'on', brightness: 100 },
+				{ name: 'Living Room Lights', power: 'on', brightness: 80 },
+				{ name: 'Thermostat', temp: 72 },
+			],
+		},
+	];
+}
+
+function esc(s) {
+	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ============================== elements ================================ */
+const orbWrap = document.getElementById('orbWrap');
+const stateLabel = document.getElementById('stateLabel');
+const captionEl = document.getElementById('caption');
+const statusDot = document.getElementById('statusDot');
+const assistantNameLabel = document.getElementById('assistantNameLabel');
+const micBtn = document.getElementById('micBtn');
+const muteBtn = document.getElementById('muteBtn');
+const recordBtn = document.getElementById('recordBtn');
+const barsEl = document.getElementById('bars');
+const textRow = document.getElementById('textRow');
+const textInput = document.getElementById('textInput');
+const toastsEl = document.getElementById('toasts');
+
+for (let i = 0; i < 20; i++) {
+	const bar = document.createElement('span');
+	barsEl.appendChild(bar);
+}
+const barEls = [...barsEl.children];
+let barTimer = null;
+function animateBars(active) {
+	clearInterval(barTimer);
+	if (!active) { barEls.forEach((b) => (b.style.height = '6px')); return; }
+	barTimer = setInterval(() => {
+		barEls.forEach((b) => { b.style.height = 6 + Math.random() * 22 + 'px'; });
+	}, 110);
+}
+
+function setState(kind, label) {
+	orbWrap.className = kind;
+	stateLabel.className = kind === 'idle' ? '' : kind;
+	stateLabel.textContent = label;
+	statusDot.className = 'statusdot' + (kind === 'thinking' || kind === 'listening' || kind === 'recording' ? ' busy' : kind === 'idle' ? '' : ' live');
+	animateBars(kind === 'listening' || kind === 'speaking' || kind === 'recording');
+}
+setState('idle', 'Standby');
+assistantNameLabel.textContent = store.assistantName.toUpperCase();
+muteBtn.classList.toggle('on', store.muted);
+
+function setCaption(text, dim) {
+	captionEl.classList.toggle('dim', !!dim);
+	captionEl.textContent = text;
+}
+
+function toast(title, body, ms) {
+	const el = document.createElement('div');
+	el.className = 'toast';
+	el.innerHTML = '<div><b>' + esc(title) + '</b>' + esc(body) + '</div>';
+	toastsEl.appendChild(el);
+	setTimeout(() => el.remove(), ms || 6000);
+}
+
+/* ================================ drawer ================================ */
+document.getElementById('drawerBtn').addEventListener('click', () => { document.body.classList.add('drawer'); renderPanels(); });
+document.getElementById('drawerClose').addEventListener('click', () => document.body.classList.remove('drawer'));
+document.getElementById('scrim').addEventListener('click', () => document.body.classList.remove('drawer'));
+document.querySelectorAll('.tabs button').forEach((btn) => {
+	btn.addEventListener('click', () => {
+		document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b === btn));
+		document.querySelectorAll('.panel').forEach((p) => p.classList.toggle('on', p.id === 'panel-' + btn.dataset.tab));
+	});
+});
+
+function renderPanels() {
+	if (!document.body.classList.contains('drawer')) return; // nothing visible to update, and avoids polling Home Assistant needlessly
+	renderLog();
+	renderMemory();
+	renderReminders();
+	renderNotes();
+	renderHome();
+	renderTranscripts();
+}
+
+function renderLog() {
+	const box = document.getElementById('panel-log');
+	const hist = store.history;
+	if (!hist.length) { box.innerHTML = '<div class="empty">Nothing said yet.</div>'; return; }
+	box.innerHTML = '';
+	hist.forEach((m) => {
+		if (m.role !== 'user' && m.role !== 'assistant') return;
+		const row = document.createElement('div');
+		row.className = 'logmsg ' + m.role;
+		const role = document.createElement('div');
+		role.className = 'role';
+		role.textContent = m.role === 'user' ? (store.userName || 'You') : store.assistantName;
+		const body = document.createElement('div');
+		body.textContent = stripActions(m.content).cleaned || m.content;
+		row.append(role, body);
+		box.appendChild(row);
+	});
+	box.scrollTop = box.scrollHeight;
+}
+
+function renderMemory() {
+	const box = document.getElementById('panel-memory');
+	const mem = store.memory;
+	if (!mem.length) { box.innerHTML = '<div class="empty">Jarvis hasn\'t learned anything about you yet. Try “remember that I…”.</div>'; return; }
+	box.innerHTML = '';
+	mem.forEach((fact, i) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(fact) + '</div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Forget';
+		del.addEventListener('click', () => { const m = store.memory; m.splice(i, 1); store.memory = m; renderMemory(); });
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+function renderReminders() {
+	const box = document.getElementById('panel-reminders');
+	const list = store.reminders;
+	if (!list.length) { box.innerHTML = '<div class="empty">No reminders set.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().sort((a, b) => a.at - b.at).forEach((r) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(r.text) + '<small>' + new Date(r.at).toLocaleString() + '</small></div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Cancel';
+		del.addEventListener('click', () => cancelReminder(r.id));
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+function renderNotes() {
+	const box = document.getElementById('panel-notes');
+	const list = store.notes;
+	if (!list.length) { box.innerHTML = '<div class="empty">No notes yet.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().reverse().forEach((n) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt">' + esc(n.text) + '<small>' + new Date(n.at).toLocaleString() + '</small></div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Delete';
+		del.addEventListener('click', () => { store.notes = store.notes.filter((x) => x.id !== n.id); renderNotes(); });
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+
+/* -------------------------------- home -------------------------------- */
+async function renderHome() {
+	const box = document.getElementById('homeList');
+	const addRow = document.getElementById('addDeviceRow');
+	addRow.style.display = store.haEnabled ? 'none' : 'flex';
+	if (store.haEnabled) {
+		if (!store.haUrl || !store.haToken) { box.innerHTML = '<div class="empty">Add your Home Assistant URL and token in Settings.</div>'; return; }
+		box.innerHTML = '<div class="empty">Loading Home Assistant entities…</div>';
+		try {
+			const ents = await haListEntities();
+			if (!ents.length) { box.innerHTML = '<div class="empty">Connected, but no controllable entities were found.</div>'; return; }
+			box.innerHTML = '';
+			ents.forEach((e) => box.appendChild(haDeviceRow(e)));
+		} catch (err) {
+			box.innerHTML = '<div class="empty">Could not reach Home Assistant: ' + esc(err.message) + '</div>';
+		}
+		return;
+	}
+	const list = store.devices;
+	if (!list.length) { box.innerHTML = '<div class="empty">No devices yet — add one below.</div>'; return; }
+	box.innerHTML = '';
+	list.forEach((d) => box.appendChild(deviceRow(d)));
+}
+
+function deviceRow(d) {
+	const row = document.createElement('div');
+	row.className = 'row-item';
+	const txt = document.createElement('div');
+	txt.className = 'txt';
+	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(describeDevice(d)) + '</small>';
+	const ctrl = document.createElement('div');
+	ctrl.className = 'devctrl';
+	if (d.type === 'light' || d.type === 'switch') {
+		const sw = document.createElement('button');
+		sw.type = 'button';
+		sw.className = 'toggle' + (d.power === 'on' ? ' on' : '');
+		sw.setAttribute('aria-label', 'Toggle ' + d.name);
+		sw.addEventListener('click', async () => { await toolSetDevice({ name: d.name, power: d.power === 'on' ? 'off' : 'on' }); renderHome(); });
+		ctrl.appendChild(sw);
+	} else if (d.type === 'lock') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = d.lockState === 'locked' ? 'Unlock' : 'Lock';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name: d.name, lock: d.lockState === 'locked' ? 'unlocked' : 'locked' }); renderHome(); });
+		ctrl.appendChild(btn);
+	} else if (d.type === 'thermostat') {
+		const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'stepbtn'; minus.textContent = '−';
+		const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'stepbtn'; plus.textContent = '+';
+		minus.addEventListener('click', async () => { await toolSetDevice({ name: d.name, temperature: d.temp - 1 }); renderHome(); });
+		plus.addEventListener('click', async () => { await toolSetDevice({ name: d.name, temperature: d.temp + 1 }); renderHome(); });
+		ctrl.append(minus, plus);
+	} else if (d.type === 'scene') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Run';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name: d.name }); renderHome(); });
+		ctrl.appendChild(btn);
+	}
+	const del = document.createElement('button');
+	del.innerHTML = '✕';
+	del.title = 'Remove device';
+	del.addEventListener('click', () => { store.devices = store.devices.filter((x) => x.id !== d.id); renderHome(); });
+	row.append(txt, ctrl, del);
+	return row;
+}
+
+function haDeviceRow(e) {
+	const domain = e.entity_id.split('.')[0];
+	const name = e.attributes.friendly_name || e.entity_id;
+	const row = document.createElement('div');
+	row.className = 'row-item';
+	const txt = document.createElement('div');
+	txt.className = 'txt';
+	txt.innerHTML = '<b>' + esc(name) + '</b><small>' + esc(haDescribe(e)) + '</small>';
+	const ctrl = document.createElement('div');
+	ctrl.className = 'devctrl';
+	if (domain === 'light' || domain === 'switch' || domain === 'fan') {
+		const sw = document.createElement('button');
+		sw.type = 'button';
+		sw.className = 'toggle' + (e.state === 'on' ? ' on' : '');
+		sw.setAttribute('aria-label', 'Toggle ' + name);
+		sw.addEventListener('click', async () => { await toolSetDevice({ name, power: e.state === 'on' ? 'off' : 'on' }); renderHome(); });
+		ctrl.appendChild(sw);
+	} else if (domain === 'lock') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = e.state === 'locked' ? 'Unlock' : 'Lock';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name, lock: e.state === 'locked' ? 'unlocked' : 'locked' }); renderHome(); });
+		ctrl.appendChild(btn);
+	} else if (domain === 'climate') {
+		const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'stepbtn'; minus.textContent = '−';
+		const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'stepbtn'; plus.textContent = '+';
+		const cur = Number(e.attributes.temperature) || 70;
+		minus.addEventListener('click', async () => { await toolSetDevice({ name, temperature: cur - 1 }); renderHome(); });
+		plus.addEventListener('click', async () => { await toolSetDevice({ name, temperature: cur + 1 }); renderHome(); });
+		ctrl.append(minus, plus);
+	} else if (domain === 'scene') {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Run';
+		btn.addEventListener('click', async () => { await toolRunScene({ name }); renderHome(); });
+		ctrl.appendChild(btn);
+	}
+	row.append(txt, ctrl);
+	return row;
+}
+
+document.getElementById('addDeviceBtn').addEventListener('click', () => {
+	const nameInput = document.getElementById('newDeviceName');
+	const typeInput = document.getElementById('newDeviceType');
+	const name = nameInput.value.trim();
+	if (!name) return;
+	const type = typeInput.value;
+	const d = { id: uid(), name, type };
+	if (type === 'light') { d.power = 'off'; d.brightness = 100; }
+	else if (type === 'switch') d.power = 'off';
+	else if (type === 'lock') d.lockState = 'locked';
+	else if (type === 'thermostat') d.temp = 70;
+	const list = store.devices;
+	list.push(d);
+	store.devices = list;
+	nameInput.value = '';
+	renderHome();
+});
+
+/* ----------------------------- transcripts ----------------------------- */
+function formatDuration(ms) {
+	const s = Math.max(0, Math.round(ms / 1000));
+	const m = Math.floor(s / 60);
+	return m ? m + 'm ' + (s % 60) + 's' : s + 's';
+}
+
+function renderTranscripts() {
+	const box = document.getElementById('panel-transcripts');
+	const list = store.transcripts;
+	if (!list.length) { box.innerHTML = '<div class="empty">No recordings yet. Tap the record button up top to capture a conversation or meeting — Jarvis can transcribe and analyze it.</div>'; return; }
+	box.innerHTML = '';
+	list.slice().reverse().forEach((t) => box.appendChild(transcriptRow(t)));
+}
+
+function transcriptRow(t) {
+	const wrap = document.createElement('div');
+	wrap.className = 'row-item trow';
+	const head = document.createElement('div');
+	head.className = 'trow-head';
+	const title = document.createElement('input');
+	title.type = 'text';
+	title.className = 'ttitle';
+	title.value = t.title;
+	title.addEventListener('change', () => {
+		const list = store.transcripts;
+		const x = list.find((y) => y.id === t.id);
+		if (x) { x.title = title.value.trim() || x.title; store.transcripts = list; }
+		title.value = x ? x.title : t.title;
+	});
+	const del = document.createElement('button');
+	del.innerHTML = '✕';
+	del.title = 'Delete recording';
+	del.addEventListener('click', () => { store.transcripts = store.transcripts.filter((x) => x.id !== t.id); renderTranscripts(); });
+	head.append(title, del);
+	const meta = document.createElement('div');
+	meta.className = 'tmeta';
+	meta.textContent = new Date(t.startedAt).toLocaleString() + ' · ' + formatDuration((t.endedAt || t.startedAt) - t.startedAt);
+	const body = document.createElement('div');
+	body.className = 'ttext';
+	body.textContent = t.text;
+	wrap.append(head, meta, body);
+	if (t.analysis) {
+		const an = document.createElement('div');
+		an.className = 'tanalysis';
+		an.textContent = t.analysis;
+		wrap.appendChild(an);
+	}
+	const actions = document.createElement('div');
+	actions.className = 'tactions';
+	const analyzeBtn = document.createElement('button');
+	analyzeBtn.type = 'button';
+	analyzeBtn.className = 'ghost small';
+	analyzeBtn.textContent = t.analyzing ? 'Analyzing…' : t.analysis ? 'Re-analyze' : 'Analyze';
+	analyzeBtn.disabled = !!t.analyzing;
+	analyzeBtn.addEventListener('click', () => analyzeTranscript(t.id));
+	actions.appendChild(analyzeBtn);
+	wrap.appendChild(actions);
+	return wrap;
+}
+
+async function analyzeTranscript(id) {
+	if (!anyKey()) { toast('Setup needed', 'Add an API key in Settings first.'); return; }
+	let list = store.transcripts;
+	const t = list.find((x) => x.id === id);
+	if (!t || !t.text.trim()) return;
+	t.analyzing = true;
+	store.transcripts = list;
+	renderTranscripts();
+	const prompt = 'Analyze this transcript of a recorded conversation or meeting. Reply in plain text with no markdown, using exactly these three labeled sections on their own lines:\nSummary: a 2-4 sentence summary.\nKey Points: the important points, semicolon-separated.\nAction Items: who owes what, semicolon-separated, or "none" if there are none.\n\nTranscript:\n' + t.text.slice(0, 12000);
+	try {
+		const out = await streamCompletion(store.models[0], [
+			{ role: 'system', content: 'You are a precise meeting-notes analyst. Be concise and factual; never invent details not present in the transcript.' },
+			{ role: 'user', content: prompt },
+		], () => {});
+		list = store.transcripts;
+		const x = list.find((y) => y.id === id);
+		if (x) { x.analysis = out.trim(); delete x.analyzing; store.transcripts = list; }
+	} catch (err) {
+		list = store.transcripts;
+		const x = list.find((y) => y.id === id);
+		if (x) { delete x.analyzing; store.transcripts = list; }
+		toast('Analysis failed', String(err && err.message ? err.message : err));
+	}
+	renderTranscripts();
+}
+
+/* ============================== settings ============================== */
+const settingsDlg = document.getElementById('settings');
+let draftModels = store.models.slice();
+
+function renderModelRows() {
+	const box = document.getElementById('modelRows');
+	box.innerHTML = '';
+	draftModels.forEach((m, i) => {
+		const row = document.createElement('div');
+		row.className = 'modelrow' + (i === 0 ? ' lead' : '');
+		const name = document.createElement('span');
+		name.className = 'mname';
+		name.textContent = m;
+		const lead = document.createElement('button');
+		lead.type = 'button';
+		lead.className = 'leadbtn' + (i === 0 ? ' on' : '');
+		lead.title = i === 0 ? 'This is the lead model' : 'Make this the lead model';
+		lead.textContent = '★';
+		lead.addEventListener('click', () => {
+			draftModels.splice(i, 1);
+			draftModels.unshift(m);
+			renderModelRows();
+		});
+		const rm = document.createElement('button');
+		rm.type = 'button';
+		rm.className = 'rmbtn';
+		rm.title = 'Remove';
+		rm.textContent = '✕';
+		rm.addEventListener('click', () => {
+			if (draftModels.length <= 1) return;
+			draftModels.splice(i, 1);
+			renderModelRows();
+		});
+		row.append(name, lead, rm);
+		box.appendChild(row);
+	});
+}
+document.getElementById('addModelBtn').addEventListener('click', () => {
+	const input = document.getElementById('newModelInput');
+	const v = input.value.trim();
+	if (!v || draftModels.includes(v)) return;
+	draftModels.push(v);
+	input.value = '';
+	renderModelRows();
+});
+
+function openSettings() {
+	document.getElementById('keyInput').value = store.key;
+	document.getElementById('oaiKeyInput').value = store.oaiKey;
+	document.getElementById('anthKeyInput').value = store.anthKey;
+	draftModels = store.models.slice();
+	renderModelRows();
+	document.getElementById('teamModeInput').checked = store.teamMode;
+	document.getElementById('assistantNameInput').value = store.assistantName;
+	document.getElementById('userNameInput').value = store.userName;
+	document.getElementById('rateInput').value = store.rate;
+	document.getElementById('pitchInput').value = store.pitch;
+	document.getElementById('rateVal').textContent = store.rate.toFixed(2) + 'x';
+	document.getElementById('pitchVal').textContent = store.pitch.toFixed(2);
+	document.getElementById('wakeWordInput').value = store.wakeWord;
+	document.getElementById('autoListenInput').checked = store.autoListen;
+	document.querySelectorAll('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === store.mode));
+	document.getElementById('haEnabledInput').checked = store.haEnabled;
+	document.getElementById('haUrlInput').value = store.haUrl;
+	document.getElementById('haTokenInput').value = store.haToken;
+	document.getElementById('haTestResult').textContent = '';
+	populateVoices();
+	const hint = document.getElementById('speechSupportHint');
+	hint.textContent = SR ? (isNative ? 'On-device voice recognition is available.' : 'Voice recognition is supported in this browser.') : (isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).');
+	settingsDlg.showModal();
+}
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsCancel').addEventListener('click', () => settingsDlg.close());
+document.querySelectorAll('#modeSeg button').forEach((b) => {
+	b.addEventListener('click', () => document.querySelectorAll('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b)));
+});
+document.getElementById('rateInput').addEventListener('input', (e) => (document.getElementById('rateVal').textContent = parseFloat(e.target.value).toFixed(2) + 'x'));
+document.getElementById('pitchInput').addEventListener('input', (e) => (document.getElementById('pitchVal').textContent = parseFloat(e.target.value).toFixed(2)));
+document.getElementById('haTestBtn').addEventListener('click', async () => {
+	const out = document.getElementById('haTestResult');
+	const url = document.getElementById('haUrlInput').value.trim();
+	const token = document.getElementById('haTokenInput').value.trim();
+	if (!url || !token) { out.textContent = 'Add a URL and token first.'; out.style.color = 'var(--err)'; return; }
+	out.textContent = 'Testing…';
+	out.style.color = 'var(--dim)';
+	try {
+		const res = await fetch(url.replace(/\/+$/, '') + '/api/', { headers: { Authorization: 'Bearer ' + token } });
+		if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+		out.textContent = 'Connected ✓';
+		out.style.color = 'var(--ok)';
+	} catch (err) {
+		out.textContent = 'Failed: ' + (err && err.message ? err.message : err);
+		out.style.color = 'var(--err)';
+	}
+});
+
+document.getElementById('settingsSave').addEventListener('click', () => {
+	store.key = document.getElementById('keyInput').value.trim();
+	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
+	store.anthKey = document.getElementById('anthKeyInput').value.trim();
+	if (draftModels.length) store.models = draftModels.slice();
+	store.teamMode = document.getElementById('teamModeInput').checked;
+	store.assistantName = document.getElementById('assistantNameInput').value.trim() || 'Jarvis';
+	store.userName = document.getElementById('userNameInput').value.trim();
+	store.rate = parseFloat(document.getElementById('rateInput').value);
+	store.pitch = parseFloat(document.getElementById('pitchInput').value);
+	store.wakeWord = (document.getElementById('wakeWordInput').value.trim() || 'jarvis').toLowerCase();
+	store.autoListen = document.getElementById('autoListenInput').checked;
+	store.voiceName = selectedVoiceName;
+	store.mode = document.querySelector('#modeSeg button.on')?.dataset.mode || 'push';
+	store.haEnabled = document.getElementById('haEnabledInput').checked;
+	store.haUrl = document.getElementById('haUrlInput').value.trim();
+	store.haToken = document.getElementById('haTokenInput').value.trim();
+	assistantNameLabel.textContent = store.assistantName.toUpperCase();
+	applyListenMode();
+	renderHome();
+	settingsDlg.close();
+	if (!anyKey()) toast('Setup needed', 'Add an API key above to start talking to ' + store.assistantName + '.');
+});
+
+let selectedVoiceName = store.voiceName;
+function populateVoices() {
+	const sel = document.getElementById('voiceSelect');
+	const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+	sel.innerHTML = '';
+	if (!voices.length) {
+		const opt = document.createElement('option');
+		opt.textContent = 'Default voice';
+		sel.appendChild(opt);
+		return;
+	}
+	voices.forEach((v) => {
+		const opt = document.createElement('option');
+		opt.value = v.name;
+		opt.textContent = v.name + ' (' + v.lang + ')';
+		if (v.name === store.voiceName) opt.selected = true;
+		sel.appendChild(opt);
+	});
+	sel.onchange = () => (selectedVoiceName = sel.value);
+}
+if (window.speechSynthesis) speechSynthesis.onvoiceschanged = populateVoices;
+
+function anyKey() { return !!(store.key || store.oaiKey || store.anthKey); }
+
+/* ============================ text-to-speech ============================ */
+let speaking = false;
+function speak(text, onDone) {
+	if (!window.speechSynthesis || store.muted || !text.trim()) { if (onDone) onDone(); return; }
+	speechSynthesis.cancel();
+	const utter = new SpeechSynthesisUtterance(text);
+	const voices = speechSynthesis.getVoices();
+	const v = voices.find((x) => x.name === store.voiceName);
+	if (v) utter.voice = v;
+	utter.rate = store.rate;
+	utter.pitch = store.pitch;
+	speaking = true;
+	setState('speaking', 'Speaking');
+	utter.onend = utter.onerror = () => {
+		speaking = false;
+		setState('idle', 'Standby');
+		if (onDone) onDone();
+	};
+	speechSynthesis.speak(utter);
+}
+muteBtn.addEventListener('click', () => {
+	store.muted = !store.muted;
+	muteBtn.classList.toggle('on', store.muted);
+	if (store.muted && window.speechSynthesis) speechSynthesis.cancel();
+});
+
+/* ============================ speech recognition ========================= */
+/* WKWebView (the native iOS shell) never implemented the Web Speech API, so
+ * voice input in the shipped app runs through Capacitor's on-device speech
+ * recognizer instead. Everything downstream of `SR` (a plain "is voice
+ * available" boolean) and `startListening`/`stopListening` is unchanged
+ * whichever engine is behind it — running this same file as a plain web
+ * page still uses the browser's own SpeechRecognition. */
+const WebSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const CAP = window.Capacitor;
+const isNative = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const NativeSpeech = isNative && CAP.Plugins && CAP.Plugins.SpeechRecognition;
+const NativeNotify = isNative && CAP.Plugins && CAP.Plugins.LocalNotifications;
+const SR = isNative ? !!NativeSpeech : !!WebSR;
+
+let recog = null;
+let listening = false;
+let armTimer = null;
+let nativeSpeechReady = false;
+let nativeSilenceTimer = null;
+let nativePartialHandle = null;
+let nativeStateHandle = null;
+
+function makeRecognizer() {
+	const r = new WebSR();
+	r.lang = navigator.language || 'en-US';
+	r.interimResults = true;
+	r.continuous = false;
+	r.maxAlternatives = 1;
+	return r;
+}
+
+async function ensureNativeSpeech() {
+	if (!NativeSpeech) return false;
+	if (nativeSpeechReady) return true;
+	try {
+		const avail = await NativeSpeech.available();
+		if (!avail.available) return false;
+		const perm = await NativeSpeech.requestPermissions();
+		nativeSpeechReady = perm.speechRecognition === 'granted';
+	} catch { nativeSpeechReady = false; }
+	return nativeSpeechReady;
+}
+function detachNativeListeners() {
+	clearTimeout(nativeSilenceTimer);
+	if (nativePartialHandle) { nativePartialHandle.remove(); nativePartialHandle = null; }
+	if (nativeStateHandle) { nativeStateHandle.remove(); nativeStateHandle = null; }
+}
+
+async function startListening(opts) {
+	if (!SR) { toast('No voice input', isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition. Use the keyboard instead.'); return; }
+	if (recording) return;
+	if (speaking) speechSynthesis.cancel();
+	if (listening) return;
+	listening = true;
+	micBtn.classList.add('live');
+	setState('listening', opts && opts.wake ? 'Listening for “' + store.wakeWord + '”' : 'Listening');
+	setCaption(opts && opts.wake ? 'Say “' + store.wakeWord + '”…' : 'Listening…', true);
+
+	if (isNative) {
+		const ok = await ensureNativeSpeech();
+		if (!ok) {
+			listening = false;
+			micBtn.classList.remove('live');
+			setState('error', 'Mic error');
+			setCaption('Speech recognition permission was denied — enable it in iOS Settings → Jarvis.', true);
+			setTimeout(() => setState('idle', 'Standby'), 2600);
+			return;
+		}
+		let finished = false;
+		const finishOnce = (text) => { if (!finished) { finished = true; handleFinalTranscript((text || '').trim(), opts); } };
+		let lastText = '';
+		try {
+			nativePartialHandle = await NativeSpeech.addListener('partialResults', (data) => {
+				const text = (data.matches && data.matches[0]) || '';
+				if (!text) return;
+				lastText = text;
+				setCaption(text, true);
+				clearTimeout(nativeSilenceTimer);
+				nativeSilenceTimer = setTimeout(() => finishOnce(lastText), 1400); // ~1.4s of silence ends the command, same feel as the web engine's one-shot result
+			});
+			nativeStateHandle = await NativeSpeech.addListener('listeningState', (data) => { if (data.status === 'stopped') finishOnce(lastText); });
+			await NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 });
+		} catch (err) {
+			listening = false;
+			micBtn.classList.remove('live');
+			setState('error', 'Mic error');
+			setCaption('Voice error: ' + (err && err.message ? err.message : err), true);
+			setTimeout(() => setState('idle', 'Standby'), 2200);
+		}
+		return;
+	}
+
+	recog = makeRecognizer();
+	recog.onresult = (e) => {
+		let interim = '', final = '';
+		for (let i = e.resultIndex; i < e.results.length; i++) {
+			const t = e.results[i][0].transcript;
+			if (e.results[i].isFinal) final += t; else interim += t;
+		}
+		if (interim) setCaption(interim, true);
+		if (final) handleFinalTranscript(final.trim(), opts);
+	};
+	recog.onerror = (e) => {
+		listening = false;
+		micBtn.classList.remove('live');
+		if (e.error === 'no-speech' || e.error === 'aborted') { setState('idle', 'Standby'); if (opts && opts.wake) armWake(); return; }
+		setState('error', 'Mic error');
+		setCaption(e.error === 'not-allowed' ? 'Microphone access was denied.' : 'Voice error: ' + e.error, true);
+		setTimeout(() => setState('idle', 'Standby'), 2200);
+	};
+	recog.onend = () => {
+		listening = false;
+		micBtn.classList.remove('live');
+		if (store.mode === 'wake' && !busy && !speaking && !recording) { setState('idle', 'Standby'); armWake(); }
+	};
+	try { recog.start(); } catch { listening = false; micBtn.classList.remove('live'); }
+}
+
+function stopListening() {
+	if (isNative) {
+		detachNativeListeners();
+		if (NativeSpeech) NativeSpeech.stop().catch(() => {});
+	} else if (recog) {
+		try { recog.stop(); } catch {}
+	}
+	listening = false;
+	micBtn.classList.remove('live');
+}
+
+function handleFinalTranscript(text, opts) {
+	stopListening();
+	if (opts && opts.wake) {
+		const wake = store.wakeWord;
+		const stripped = stripWakeWord(text, wake);
+		if (stripped === null) {
+			// wake word not heard; go back to ambient listening
+			setState('idle', 'Standby');
+			armWake();
+			return;
+		}
+		if (!stripped) {
+			// bare wake word — chime and open a short window for the command
+			toast(store.assistantName, 'Yes?', 2500);
+			setState('idle', 'Standby');
+			clearTimeout(armTimer);
+			armTimer = setTimeout(() => startListening({ wake: false }), 250);
+			return;
+		}
+		submitCommand(stripped);
+		return;
+	}
+	if (text) submitCommand(text);
+	else setState('idle', 'Standby');
+}
+
+function stripWakeWord(text, wake) {
+	const norm = text.toLowerCase().trim();
+	if (norm.startsWith(wake)) return text.slice(wake.length).replace(/^[\s,.:!-]+/, '').trim();
+	return null;
+}
+
+function armWake() {
+	clearTimeout(armTimer);
+	armTimer = setTimeout(() => { if (store.mode === 'wake' && !listening && !speaking && !busy && !recording) startListening({ wake: true }); }, 400);
+}
+
+function applyListenMode() {
+	stopListening();
+	clearTimeout(armTimer);
+	textRow.classList.toggle('show', store.mode === 'text' || !SR);
+	micBtn.disabled = !SR;
+	if (store.mode === 'wake' && SR) armWake();
+}
+
+micBtn.addEventListener('click', () => {
+	if (listening) { stopListening(); setState('idle', 'Standby'); return; }
+	startListening({ wake: false });
+});
+
+/* -------------------------- meeting/note recorder ------------------------- */
+let recording = false;
+let recordRecog = null;
+let recordText = '';
+let recordStartedAt = 0;
+let recordTimer = null;
+let nativeRecordPartialHandle = null;
+let nativeRecordStateHandle = null;
+let nativeRecordLast = '';
+
+async function startRecording() {
+	if (!SR) { toast('No voice input', isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition, so recording is unavailable.'); return; }
+	if (recording) return;
+	stopListening();
+	clearTimeout(armTimer);
+	recording = true;
+	recordText = '';
+	recordStartedAt = Date.now();
+	recordBtn.classList.add('recording');
+	micBtn.disabled = true;
+	setState('recording', 'Recording — 0:00');
+	setCaption('Listening for the conversation…', true);
+	recordTimer = setInterval(() => {
+		if (orbWrap.classList.contains('recording')) stateLabel.textContent = 'Recording — ' + formatDuration(Date.now() - recordStartedAt);
+	}, 1000);
+	if (isNative) await armNativeRecorder(); else armRecordRecognizer();
+}
+
+function armRecordRecognizer() {
+	recordRecog = makeRecognizer();
+	recordRecog.continuous = true;
+	recordRecog.onresult = (e) => {
+		let interim = '';
+		for (let i = e.resultIndex; i < e.results.length; i++) {
+			const t = e.results[i][0].transcript;
+			if (e.results[i].isFinal) recordText += (recordText ? ' ' : '') + t.trim();
+			else interim += t;
+		}
+		setCaption((recordText + ' ' + interim).trim() || 'Listening for the conversation…', true);
+	};
+	recordRecog.onerror = (e) => {
+		if (e.error === 'not-allowed') { toast('Microphone blocked', 'Recording needs microphone access.'); stopRecording(false); }
+		// other errors (no-speech/aborted/network) are recovered by onend's auto-restart below
+	};
+	recordRecog.onend = () => { if (recording) { try { recordRecog.start(); } catch {} } };
+	try { recordRecog.start(); } catch {}
+}
+
+function detachNativeRecordListeners() {
+	if (nativeRecordPartialHandle) { nativeRecordPartialHandle.remove(); nativeRecordPartialHandle = null; }
+	if (nativeRecordStateHandle) { nativeRecordStateHandle.remove(); nativeRecordStateHandle = null; }
+}
+async function armNativeRecorder() {
+	const ok = await ensureNativeSpeech();
+	if (!ok) { toast('Microphone blocked', 'Recording needs speech recognition permission — enable it in iOS Settings → Jarvis.'); stopRecording(false); return; }
+	nativeRecordLast = '';
+	try {
+		nativeRecordPartialHandle = await NativeSpeech.addListener('partialResults', (data) => {
+			const text = (data.matches && data.matches[0]) || '';
+			if (text) { nativeRecordLast = text; setCaption((recordText + ' ' + text).trim() || 'Listening for the conversation…', true); }
+		});
+		nativeRecordStateHandle = await NativeSpeech.addListener('listeningState', (data) => {
+			if (data.status !== 'stopped' || !recording) return;
+			// the OS closes an utterance after a long pause — bank it and open a fresh one to keep capturing
+			if (nativeRecordLast) { recordText += (recordText ? ' ' : '') + nativeRecordLast.trim(); nativeRecordLast = ''; }
+			NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 }).catch(() => {});
+		});
+		await NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 });
+	} catch (err) {
+		toast('Recording failed', String(err && err.message ? err.message : err));
+		stopRecording(false);
+	}
+}
+
+function stopRecording(save) {
+	if (!recording) return;
+	recording = false;
+	clearInterval(recordTimer);
+	recordBtn.classList.remove('recording');
+	micBtn.disabled = !SR;
+	if (isNative) {
+		detachNativeRecordListeners();
+		if (nativeRecordLast) { recordText += (recordText ? ' ' : '') + nativeRecordLast.trim(); nativeRecordLast = ''; }
+		if (NativeSpeech) NativeSpeech.stop().catch(() => {});
+	} else {
+		const rr = recordRecog;
+		recordRecog = null;
+		if (rr) { rr.onend = null; try { rr.stop(); } catch {} }
+	}
+	const endedAt = Date.now();
+	if (save !== false && recordText.trim()) {
+		const list = store.transcripts;
+		list.push({
+			id: uid(),
+			title: 'Recording — ' + new Date(recordStartedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }),
+			startedAt: recordStartedAt,
+			endedAt,
+			text: recordText.trim(),
+			analysis: null,
+		});
+		store.transcripts = list.slice(-100);
+		renderTranscripts();
+		toast('Saved recording', formatDuration(endedAt - recordStartedAt) + ' transcribed — see it in the Recordings panel.');
+	}
+	setState('idle', 'Standby');
+	setCaption('Tap the mic, or type below, to talk to ' + store.assistantName + '.', true);
+	if (store.mode === 'wake' && SR) armWake();
+}
+
+recordBtn.addEventListener('click', () => { if (recording) stopRecording(true); else startRecording(); });
+document.getElementById('keyboardBtn').addEventListener('click', () => {
+	textRow.classList.toggle('show');
+	if (textRow.classList.contains('show')) textInput.focus();
+});
+document.getElementById('textSend').addEventListener('click', sendTyped);
+textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendTyped(); });
+function sendTyped() {
+	const v = textInput.value.trim();
+	if (!v) return;
+	textInput.value = '';
+	submitCommand(v);
+}
+
+/* ================================ tools ================================ */
+const WMO = {
+	0: 'clear sky', 1: 'mostly clear', 2: 'partly cloudy', 3: 'overcast',
+	45: 'fog', 48: 'depositing rime fog', 51: 'light drizzle', 53: 'drizzle', 55: 'dense drizzle',
+	61: 'light rain', 63: 'rain', 65: 'heavy rain', 71: 'light snow', 73: 'snow', 75: 'heavy snow',
+	80: 'light rain showers', 81: 'rain showers', 82: 'violent rain showers',
+	95: 'thunderstorm', 96: 'thunderstorm with hail', 99: 'severe thunderstorm with hail',
+};
+
+function getBrowserLocation() {
+	return new Promise((resolve) => {
+		if (!navigator.geolocation) return resolve(null);
+		navigator.geolocation.getCurrentPosition(
+			(pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+			() => resolve(null),
+			{ timeout: 4000 },
+		);
+	});
+}
+
+async function toolGetWeather(args) {
+	let lat, lon, label = args.location || '';
+	if (args.location) {
+		const geo = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=1&name=' + encodeURIComponent(args.location)).then((r) => r.json()).catch(() => null);
+		const hit = geo && geo.results && geo.results[0];
+		if (!hit) return { ok: false, message: 'Could not find a place called "' + args.location + '".' };
+		lat = hit.latitude; lon = hit.longitude;
+		label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(', ');
+	} else {
+		const loc = await getBrowserLocation();
+		if (!loc) return { ok: false, message: 'No location given and browser location is unavailable — ask the user which city.' };
+		lat = loc.lat; lon = loc.lon; label = 'your location';
+	}
+	const data = await fetch(
+		'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+		'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph',
+	).then((r) => r.json()).catch(() => null);
+	if (!data || !data.current) return { ok: false, message: 'Weather service did not respond.' };
+	const c = data.current;
+	return {
+		ok: true,
+		message: 'Weather for ' + label + ': ' + Math.round(c.temperature_2m) + '°F, feels like ' + Math.round(c.apparent_temperature) +
+			'°F, ' + (WMO[c.weather_code] || 'conditions code ' + c.weather_code) + ', humidity ' + c.relative_humidity_2m +
+			'%, wind ' + Math.round(c.wind_speed_10m) + ' mph.',
+	};
+}
+
+async function toolGetStatus() {
+	let battery = 'unavailable';
+	try {
+		if (navigator.getBattery) {
+			const b = await navigator.getBattery();
+			battery = Math.round(b.level * 100) + '%' + (b.charging ? ' (charging)' : '');
+		}
+	} catch {}
+	const parts = [
+		'online: ' + navigator.onLine,
+		'battery: ' + battery,
+		'model: ' + store.models[0] + (store.teamMode && store.models.length > 1 ? ' (+' + (store.models.length - 1) + ' teammates)' : ''),
+		'memory facts: ' + store.memory.length,
+		'active reminders: ' + store.reminders.length,
+		'notes: ' + store.notes.length,
+		'devices: ' + (store.haEnabled ? 'via Home Assistant' : store.devices.length),
+		'recordings: ' + store.transcripts.length,
+		'voice input supported: ' + !!SR,
+	];
+	return { ok: true, message: 'System status — ' + parts.join(', ') + '.' };
+}
+
+function toolRemember(args) {
+	const fact = (args.fact || '').trim();
+	if (!fact) return { ok: false, message: 'No fact given.' };
+	const mem = store.memory;
+	mem.push(fact);
+	store.memory = mem.slice(-60);
+	renderMemory();
+	return { ok: true, message: 'Remembered: ' + fact };
+}
+function toolForget(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	let mem = store.memory;
+	if (!q || q === 'all' || q === 'everything') { store.memory = []; renderMemory(); return { ok: true, message: 'Cleared everything from memory.' }; }
+	const before = mem.length;
+	mem = mem.filter((f) => !f.toLowerCase().includes(q));
+	store.memory = mem;
+	renderMemory();
+	return { ok: true, message: before === mem.length ? 'Nothing matched "' + args.query + '".' : 'Forgot it.' };
+}
+function toolRecallMemory() {
+	const mem = store.memory;
+	return { ok: true, message: mem.length ? 'Remembered facts: ' + mem.join('; ') : 'Nothing remembered yet.' };
+}
+
+/* Reminders also get a real OS-level notification when running natively, so
+ * they still fire while the app is backgrounded or fully closed — a plain
+ * setTimeout (the web fallback) only runs while the page is open. */
+function notifIdFor(reminderId) {
+	let h = 0;
+	for (let i = 0; i < reminderId.length; i++) h = (h * 31 + reminderId.charCodeAt(i)) | 0;
+	return Math.abs(h) % 2147483647 || 1;
+}
+async function scheduleNativeReminder(r) {
+	if (!NativeNotify) return;
+	try {
+		await NativeNotify.schedule({ notifications: [{ id: notifIdFor(r.id), title: store.assistantName + ' reminder', body: r.text, schedule: { at: new Date(r.at) } }] });
+	} catch {}
+}
+async function cancelNativeReminder(id) {
+	if (!NativeNotify) return;
+	try { await NativeNotify.cancel({ notifications: [{ id: notifIdFor(id) }] }); } catch {}
+}
+
+let reminderTimers = {};
+function scheduleReminderTimer(r) {
+	if (isNative) scheduleNativeReminder(r);
+	const delay = r.at - Date.now();
+	if (delay <= 0) { fireReminder(r); return; }
+	if (delay > 2147000000) return; // setTimeout overflow guard (~24.8 days)
+	reminderTimers[r.id] = setTimeout(() => fireReminder(r), delay);
+}
+function fireReminder(r) {
+	store.reminders = store.reminders.filter((x) => x.id !== r.id);
+	delete reminderTimers[r.id];
+	renderReminders();
+	toast('Reminder', r.text, 12000);
+	if (!isNative && window.Notification && Notification.permission === 'granted') {
+		try { new Notification(store.assistantName + ' reminder', { body: r.text }); } catch {} // native already alerts via scheduleNativeReminder
+	}
+	if (!recording) speak('Reminder: ' + r.text); // don't talk over — or get picked up by — an active recording
+}
+function toolSetReminder(args) {
+	const minutes = Number(args.minutes);
+	const text = (args.text || '').trim();
+	if (!text || !Number.isFinite(minutes) || minutes <= 0) return { ok: false, message: 'Need reminder text and a positive number of minutes.' };
+	if (isNative && NativeNotify) NativeNotify.requestPermissions().catch(() => {});
+	else if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+	const r = { id: uid(), text, at: Date.now() + minutes * 60000 };
+	const list = store.reminders;
+	list.push(r);
+	store.reminders = list;
+	scheduleReminderTimer(r);
+	renderReminders();
+	const when = minutes < 60 ? minutes + ' minute' + (minutes === 1 ? '' : 's') : (minutes / 60).toFixed(1) + ' hours';
+	return { ok: true, message: 'Reminder set for ' + when + ' from now: ' + text };
+}
+function cancelReminder(id) {
+	clearTimeout(reminderTimers[id]);
+	delete reminderTimers[id];
+	if (isNative) cancelNativeReminder(id);
+	store.reminders = store.reminders.filter((r) => r.id !== id);
+	renderReminders();
+}
+function toolCancelReminder(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	const list = store.reminders;
+	if (!q || q === 'all') {
+		list.forEach((r) => { clearTimeout(reminderTimers[r.id]); if (isNative) cancelNativeReminder(r.id); });
+		reminderTimers = {};
+		store.reminders = [];
+		renderReminders();
+		return { ok: true, message: 'Cancelled all reminders.' };
+	}
+	const match = list.find((r) => r.text.toLowerCase().includes(q));
+	if (!match) return { ok: false, message: 'No reminder matched "' + args.query + '".' };
+	cancelReminder(match.id);
+	return { ok: true, message: 'Cancelled: ' + match.text };
+}
+function toolListReminders() {
+	const list = store.reminders.slice().sort((a, b) => a.at - b.at);
+	return { ok: true, message: list.length ? 'Reminders: ' + list.map((r) => r.text + ' at ' + new Date(r.at).toLocaleTimeString()).join('; ') : 'No reminders set.' };
+}
+
+function toolAddNote(args) {
+	const text = (args.text || '').trim();
+	if (!text) return { ok: false, message: 'No note text given.' };
+	const list = store.notes;
+	list.push({ id: uid(), text, at: Date.now() });
+	store.notes = list;
+	renderNotes();
+	return { ok: true, message: 'Noted: ' + text };
+}
+function toolListNotes() {
+	const list = store.notes;
+	return { ok: true, message: list.length ? 'Notes: ' + list.map((n) => n.text).join('; ') : 'No notes yet.' };
+}
+function toolDeleteNote(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	let list = store.notes;
+	if (!q || q === 'all') { store.notes = []; renderNotes(); return { ok: true, message: 'Deleted all notes.' }; }
+	const before = list.length;
+	list = list.filter((n) => !n.text.toLowerCase().includes(q));
+	store.notes = list;
+	renderNotes();
+	return { ok: true, message: before === list.length ? 'No note matched "' + args.query + '".' : 'Deleted it.' };
+}
+
+function toolGetTime() {
+	const now = new Date();
+	return { ok: true, message: 'It is ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' on ' + now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + '.' };
+}
+
+function addLinkChip(url, label) {
+	const chip = document.createElement('button');
+	chip.className = 'chip';
+	chip.type = 'button';
+	chip.textContent = '↗ ' + (label || url);
+	chip.addEventListener('click', () => window.open(url, '_blank', 'noopener'));
+	captionEl.parentElement.insertBefore(chip, captionEl.nextSibling);
+	setTimeout(() => chip.remove(), 30000);
+}
+function toolOpenLink(args) {
+	const url = /^https?:\/\//i.test(args.url || '') ? args.url : 'https://' + (args.url || '');
+	window.open(url, '_blank', 'noopener');
+	addLinkChip(url, args.label);
+	return { ok: true, message: 'Opened ' + (args.label || url) + '.' };
+}
+function toolWebSearch(args) {
+	const q = args.query || '';
+	const url = 'https://duckduckgo.com/?q=' + encodeURIComponent(q);
+	window.open(url, '_blank', 'noopener');
+	addLinkChip(url, 'search: ' + q);
+	return { ok: true, message: 'Searching the web for "' + q + '".' };
+}
+
+/* ----------------------------- smart home ------------------------------ */
+function describeDevice(d) {
+	if (d.type === 'light' || d.type === 'switch') return d.name + ' (' + d.power + (d.type === 'light' && d.power === 'on' ? ', ' + d.brightness + '% brightness' : '') + ')';
+	if (d.type === 'lock') return d.name + ' (' + d.lockState + ')';
+	if (d.type === 'thermostat') return d.name + ' (set to ' + d.temp + '°F)';
+	if (d.type === 'scene') return d.name + ' (scene)';
+	return d.name;
+}
+function findDevice(list, name) {
+	const q = (name || '').toLowerCase().trim();
+	if (!q) return null;
+	return list.find((d) => d.name.toLowerCase() === q) || list.find((d) => d.name.toLowerCase().includes(q) || q.includes(d.name.toLowerCase()));
+}
+function runSceneLocal(scene, list) {
+	list = list || store.devices;
+	(scene.actions || []).forEach((patch) => {
+		const target = list.find((x) => x.name === patch.name);
+		if (!target) return;
+		if (patch.power) target.power = patch.power;
+		if (typeof patch.brightness === 'number') target.brightness = patch.brightness;
+		if (typeof patch.temp === 'number') target.temp = patch.temp;
+		if (patch.lockState) target.lockState = patch.lockState;
+	});
+	store.devices = list;
+	renderHome();
+	return { ok: true, message: 'Ran scene "' + scene.name + '".' };
+}
+
+async function toolListDevices() {
+	if (store.haEnabled) return haListDevices();
+	const list = store.devices;
+	if (!list.length) return { ok: true, message: 'No smart home devices configured.' };
+	return { ok: true, message: 'Devices: ' + list.map(describeDevice).join('; ') };
+}
+async function toolGetDevice(args) {
+	if (store.haEnabled) return haGetDevice(args);
+	const list = store.devices;
+	const d = findDevice(list, args.name);
+	if (!d) return { ok: false, message: 'No device matched "' + args.name + '". Devices: ' + list.map((x) => x.name).join(', ') };
+	return { ok: true, message: describeDevice(d) };
+}
+async function toolSetDevice(args) {
+	if (store.haEnabled) return haSetDevice(args);
+	const list = store.devices;
+	const d = findDevice(list, args.name);
+	if (!d) return { ok: false, message: 'No device matched "' + args.name + '". Devices: ' + list.map((x) => x.name).join(', ') };
+	if (d.type === 'scene') return runSceneLocal(d, list);
+	if (args.power === 'on' || args.power === 'off') d.power = args.power;
+	if (typeof args.brightness === 'number' && d.type === 'light') d.brightness = Math.max(0, Math.min(100, Math.round(args.brightness)));
+	if (typeof args.temperature === 'number' && d.type === 'thermostat') d.temp = Math.round(args.temperature);
+	if (args.lock === 'locked' || args.lock === 'unlocked') d.lockState = args.lock;
+	store.devices = list;
+	renderHome();
+	return { ok: true, message: describeDevice(d) };
+}
+async function toolRunScene(args) {
+	if (store.haEnabled) return haRunScene(args);
+	const list = store.devices;
+	const scene = list.find((x) => x.type === 'scene' && x.name.toLowerCase().includes((args.name || '').toLowerCase()));
+	if (!scene) return { ok: false, message: 'No scene matched "' + args.name + '". Scenes: ' + list.filter((x) => x.type === 'scene').map((x) => x.name).join(', ') };
+	return runSceneLocal(scene, list);
+}
+
+/* -- optional Home Assistant backend (real devices) -- */
+function haBase() { return (store.haUrl || '').replace(/\/+$/, ''); }
+async function haFetch(path, opts) {
+	const res = await fetch(haBase() + path, {
+		...opts,
+		headers: { Authorization: 'Bearer ' + store.haToken, 'Content-Type': 'application/json', ...((opts && opts.headers) || {}) },
+	});
+	if (!res.ok) throw new Error('Home Assistant returned ' + res.status + ' ' + res.statusText);
+	return res.json().catch(() => null);
+}
+const HA_DOMAINS = ['light', 'switch', 'lock', 'climate', 'scene', 'fan'];
+async function haListEntities() {
+	const states = await haFetch('/api/states');
+	return (states || []).filter((s) => HA_DOMAINS.includes(s.entity_id.split('.')[0]));
+}
+function haDescribe(e) {
+	const domain = e.entity_id.split('.')[0];
+	const name = e.attributes.friendly_name || e.entity_id;
+	if (domain === 'climate') return name + ' (' + e.state + ', target ' + (e.attributes.temperature ?? '?') + '°)';
+	if (domain === 'lock') return name + ' (' + e.state + ')';
+	return name + ' (' + e.state + (e.attributes.brightness ? ', ' + Math.round((e.attributes.brightness / 255) * 100) + '% brightness' : '') + ')';
+}
+async function haFindEntity(name) {
+	const ents = await haListEntities();
+	const q = (name || '').toLowerCase().trim();
+	return ents.find((e) => (e.attributes.friendly_name || '').toLowerCase() === q) ||
+		ents.find((e) => (e.attributes.friendly_name || e.entity_id).toLowerCase().includes(q));
+}
+async function haCallService(domain, service, data) {
+	return haFetch('/api/services/' + domain + '/' + service, { method: 'POST', body: JSON.stringify(data) });
+}
+async function haListDevices() {
+	try {
+		const ents = await haListEntities();
+		if (!ents.length) return { ok: true, message: 'No controllable Home Assistant entities found.' };
+		return { ok: true, message: 'Devices: ' + ents.map(haDescribe).join('; ') };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haGetDevice(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e) return { ok: false, message: 'No Home Assistant entity matched "' + args.name + '".' };
+		return { ok: true, message: haDescribe(e) };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haSetDevice(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e) return { ok: false, message: 'No Home Assistant entity matched "' + args.name + '".' };
+		const domain = e.entity_id.split('.')[0];
+		if (domain === 'lock' && (args.lock === 'locked' || args.lock === 'unlocked')) {
+			await haCallService('lock', args.lock === 'locked' ? 'lock' : 'unlock', { entity_id: e.entity_id });
+		} else if (domain === 'climate' && typeof args.temperature === 'number') {
+			await haCallService('climate', 'set_temperature', { entity_id: e.entity_id, temperature: args.temperature });
+		} else if (domain === 'scene') {
+			await haCallService('scene', 'turn_on', { entity_id: e.entity_id });
+		} else if (domain === 'light' || domain === 'switch' || domain === 'fan') {
+			if (args.power === 'off') {
+				await haCallService(domain, 'turn_off', { entity_id: e.entity_id });
+			} else if (args.power === 'on' || typeof args.brightness === 'number') {
+				const data = { entity_id: e.entity_id };
+				if (typeof args.brightness === 'number' && domain === 'light') data.brightness_pct = Math.max(0, Math.min(100, Math.round(args.brightness)));
+				await haCallService(domain, 'turn_on', data);
+			}
+		} else {
+			return { ok: false, message: 'Do not know how to control "' + e.entity_id + '".' };
+		}
+		return { ok: true, message: (args.name || e.attributes.friendly_name) + ' updated.' };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+async function haRunScene(args) {
+	try {
+		const e = await haFindEntity(args.name);
+		if (!e || e.entity_id.split('.')[0] !== 'scene') return { ok: false, message: 'No Home Assistant scene matched "' + args.name + '".' };
+		await haCallService('scene', 'turn_on', { entity_id: e.entity_id });
+		return { ok: true, message: 'Ran scene "' + (e.attributes.friendly_name || e.entity_id) + '".' };
+	} catch (err) { return { ok: false, message: 'Could not reach Home Assistant: ' + err.message }; }
+}
+
+/* ----------------------------- transcripts ------------------------------ */
+function toolListTranscripts() {
+	const list = store.transcripts;
+	if (!list.length) return { ok: true, message: 'No recordings saved yet.' };
+	return { ok: true, message: 'Recordings: ' + list.map((t) => t.title + ' (' + formatDuration((t.endedAt || t.startedAt) - t.startedAt) + ')').join('; ') };
+}
+function toolGetTranscript(args) {
+	const q = (args.query || '').toLowerCase().trim();
+	const list = store.transcripts;
+	const t = list.find((x) => x.title.toLowerCase().includes(q)) || list[list.length - 1];
+	if (!t) return { ok: false, message: 'No recordings saved yet.' };
+	const body = t.analysis ? t.analysis : t.text.slice(0, 2500);
+	return { ok: true, message: 'Recording "' + t.title + '": ' + body };
+}
+
+async function runTool(action) {
+	const name = action && action.tool;
+	const args = (action && action.args) || {};
+	try {
+		switch (name) {
+			case 'get_time': return toolGetTime();
+			case 'get_weather': return await toolGetWeather(args);
+			case 'get_status': return await toolGetStatus();
+			case 'remember': return toolRemember(args);
+			case 'forget': return toolForget(args);
+			case 'recall_memory': return toolRecallMemory();
+			case 'set_reminder': return toolSetReminder(args);
+			case 'cancel_reminder': return toolCancelReminder(args);
+			case 'list_reminders': return toolListReminders();
+			case 'add_note': return toolAddNote(args);
+			case 'delete_note': return toolDeleteNote(args);
+			case 'list_notes': return toolListNotes();
+			case 'open_link': return toolOpenLink(args);
+			case 'web_search': return toolWebSearch(args);
+			case 'list_devices': return await toolListDevices();
+			case 'get_device': return await toolGetDevice(args);
+			case 'set_device': return await toolSetDevice(args);
+			case 'run_scene': return await toolRunScene(args);
+			case 'list_transcripts': return toolListTranscripts();
+			case 'get_transcript': return toolGetTranscript(args);
+			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
+		}
+	} catch (err) {
+		return { ok: false, message: 'Tool "' + name + '" failed: ' + (err && err.message ? err.message : err) };
+	}
+}
+
+function stripActions(text) {
+	const re = /```jarvis-action\s*\n?([\s\S]*?)```/g;
+	const actions = [];
+	let m;
+	while ((m = re.exec(text))) {
+		try { actions.push(JSON.parse(m[1])); } catch {}
+	}
+	return { actions, cleaned: text.replace(re, '').trim() };
+}
+
+/* re-arm reminders that were still pending from a previous visit */
+(function restoreReminders() {
+	const now = Date.now();
+	store.reminders.forEach((r) => {
+		if (r.at > now) { scheduleReminderTimer(r); return; }
+		// due while the app wasn't open: if it's been a while, the native OS notification
+		// (scheduled up front — see scheduleNativeReminder) already covered it, so don't repeat
+		// it in-app; only replay recently-missed ones as a fallback for the non-native web build.
+		if (now - r.at < 120000) fireReminder(r);
+		else { store.reminders = store.reminders.filter((x) => x.id !== r.id); renderReminders(); }
+	});
+})();
+
+/* ============================== backend/LLM ============================== */
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
+function backendFor(modelId) {
+	const m = (modelId || '').match(/^(gpt|claude):(.*)$/);
+	if (!m) {
+		if (!store.key) throw new Error('Add your OpenRouter API key in Settings');
+		return { kind: 'openai', url: OPENROUTER_BASE + '/chat/completions', model: modelId, headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'Jarvis' } };
+	}
+	const [, vendor, model] = m;
+	if (vendor === 'gpt') {
+		if (!store.oaiKey) throw new Error('Add your OpenAI API key in Settings');
+		return { kind: 'openai', url: 'https://api.openai.com/v1/chat/completions', model, headers: { Authorization: 'Bearer ' + store.oaiKey, 'Content-Type': 'application/json' } };
+	}
+	if (!store.anthKey) throw new Error('Add your Anthropic API key in Settings');
+	return {
+		kind: 'anthropic',
+		url: 'https://api.anthropic.com/v1/messages',
+		model,
+		headers: { 'x-api-key': store.anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
+	};
+}
+function parseDelta(kind, data) {
+	if (kind === 'anthropic') {
+		const ev = JSON.parse(data);
+		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
+	}
+	return JSON.parse(data).choices?.[0]?.delta?.content;
+}
+async function streamCompletion(model, messages, onDelta) {
+	const backend = backendFor(model);
+	let sysMsg = null, chatMsgs = messages;
+	if (backend.kind === 'anthropic') {
+		sysMsg = messages.find((m) => m.role === 'system');
+		chatMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+	}
+	const body = { model: backend.model, messages: chatMsgs, stream: true };
+	if (backend.kind === 'anthropic') { body.max_tokens = 1024; if (sysMsg) body.system = sysMsg.content; }
+	const res = await fetch(backend.url, { method: 'POST', headers: backend.headers, body: JSON.stringify(body) });
+	if (!res.ok) {
+		let detail = res.status + ' ' + res.statusText;
+		try { detail = (await res.json()).error?.message || detail; } catch {}
+		throw new Error(detail);
+	}
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = '', text = '';
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split('\n');
+		buf = lines.pop();
+		for (const line of lines) {
+			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+			if (!data || data === '[DONE]') continue;
+			try {
+				const delta = parseDelta(backend.kind, data);
+				if (delta) { text += delta; onDelta(text); }
+			} catch {}
+		}
+	}
+	return text;
+}
+
+const TOOL_DOCS = [
+	'get_time {} — current local date and time.',
+	'get_weather {"location": string optional} — current weather; omit location to use the browser\'s location.',
+	'get_status {} — battery, connectivity, model, and memory/reminder/note counts.',
+	'remember {"fact": string} — permanently remember a fact about the user.',
+	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
+	'recall_memory {} — list everything currently remembered about the user.',
+	'set_reminder {"text": string, "minutes": number} — remind the user in N minutes.',
+	'list_reminders {} — list active reminders.',
+	'cancel_reminder {"query": string} — cancel a reminder matching this text, or "all".',
+	'add_note {"text": string} — save a quick note.',
+	'list_notes {} — list saved notes.',
+	'delete_note {"query": string} — delete notes matching this text, or "all".',
+	'open_link {"url": string, "label": string optional} — open a URL in a new tab.',
+	'web_search {"query": string} — search the web for this query in a new tab.',
+	'list_devices {} — list smart home devices and their current state.',
+	'get_device {"name": string} — get one smart home device\'s current state.',
+	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock.',
+	'run_scene {"name": string} — run a smart home scene, e.g. "Good Night" or "Good Morning".',
+	'list_transcripts {} — list recorded conversation/meeting transcripts with title and length.',
+	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
+].join('\n- ');
+
+function buildSystemPrompt() {
+	const mem = store.memory;
+	const memText = mem.length ? mem.map((f) => '- ' + f).join('\n') : '(nothing remembered yet)';
+	const who = store.userName ? store.userName : 'the user';
+	return [
+		'You are ' + store.assistantName + ', a witty, unflappable, extremely capable voice-first personal assistant in the spirit of the AI from Iron Man.',
+		'You are speaking out loud to ' + who + ' through a browser voice interface, so keep replies short and conversational — one to three sentences unless real detail was asked for. Never use markdown formatting, headers, or bullet lists in your spoken reply, since it will be read aloud as plain speech. Address them as "sir" sparingly, not every line; stay warm and dry, never obsequious.',
+		'',
+		'You have tools. To call one, output ONLY a fenced block shaped exactly like this, and nothing else in the message:',
+		'```jarvis-action',
+		'{"tool": "tool_name", "args": {}}',
+		'```',
+		'You may include more than one such block to call multiple tools in one turn.',
+		'',
+		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
+		'For tools that fetch information you need before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'',
+		'Available tools:',
+		'- ' + TOOL_DOCS,
+		'',
+		'Facts remembered about ' + who + ':',
+		memText,
+		'',
+		'Current date/time: ' + new Date().toString(),
+	].join('\n');
+}
+
+function shortModelName(id) {
+	const s = String(id || '');
+	return (s.includes(':') ? s.split(':')[1] : s.split('/')[1] || s) || s;
+}
+
+/* consult every non-lead model in parallel and hand their answers to the lead */
+async function consultTeam(question) {
+	const models = store.models;
+	if (!store.teamMode || models.length < 2) return '';
+	const others = models.slice(1);
+	const opinions = await Promise.all(others.map(async (m) => {
+		try {
+			const text = await streamCompletion(m, [
+				{ role: 'system', content: 'Answer the user\'s question directly and concisely in one to three plain sentences, no markdown, no preamble. You are one of several AI models being privately consulted; another assistant will read your answer and decide what to use from it.' },
+				{ role: 'user', content: question },
+			], () => {});
+			return { model: m, text: text.trim() };
+		} catch (err) {
+			return { model: m, text: null, error: String(err && err.message ? err.message : err) };
+		}
+	}));
+	return opinions.map((o) => shortModelName(o.model) + ': ' + (o.text || '(no answer — ' + o.error + ')')).join('\n');
+}
+
+/* ================================ pipeline ================================ */
+let busy = false;
+async function submitCommand(text, depth) {
+	depth = depth || 0;
+	if (depth === 0) {
+		if (!text) return;
+		if (recording) { toast('Still recording', 'Stop the recording first, then talk to ' + store.assistantName + '.'); return; }
+		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); openSettings(); return; }
+		if (busy) return;
+		busy = true;
+		const hist = store.history;
+		hist.push({ role: 'user', content: text });
+		store.history = hist.slice(-40);
+		setCaption(text);
+	}
+
+	const messages = [{ role: 'system', content: buildSystemPrompt() }];
+	if (depth === 0 && store.teamMode && store.models.length > 1) {
+		setState('thinking', 'Consulting the team');
+		const teamNotes = await consultTeam(text);
+		if (teamNotes) {
+			messages.push({
+				role: 'system',
+				content: 'Other AI models were privately consulted on this question and answered:\n' + teamNotes +
+					'\n\nUse these if helpful, but answer in your own voice as ' + store.assistantName + '. Do not mention that you consulted other models unless asked.',
+			});
+		}
+	}
+	messages.push(...store.history.slice(-24));
+
+	setState('thinking', 'Thinking');
+	let raw = '';
+	try {
+		raw = await streamCompletion(store.models[0], messages, (partial) => {
+			const { cleaned } = stripActions(partial);
+			if (cleaned) setCaption(cleaned);
+		});
+	} catch (err) {
+		busy = false;
+		setState('error', 'Error');
+		setCaption(String(err && err.message ? err.message : err));
+		toast('Jarvis had trouble', String(err && err.message ? err.message : err));
+		setTimeout(() => setState('idle', 'Standby'), 2600);
+		return;
+	}
+
+	const hist = store.history;
+	hist.push({ role: 'assistant', content: raw });
+	store.history = hist.slice(-40);
+	renderLog();
+
+	const { actions, cleaned } = stripActions(raw);
+	if (actions.length) {
+		const results = [];
+		for (const action of actions) results.push({ action, result: await runTool(action) });
+		if (!cleaned && depth < 3) {
+			const summary = results.map((r) => (r.result.ok ? 'OK: ' : 'ERROR: ') + r.result.message).join('\n');
+			const hist2 = store.history;
+			hist2.push({ role: 'user', content: '[Tool results — speak your reply now, plainly, with no further tool calls unless truly necessary]\n' + summary });
+			store.history = hist2.slice(-40);
+			return submitCommand(undefined, depth + 1);
+		}
+	}
+
+	busy = false;
+	const finalText = cleaned || (actions.length ? actions.map((a) => a.tool).join(', ') + ' done.' : raw);
+	setCaption(finalText || '…');
+	renderPanels();
+	speak(finalText, () => {
+		if (store.autoListen && store.mode !== 'text' && SR) startListening({ wake: store.mode === 'wake' });
+		else if (store.mode === 'wake' && SR) armWake();
+	});
+}
+
+/* ================================ boot ================================ */
+applyListenMode();
+if (!anyKey()) setTimeout(openSettings, 300);
+</script>
+</body>
+</html>

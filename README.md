@@ -58,6 +58,17 @@ the button next to "Henry OS" in the sidebar, or go straight to
 - Same bring-your-own-key model as Henry OS — an OpenRouter key or your own
   OpenAI/Anthropic key, stored only on your device.
 
+### 📱 Jarvis for iOS
+
+[`mobile-app/`](mobile-app) wraps Jarvis in a real native iOS app with
+[Capacitor](https://capacitorjs.com), so it can ship on the App Store instead
+of just living in a browser tab — including on-device voice recognition
+(WKWebView doesn't have the Web Speech API, so the browser version alone
+can't do this on iOS) and reminders that fire as real notifications even when
+the app is closed. The Xcode project is fully scaffolded; see
+[`mobile-app/README.md`](mobile-app/README.md) for the remaining steps, which
+need a Mac, Xcode, and your own Apple Developer account.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.

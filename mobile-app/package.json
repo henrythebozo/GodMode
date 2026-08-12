@@ -1,0 +1,23 @@
+{
+	"name": "jarvis-mobile",
+	"version": "1.0.0",
+	"private": true,
+	"description": "Native iOS (and Android) shell for Jarvis, built with Capacitor.",
+	"scripts": {
+		"sync": "cap sync",
+		"open:ios": "cap open ios",
+		"open:android": "cap open android",
+		"add:ios": "cap add ios",
+		"add:android": "cap add android"
+	},
+	"dependencies": {
+		"@capacitor/core": "^7.0.0",
+		"@capacitor/app": "^7.0.0",
+		"@capacitor/local-notifications": "^7.0.0",
+		"@capacitor-community/speech-recognition": "^7.0.0"
+	},
+	"devDependencies": {
+		"@capacitor/cli": "^7.0.0",
+		"@capacitor/ios": "^7.0.0"
+	}
+}
