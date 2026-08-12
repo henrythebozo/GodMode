@@ -1,15 +1,20 @@
 // GodMode Screen Answers — background service worker
 //
 // Flow: user hits the keyboard shortcut (or the popup button) -> we screenshot
-// the visible tab -> send it to Claude with a question -> show the answer in
-// an overlay injected into the page by content.js. Everything (API key,
-// model, default prompt) lives in chrome.storage.local; nothing leaves the
-// browser except the request straight to api.anthropic.com.
+// the visible tab -> stream the answer from Claude, token by token, into an
+// overlay injected into the page by content.js. Everything (API key, model,
+// default prompt) lives in chrome.storage.local; nothing leaves the browser
+// except the request straight to api.anthropic.com.
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const DEFAULT_MODEL = "claude-sonnet-5";
 const DEFAULT_PROMPT =
 	"Answer the question shown in this screenshot. If there's no explicit question, briefly explain what's on screen.";
+const SYSTEM_PROMPT =
+	"You're talking to a user through a browser extension that just showed you a screenshot of their screen. " +
+	"Answer with the same depth, accuracy, and care you'd use in a normal conversation — don't hold back detail " +
+	"or oversimplify just because the channel is a small overlay. Use markdown (code fences, lists, bold) where " +
+	"it genuinely helps readability, but keep the reply focused on what was actually asked.";
 
 // Per-tab conversation state so follow-up questions keep context without
 // re-sending the (often large) screenshot every time.
@@ -28,7 +33,11 @@ async function getSettings() {
 	};
 }
 
-async function askClaude(messages, { apiKey, model }) {
+/**
+ * Streams a Messages API completion, calling onDelta(fullTextSoFar) as tokens
+ * arrive. Returns the final full text.
+ */
+async function streamClaude(messages, { apiKey, model }, onDelta) {
 	const res = await fetch(ANTHROPIC_API_URL, {
 		method: "POST",
 		headers: {
@@ -40,8 +49,10 @@ async function askClaude(messages, { apiKey, model }) {
 		},
 		body: JSON.stringify({
 			model,
-			max_tokens: 1024,
+			max_tokens: 4096,
+			system: SYSTEM_PROMPT,
 			messages,
+			stream: true,
 		}),
 	});
 
@@ -56,12 +67,41 @@ async function askClaude(messages, { apiKey, model }) {
 		throw new Error(`Claude API error (${res.status}): ${detail}`);
 	}
 
-	const data = await res.json();
-	return (data.content || [])
-		.filter((block) => block.type === "text")
-		.map((block) => block.text)
-		.join("\n")
-		.trim();
+	const reader = res.body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+	let fullText = "";
+
+	while (true) {
+		const { value, done } = await reader.read();
+		if (done) break;
+		buffer += decoder.decode(value, { stream: true });
+
+		const lines = buffer.split("\n");
+		buffer = lines.pop(); // keep the trailing partial line for next chunk
+
+		for (const line of lines) {
+			if (!line.startsWith("data:")) continue;
+			const jsonStr = line.slice(5).trim();
+			if (!jsonStr) continue;
+
+			let evt;
+			try {
+				evt = JSON.parse(jsonStr);
+			} catch {
+				continue;
+			}
+
+			if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
+				fullText += evt.delta.text;
+				onDelta(fullText);
+			} else if (evt.type === "error") {
+				throw new Error(evt.error?.message || "Streaming error");
+			}
+		}
+	}
+
+	return fullText;
 }
 
 async function sendToTab(tabId, message) {
@@ -72,6 +112,41 @@ async function sendToTab(tabId, message) {
 		// useful we can do about that here.
 		console.warn("GodMode: could not reach content script", err);
 	}
+}
+
+/**
+ * Throttles token-by-token deltas down to a sane message-passing rate while
+ * still flushing the final text immediately when the stream ends.
+ */
+function makeStreamRelay(tabId, minIntervalMs = 60) {
+	let lastSent = 0;
+	let timer = null;
+	let latest = "";
+
+	function flush() {
+		timer = null;
+		lastSent = Date.now();
+		sendToTab(tabId, { type: "GODMODE_STREAM_DELTA", text: latest });
+	}
+
+	return {
+		update(text) {
+			latest = text;
+			const elapsed = Date.now() - lastSent;
+			if (elapsed >= minIntervalMs) {
+				if (timer) clearTimeout(timer);
+				flush();
+			} else if (!timer) {
+				timer = setTimeout(flush, minIntervalMs - elapsed);
+			}
+		},
+		finish(finalText) {
+			if (timer) clearTimeout(timer);
+			timer = null;
+			latest = finalText;
+			sendToTab(tabId, { type: "GODMODE_STREAM_DONE", text: finalText });
+		},
+	};
 }
 
 async function runCapture(tab, question) {
@@ -120,10 +195,11 @@ async function runCapture(tab, question) {
 
 	sessions.set(tab.id, { messages });
 
+	const relay = makeStreamRelay(tab.id);
 	try {
-		const answer = await askClaude(messages, settings);
+		const answer = await streamClaude(messages, settings, (text) => relay.update(text));
 		sessions.get(tab.id).messages.push({ role: "assistant", content: answer });
-		await sendToTab(tab.id, { type: "GODMODE_SHOW_ANSWER", answer });
+		relay.finish(answer);
 	} catch (err) {
 		await sendToTab(tab.id, {
 			type: "GODMODE_SHOW_ERROR",
@@ -146,10 +222,11 @@ async function runFollowup(tabId, question) {
 	session.messages.push({ role: "user", content: question });
 	await sendToTab(tabId, { type: "GODMODE_SHOW_LOADING" });
 
+	const relay = makeStreamRelay(tabId);
 	try {
-		const answer = await askClaude(session.messages, settings);
+		const answer = await streamClaude(session.messages, settings, (text) => relay.update(text));
 		session.messages.push({ role: "assistant", content: answer });
-		await sendToTab(tabId, { type: "GODMODE_SHOW_ANSWER", answer });
+		relay.finish(answer);
 	} catch (err) {
 		await sendToTab(tabId, {
 			type: "GODMODE_SHOW_ERROR",

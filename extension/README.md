@@ -1,9 +1,11 @@
 # GodMode Screen Answers (Chrome extension)
 
 A small Manifest V3 Chrome extension: hit a keyboard shortcut, it screenshots
-the current tab, sends it to Claude with a question, and shows the answer in
-a floating card injected on the page. You can also trigger it from the
-toolbar popup and ask follow-ups without recapturing.
+the current tab, sends it to Claude with a question, and streams the answer
+— token by token, markdown-rendered (code blocks, lists, bold/italics,
+links) — into a floating card injected on the page, as close to actually
+chatting with Claude as a screenshot popup gets. You can also trigger it
+from the toolbar popup and ask follow-ups without recapturing.
 
 Everything runs client-side — your Anthropic API key is stored in
 `chrome.storage.local` and requests go straight from your browser to

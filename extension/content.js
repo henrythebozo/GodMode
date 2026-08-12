@@ -1,13 +1,85 @@
 // GodMode Screen Answers — content script
 //
 // Renders a small floating card (inside a shadow root, so page CSS can't
-// clash with it) that shows the screenshot thumbnail, a loading state, and
-// Claude's answer, plus a box for follow-up questions.
+// clash with it) that shows the screenshot thumbnail, a live-streamed,
+// markdown-rendered answer from Claude, and a box for follow-up questions.
 
 (() => {
 	let host = document.getElementById("godmode-overlay-host");
 	let shadow;
 	let els = {};
+
+	// ---- tiny, dependency-free markdown -> safe HTML -------------------------
+	// Escapes everything first, then only ever inserts our own controlled tags,
+	// so there's no way for the model's output to inject arbitrary markup.
+
+	function escapeHtml(s) {
+		return s
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;");
+	}
+
+	function renderInlineSpans(text) {
+		let out = escapeHtml(text);
+		out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
+		out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+		out = out.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+		out = out.replace(
+			/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+			'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+		);
+		return out;
+	}
+
+	function renderTextBlock(text) {
+		const lines = text.split("\n");
+		let html = "";
+		let inList = false;
+		for (const line of lines) {
+			const listMatch = line.match(/^\s*[-*]\s+(.*)/);
+			const headingMatch = line.match(/^(#{1,4})\s+(.*)/);
+			if (listMatch) {
+				if (!inList) {
+					html += "<ul>";
+					inList = true;
+				}
+				html += `<li>${renderInlineSpans(listMatch[1])}</li>`;
+				continue;
+			}
+			if (inList) {
+				html += "</ul>";
+				inList = false;
+			}
+			if (headingMatch) {
+				const level = Math.min(headingMatch[1].length + 2, 6);
+				html += `<h${level} class="md-h">${renderInlineSpans(headingMatch[2])}</h${level}>`;
+			} else if (line.trim() === "") {
+				html += "<br>";
+			} else {
+				html += `<p>${renderInlineSpans(line)}</p>`;
+			}
+		}
+		if (inList) html += "</ul>";
+		return html;
+	}
+
+	function renderMarkdown(markdown) {
+		const codeFence = /```(\w*)\n?([\s\S]*?)```/g;
+		let html = "";
+		let lastIndex = 0;
+		let match;
+		while ((match = codeFence.exec(markdown))) {
+			html += renderTextBlock(markdown.slice(lastIndex, match.index));
+			const lang = match[1] || "";
+			html += `<pre><code class="lang-${escapeHtml(lang)}">${escapeHtml(match[2])}</code></pre>`;
+			lastIndex = codeFence.lastIndex;
+		}
+		html += renderTextBlock(markdown.slice(lastIndex));
+		return html;
+	}
+
+	// ---- overlay UI ------------------------------------------------------
 
 	function ensureOverlay() {
 		if (host) return;
@@ -24,7 +96,7 @@
 					position: fixed;
 					bottom: 20px;
 					right: 20px;
-					width: 340px;
+					width: 360px;
 					max-height: 70vh;
 					display: flex;
 					flex-direction: column;
@@ -34,7 +106,7 @@
 					box-shadow: 0 10px 40px rgba(0,0,0,0.45);
 					font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 					font-size: 13px;
-					line-height: 1.45;
+					line-height: 1.5;
 					overflow: hidden;
 					border: 1px solid rgba(255,255,255,0.08);
 				}
@@ -44,7 +116,6 @@
 					justify-content: space-between;
 					padding: 8px 12px;
 					background: #1f2937;
-					cursor: default;
 					flex: none;
 				}
 				.title {
@@ -76,15 +147,49 @@
 					display: block;
 					border: 1px solid rgba(255,255,255,0.08);
 				}
-				.answer {
-					white-space: pre-wrap;
-					word-break: break-word;
+				.answer p { margin: 0 0 8px; }
+				.answer p:last-child { margin-bottom: 0; }
+				.answer ul { margin: 4px 0 8px; padding-left: 18px; }
+				.answer li { margin-bottom: 2px; }
+				.answer .md-h { margin: 10px 0 4px; font-size: 13px; color: #c7d2fe; }
+				.answer code {
+					background: rgba(255,255,255,0.1);
+					padding: 1px 5px;
+					border-radius: 4px;
+					font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+					font-size: 11.5px;
 				}
+				.answer pre {
+					background: #0b1220;
+					border: 1px solid rgba(255,255,255,0.08);
+					border-radius: 8px;
+					padding: 8px 10px;
+					overflow-x: auto;
+					margin: 6px 0 10px;
+				}
+				.answer pre code { background: none; padding: 0; font-size: 11.5px; }
+				.answer a { color: #a5b4fc; }
+				.cursor {
+					display: inline-block;
+					width: 6px;
+					height: 13px;
+					background: #a5b4fc;
+					margin-left: 2px;
+					vertical-align: text-bottom;
+					animation: blink 1s step-start infinite;
+				}
+				@keyframes blink { 50% { opacity: 0; } }
 				.status {
 					color: #9ca3af;
 					display: flex;
 					align-items: center;
 					gap: 8px;
+				}
+				.followup-echo {
+					color: #9ca3af;
+					margin: 10px 0 6px;
+					padding-top: 8px;
+					border-top: 1px dashed rgba(255,255,255,0.1);
 				}
 				.spinner {
 					width: 14px;
@@ -145,14 +250,19 @@
 		els.close = shadow.querySelector(".close");
 		els.input = shadow.querySelector(".footer input");
 		els.send = shadow.querySelector(".footer button");
+		els.currentAnswer = null;
 
-		els.close.addEventListener("click", () => host.remove());
+		els.close.addEventListener("click", () => {
+			host.remove();
+			host = null;
+		});
 		const sendFollowup = () => {
 			const question = els.input.value.trim();
 			if (!question) return;
 			els.input.value = "";
 			chrome.runtime.sendMessage({ type: "GODMODE_ASK_FOLLOWUP", question });
 			appendUserQuestion(question);
+			showLoading();
 		};
 		els.send.addEventListener("click", sendFollowup);
 		els.input.addEventListener("keydown", (e) => {
@@ -162,8 +272,7 @@
 
 	function appendUserQuestion(question) {
 		const p = document.createElement("div");
-		p.className = "status";
-		p.style.marginTop = "10px";
+		p.className = "followup-echo";
 		p.textContent = `↳ ${question}`;
 		els.body.appendChild(p);
 		els.body.scrollTop = els.body.scrollHeight;
@@ -179,6 +288,7 @@
 			img.src = screenshot;
 			els.body.appendChild(img);
 		}
+		els.currentAnswer = null; // next delta starts a fresh answer block
 		const status = document.createElement("div");
 		status.className = "status loading-status";
 		status.innerHTML = `<span class="spinner"></span> Asking Claude…`;
@@ -186,13 +296,17 @@
 		els.body.scrollTop = els.body.scrollHeight;
 	}
 
-	function showAnswer(answer) {
+	function updateStreamingAnswer(text, done) {
 		ensureOverlay();
 		els.body.querySelector(".loading-status")?.remove();
-		const div = document.createElement("div");
-		div.className = "answer";
-		div.textContent = answer || "(no answer)";
-		els.body.appendChild(div);
+		if (!els.currentAnswer) {
+			els.currentAnswer = document.createElement("div");
+			els.currentAnswer.className = "answer";
+			els.body.appendChild(els.currentAnswer);
+		}
+		els.currentAnswer.innerHTML =
+			renderMarkdown(text) + (done ? "" : '<span class="cursor"></span>');
+		if (done) els.currentAnswer = null; // next turn gets its own block
 		els.body.scrollTop = els.body.scrollHeight;
 	}
 
@@ -203,6 +317,7 @@
 		div.className = "error";
 		div.textContent = `⚠ ${error}`;
 		els.body.appendChild(div);
+		els.currentAnswer = null;
 		els.body.scrollTop = els.body.scrollHeight;
 	}
 
@@ -211,8 +326,11 @@
 			case "GODMODE_SHOW_LOADING":
 				showLoading(message.screenshot);
 				break;
-			case "GODMODE_SHOW_ANSWER":
-				showAnswer(message.answer);
+			case "GODMODE_STREAM_DELTA":
+				updateStreamingAnswer(message.text, false);
+				break;
+			case "GODMODE_STREAM_DONE":
+				updateStreamingAnswer(message.text, true);
 				break;
 			case "GODMODE_SHOW_ERROR":
 				showError(message.error);
