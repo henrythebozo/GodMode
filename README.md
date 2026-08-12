@@ -55,6 +55,9 @@ the button next to "Henry OS" in the sidebar, or go straight to
   Settings and turn on Team mode: Jarvis quietly consults every model on your
   question in parallel, then answers you in one voice using the best of what
   they said. Switch which model leads at any time.
+- **It can generate images and video.** Add a [Higgsfield](https://higgsfield.ai)
+  API key in Settings and ask Jarvis to make you a picture (or a video, once
+  you point it at a video model) — it generates it and opens the result.
 - Same bring-your-own-key model as Henry OS — an OpenRouter key or your own
   OpenAI/Anthropic key, stored only on your device.
 

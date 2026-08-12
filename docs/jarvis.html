@@ -577,6 +577,19 @@
 	</div>
 	<p class="hint">Your Home Assistant instance must allow requests from this page's origin (set <code>http.cors_allowed_origins</code> in <code>configuration.yaml</code>, or use a Nabu Casa URL).</p>
 
+	<h3>Media Generation (Higgsfield)</h3>
+	<p>
+		Lets Jarvis generate images — and video, once you set a model below — with
+		<a href="https://higgsfield.ai" target="_blank" rel="noreferrer">Higgsfield AI</a>. Get an API key id and
+		secret from <a href="https://cloud.higgsfield.ai" target="_blank" rel="noreferrer">cloud.higgsfield.ai</a>.
+	</p>
+	<label>API key id<input type="text" id="higgsKeyIdInput" placeholder="key id" autocomplete="off" /></label>
+	<label>API key secret<input type="password" id="higgsKeySecretInput" placeholder="key secret" autocomplete="off" /></label>
+	<label><span>Video model endpoint <span class="hint">(optional — image generation works without this)</span></span>
+		<input type="text" id="higgsVideoEndpointInput" placeholder="/higgsfield-ai/…" autocomplete="off" />
+	</label>
+	<p class="hint">Only the image endpoint is in Higgsfield's public docs; find the video one for the model you want in your Higgsfield Cloud dashboard and paste its path here.</p>
+
 	<div class="row">
 		<button class="ghost" id="settingsCancel" type="button">Close</button>
 		<button class="primary" id="settingsSave" type="button">Save</button>
@@ -648,6 +661,12 @@ const store = {
 	set haUrl(v) { localStorage.setItem('jarvis.haUrl', v); },
 	get haToken() { return localStorage.getItem('jarvis.haToken') || ''; },
 	set haToken(v) { localStorage.setItem('jarvis.haToken', v); },
+	get higgsKeyId() { return localStorage.getItem('jarvis.higgsKeyId') || ''; },
+	set higgsKeyId(v) { localStorage.setItem('jarvis.higgsKeyId', v); },
+	get higgsKeySecret() { return localStorage.getItem('jarvis.higgsKeySecret') || ''; },
+	set higgsKeySecret(v) { localStorage.setItem('jarvis.higgsKeySecret', v); },
+	get higgsVideoEndpoint() { return localStorage.getItem('jarvis.higgsVideoEndpoint') || ''; },
+	set higgsVideoEndpoint(v) { localStorage.setItem('jarvis.higgsVideoEndpoint', v); },
 };
 
 function seedDevices() {
@@ -1110,6 +1129,9 @@ function openSettings() {
 	document.getElementById('haUrlInput').value = store.haUrl;
 	document.getElementById('haTokenInput').value = store.haToken;
 	document.getElementById('haTestResult').textContent = '';
+	document.getElementById('higgsKeyIdInput').value = store.higgsKeyId;
+	document.getElementById('higgsKeySecretInput').value = store.higgsKeySecret;
+	document.getElementById('higgsVideoEndpointInput').value = store.higgsVideoEndpoint;
 	populateVoices();
 	const hint = document.getElementById('speechSupportHint');
 	hint.textContent = SR ? 'Voice recognition is supported in this browser.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).';
@@ -1157,6 +1179,9 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.haEnabled = document.getElementById('haEnabledInput').checked;
 	store.haUrl = document.getElementById('haUrlInput').value.trim();
 	store.haToken = document.getElementById('haTokenInput').value.trim();
+	store.higgsKeyId = document.getElementById('higgsKeyIdInput').value.trim();
+	store.higgsKeySecret = document.getElementById('higgsKeySecretInput').value.trim();
+	store.higgsVideoEndpoint = document.getElementById('higgsVideoEndpointInput').value.trim();
 	assistantNameLabel.textContent = store.assistantName.toUpperCase();
 	applyListenMode();
 	renderHome();
@@ -1472,6 +1497,7 @@ async function toolGetStatus() {
 		'notes: ' + store.notes.length,
 		'devices: ' + (store.haEnabled ? 'via Home Assistant' : store.devices.length),
 		'recordings: ' + store.transcripts.length,
+		'media generation: ' + (store.higgsKeyId && store.higgsKeySecret ? 'Higgsfield connected' + (store.higgsVideoEndpoint ? ' (image + video)' : ' (image only)') : 'not configured'),
 		'voice input supported: ' + !!SR,
 	];
 	return { ok: true, message: 'System status — ' + parts.join(', ') + '.' };
@@ -1602,6 +1628,95 @@ function toolWebSearch(args) {
 	window.open(url, '_blank', 'noopener');
 	addLinkChip(url, 'search: ' + q);
 	return { ok: true, message: 'Searching the web for "' + q + '".' };
+}
+
+/* ------------------------- Higgsfield media generation ------------------
+ * BYOK, same as the AI providers: a Higgsfield Cloud API key id + secret
+ * pair, entered in Settings, sent straight from this browser to
+ * platform.higgsfield.ai (confirmed CORS-open) — never through anything of
+ * ours. Generation is async: submit a request, poll it to completion, then
+ * open the resulting file. Only the image ("Soul") endpoint is documented
+ * publicly, so it's built in directly; video is exposed as a configurable
+ * endpoint path since the exact one isn't published outside a Higgsfield
+ * Cloud account. */
+const HIGGS_BASE = 'https://platform.higgsfield.ai';
+function higgsAuthHeader() {
+	return 'Key ' + store.higgsKeyId + ':' + store.higgsKeySecret;
+}
+async function higgsSubmit(path, body) {
+	const res = await fetch(HIGGS_BASE + path, {
+		method: 'POST',
+		headers: { Authorization: higgsAuthHeader(), 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	});
+	const data = await res.json().catch(() => null);
+	if (!res.ok) throw new Error((data && (data.detail || data.message || data.error)) || (res.status + ' ' + res.statusText));
+	return data; // { status, request_id, status_url, cancel_url }
+}
+async function higgsPoll(requestId, opts) {
+	const timeoutMs = (opts && opts.timeoutMs) || 90000;
+	const intervalMs = (opts && opts.intervalMs) || 2500;
+	const started = Date.now();
+	for (;;) {
+		const res = await fetch(HIGGS_BASE + '/requests/' + requestId + '/status', { headers: { Authorization: higgsAuthHeader() } });
+		const data = await res.json().catch(() => null);
+		if (!res.ok) throw new Error((data && (data.detail || data.message || data.error)) || (res.status + ' ' + res.statusText));
+		const status = data && data.status;
+		if (status === 'completed') return data;
+		if (status === 'failed' || status === 'nsfw' || status === 'canceled') throw new Error('generation ' + status + (data && data.error ? ': ' + data.error : ''));
+		if (Date.now() - started > timeoutMs) throw new Error('timed out waiting for it to finish — check yourself at ' + HIGGS_BASE + '/requests/' + requestId + '/status');
+		await new Promise((r) => setTimeout(r, intervalMs));
+	}
+}
+function higgsOutputUrl(data) {
+	// the exact output shape isn't nailed down in the public docs, so probe the field names generation APIs commonly use
+	if (!data) return null;
+	if (data.output_url) return data.output_url;
+	if (data.url) return data.url;
+	if (data.output && data.output.url) return data.output.url;
+	if (Array.isArray(data.output) && data.output[0]) return data.output[0].url || data.output[0];
+	if (Array.isArray(data.outputs) && data.outputs[0]) return data.outputs[0].url || data.outputs[0];
+	if (Array.isArray(data.artifacts) && data.artifacts[0]) return data.artifacts[0].url || data.artifacts[0];
+	return null;
+}
+function higgsOpenResult(url, label) {
+	addLinkChip(url, label);
+	window.open(url, '_blank', 'noopener');
+}
+async function toolGenerateImage(args) {
+	if (!store.higgsKeyId || !store.higgsKeySecret) return { ok: false, message: 'Add a Higgsfield API key id and secret in Settings first — get them from cloud.higgsfield.ai.' };
+	const prompt = (args.prompt || '').trim();
+	if (!prompt) return { ok: false, message: 'Need a prompt to generate an image.' };
+	try {
+		const submitted = await higgsSubmit('/higgsfield-ai/soul/standard', {
+			prompt,
+			aspect_ratio: args.aspect_ratio || '1:1',
+			resolution: args.resolution || '720p',
+		});
+		const done = await higgsPoll(submitted.request_id);
+		const url = higgsOutputUrl(done);
+		if (!url) return { ok: false, message: 'Higgsfield finished but returned no output link — check ' + HIGGS_BASE + '/requests/' + submitted.request_id + '/status.' };
+		higgsOpenResult(url, 'image: ' + prompt.slice(0, 40));
+		return { ok: true, message: 'Generated the image and opened it.' };
+	} catch (err) {
+		return { ok: false, message: 'Higgsfield image generation failed: ' + (err && err.message ? err.message : err) };
+	}
+}
+async function toolGenerateVideo(args) {
+	if (!store.higgsKeyId || !store.higgsKeySecret) return { ok: false, message: 'Add a Higgsfield API key id and secret in Settings first — get them from cloud.higgsfield.ai.' };
+	if (!store.higgsVideoEndpoint) return { ok: false, message: 'No Higgsfield video model is set up — add its endpoint path in Settings (find it in your Higgsfield Cloud dashboard, e.g. something under /higgsfield-ai/...).' };
+	const prompt = (args.prompt || '').trim();
+	if (!prompt) return { ok: false, message: 'Need a prompt to generate a video.' };
+	try {
+		const submitted = await higgsSubmit(store.higgsVideoEndpoint, { prompt, aspect_ratio: args.aspect_ratio || '16:9' });
+		const done = await higgsPoll(submitted.request_id, { timeoutMs: 180000 });
+		const url = higgsOutputUrl(done);
+		if (!url) return { ok: false, message: 'Higgsfield finished but returned no output link — check ' + HIGGS_BASE + '/requests/' + submitted.request_id + '/status.' };
+		higgsOpenResult(url, 'video: ' + prompt.slice(0, 40));
+		return { ok: true, message: 'Generated the video and opened it.' };
+	} catch (err) {
+		return { ok: false, message: 'Higgsfield video generation failed: ' + (err && err.message ? err.message : err) };
+	}
 }
 
 /* ----------------------------- smart home ------------------------------ */
@@ -1784,6 +1899,8 @@ async function runTool(action) {
 			case 'get_device': return await toolGetDevice(args);
 			case 'set_device': return await toolSetDevice(args);
 			case 'run_scene': return await toolRunScene(args);
+			case 'generate_image': return await toolGenerateImage(args);
+			case 'generate_video': return await toolGenerateVideo(args);
 			case 'list_transcripts': return toolListTranscripts();
 			case 'get_transcript': return toolGetTranscript(args);
 			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
@@ -1897,6 +2014,8 @@ const TOOL_DOCS = [
 	'run_scene {"name": string} — run a smart home scene, e.g. "Good Night" or "Good Morning".',
 	'list_transcripts {} — list recorded conversation/meeting transcripts with title and length.',
 	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
+	'generate_image {"prompt": string, "aspect_ratio": string optional (e.g. "16:9", "1:1", "4:3"), "resolution": string optional ("720p" or "1080p")} — generate an image with Higgsfield AI; takes up to about a minute.',
+	'generate_video {"prompt": string, "aspect_ratio": string optional} — generate a short video with Higgsfield AI; takes a few minutes. Only works if a video model is configured in Settings.',
 ].join('\n- ');
 
 function buildSystemPrompt() {
@@ -1914,7 +2033,7 @@ function buildSystemPrompt() {
 		'You may include more than one such block to call multiple tools in one turn.',
 		'',
 		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
-		'For tools that fetch information you need before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
 		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
