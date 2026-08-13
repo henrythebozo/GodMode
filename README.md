@@ -58,8 +58,21 @@ the button next to "Henry OS" in the sidebar, or go straight to
 - **It can generate images and video.** Add a [Higgsfield](https://higgsfield.ai)
   API key in Settings and ask Jarvis to make you a picture (or a video, once
   you point it at a video model) — it generates it and opens the result.
-- Same bring-your-own-key model as Henry OS — an OpenRouter key or your own
-  OpenAI/Anthropic key, stored only on your device.
+- **It knows your calendar (read-only).** Upload an exported `.ics` file (or
+  sync a URL, for feeds that allow cross-origin requests) in Settings →
+  Calendar and Jarvis can tell you what's next, and includes it in the
+  dashboard's Upcoming list and the daily briefing.
+- **It can give you a daily briefing.** Opt in and pick a time in Settings →
+  Persona — weather, today's reminders, and a memory highlight, spoken once
+  a day while the app's open.
+- Global search (sidebar/top bar icon) across memory, notes, reminders,
+  recordings, and chat history. Export/import a full backup, or reset
+  everything, from Settings → Data.
+- Unlocking a door by voice always pops an in-app confirmation first —
+  enforced in code, not just prompted to the model.
+- Same bring-your-own-key model as Henry OS — an OpenRouter key, or your own
+  OpenAI/Anthropic/[Gemini](https://ai.google.dev) key, stored only on your
+  device.
 
 ### 📱 Jarvis for iOS
 
@@ -67,8 +80,10 @@ the button next to "Henry OS" in the sidebar, or go straight to
 [Capacitor](https://capacitorjs.com), so it can ship on the App Store instead
 of just living in a browser tab — including on-device voice recognition
 (WKWebView doesn't have the Web Speech API, so the browser version alone
-can't do this on iOS) and reminders that fire as real notifications even when
-the app is closed. The Xcode project is fully scaffolded; see
+can't do this on iOS), reminders that fire as real notifications even when
+the app is closed, and Siri Shortcuts ("Hey Siri, ask Jarvis…"). A Home
+Screen widget is written but needs one manual Xcode step to enable. The
+Xcode project is fully scaffolded; see
 [`mobile-app/README.md`](mobile-app/README.md) for the remaining steps, which
 need a Mac, Xcode, and your own Apple Developer account.
 
