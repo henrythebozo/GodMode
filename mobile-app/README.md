@@ -62,6 +62,37 @@ file back in) works fine either way, since that's a plain file-picker read.
   an App Transport Security exception (see note below).
 - Local notifications + on-device speech recognition wired into the app code.
 
+## Siri Shortcuts and the Home Screen widget
+
+**Siri Shortcuts are fully wired in, no extra Xcode step needed** —
+`JarvisIntents.swift` defines two [App Intents](https://developer.apple.com/documentation/appintents)
+(iOS 16+, not the older SiriKit `.intentdefinition` mechanism, which would
+need its own extension target): "Ask Jarvis \<question\>" and "Set a
+reminder with Jarvis." Both just bring the app to the foreground and call a
+JS hook (`window.jarvisSiriAsk` / `window.jarvisSiriRemind` in
+`www/index.html`) that feeds into the exact same `submitCommand()` /
+`toolSetReminder()` paths the on-screen mic and keyboard use — no native
+reimplementation of the assistant. They show up automatically in the
+Shortcuts app and Siri suggestions once you've built and run the app once;
+nothing to configure. This is also why `IPHONEOS_DEPLOYMENT_TARGET` is now
+**16.0** (was 14.0) — App Intents doesn't exist before it. Untested on a
+real device, same as everything else in this folder — the pattern
+(`AppIntent` → `openAppWhenRun` → poll for the webView → `evaluateJavaScript`)
+follows Apple's documented template closely, but I have no way to compile
+or run Swift here to confirm it builds clean.
+
+**The Home Screen widget needs one manual Xcode step.** The data pipe for
+it is done — `JarvisWidgetBridge.swift` (native) and `syncWidgetSnapshot()`
+(JS) keep a "next reminder / next event" snapshot flowing into a shared
+App Group container whenever the dashboard updates. The widget's Swift UI
+is written and ready. What's *not* done is creating the actual widget
+extension target — that's real Xcode-project surgery (a second target, its
+own Info.plist, an embed-extension build phase) that Xcode's "New Target"
+wizard does safely and that I didn't think was responsible to hand-edit
+into `project.pbxproj` blind. See `ios/WidgetSource/README.md` for the
+~5-minute walkthrough (create the target, paste in the provided Swift file,
+add the App Group capability to both targets).
+
 ## What I could not do (no Mac in this environment)
 
 - Run `pod install` — CocoaPods needs to run on macOS. **You'll need to run
@@ -116,6 +147,10 @@ open ios/App/App.xcworkspace
      app; confirm events show up in Upcoming and via "what's on my calendar."
    - Settings → Data → Export backup — see the native-gap note above; Import
      should still work.
+   - Siri Shortcuts: say "Hey Siri, ask Jarvis what the weather is" (or open
+     the Shortcuts app and confirm "Ask Jarvis" / "Set a Reminder with
+     Jarvis" are listed under Jarvis) — the app should come to the
+     foreground and answer out loud.
 4. **Tune if needed**: the native voice engine ends a spoken command after
    ~1.4s of silence (`nativeSilenceTimer` in `www/index.html`) — adjust that
    number if it cuts you off or waits too long. This is the one piece of

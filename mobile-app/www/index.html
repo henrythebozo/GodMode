@@ -2957,6 +2957,7 @@ function renderSystemOverview() {
 }
 
 function renderUpcoming() {
+	syncWidgetSnapshot();
 	const box = document.getElementById('upcomingList');
 	const reminders = store.reminders.map((r) => ({ text: r.text, at: r.at, cal: false }));
 	const events = getUpcomingCalendarEvents(5).map((e) => ({ text: e.summary, at: e.start.getTime(), cal: true }));
@@ -3124,10 +3125,47 @@ async function generateBriefing() {
 	if (!recording) speak(text);
 }
 
+/* ============================ Siri Shortcuts (native) ====================== */
+/* Thin hooks the App Intents in ios/App/App/JarvisIntents.swift call into via
+ * evaluateJavaScript, once they've confirmed (via jarvisSiriReady) that boot
+ * below has finished. Both route straight into the same pipeline the on-screen
+ * mic and keyboard use — no separate native logic to keep in sync. No-ops
+ * (present but unused) in the plain web build. */
+window.jarvisSiriReady = () => typeof submitCommand === 'function';
+window.jarvisSiriAsk = (text) => {
+	text = String(text || '').trim();
+	if (!text) return;
+	if (!anyKey()) { speak('I need an API key set up in Jarvis settings before I can answer.'); openSettings(); return; }
+	submitCommand(text);
+};
+window.jarvisSiriRemind = (text, minutes) => {
+	const r = toolSetReminder({ text: String(text || ''), minutes: Number(minutes) || 10 });
+	toast(r.ok ? 'Reminder set' : 'Could not set reminder', r.message);
+	if (!recording) speak(r.message);
+};
+
+/* ========================= Home Screen widget (native) ===================== */
+/* Pushes the next reminder/calendar event to JarvisWidgetBridge.swift, which
+ * mirrors it into a shared App Group container the widget extension reads —
+ * see ios/WidgetSource/README.md. A silent no-op until that App Group is set
+ * up in Xcode, and in the plain web build (no window.webkit there at all). */
+function syncWidgetSnapshot() {
+	if (!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jarvisWidgetSync)) return;
+	const nextReminder = store.reminders.slice().sort((a, b) => a.at - b.at)[0];
+	const nextEvent = getUpcomingCalendarEvents(1)[0];
+	window.webkit.messageHandlers.jarvisWidgetSync.postMessage({
+		reminderText: nextReminder ? nextReminder.text : null,
+		reminderAt: nextReminder ? nextReminder.at : null,
+		eventText: nextEvent ? nextEvent.summary : null,
+		eventAt: nextEvent ? nextEvent.start.getTime() : null,
+	});
+}
+
 /* ================================ boot ================================ */
 applyListenMode();
 showView('dashboard');
 scheduleBriefing();
+syncWidgetSnapshot();
 if (!anyKey()) setTimeout(openSettings, 300);
 </script>
 </body>
