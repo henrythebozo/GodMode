@@ -32,7 +32,19 @@ Two smaller upgrades come along for free in the native build:
 If you change something in `docs/jarvis.html`, the equivalent change needs
 porting into `mobile-app/www/index.html` by hand — they're intentionally
 separate files rather than one build pipeline, so a change to one can't
-silently break the other.
+silently break the other. (As of this writing the two are back in sync,
+including the dashboard redesign, Gemini support, the read-only calendar,
+global search, backup/reset and the daily briefing — all of it works the
+same natively, using the same on-device speech engine described above.)
+
+One native gap worth knowing about: **Settings → Data → Export backup**
+downloads a file via a plain `<a download>`/`Blob` link, which is a browser
+convention `WKWebView` doesn't reliably support the way Safari does. It may
+silently do nothing on-device. Wiring this to a real save sheet would mean
+adding `@capacitor/filesystem` and `@capacitor/share` and switching the
+export path to `Filesystem.writeFile` + `Share.share` on native — untested,
+so left alone for now rather than shipping unverified. Import (reading a
+file back in) works fine either way, since that's a plain file-picker read.
 
 ## What's already done
 
@@ -96,6 +108,14 @@ open ios/App/App.xcworkspace
    - Settings → set a reminder for 1 minute, background the app, confirm a
      real notification arrives.
    - Home panel devices toggle; if you have Home Assistant, test that too.
+   - Voice-unlock a door and confirm the in-app confirmation dialog blocks it
+     until you tap Confirm.
+   - Search (sidebar/top bar icon) finds a memory fact, note, or reminder and
+     jumps to the right screen.
+   - Settings → Calendar → upload a `.ics` file exported from your calendar
+     app; confirm events show up in Upcoming and via "what's on my calendar."
+   - Settings → Data → Export backup — see the native-gap note above; Import
+     should still work.
 4. **Tune if needed**: the native voice engine ends a spoken command after
    ~1.4s of silence (`nativeSilenceTimer` in `www/index.html`) — adjust that
    number if it cuts you off or waits too long. This is the one piece of
