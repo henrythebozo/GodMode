@@ -77,7 +77,7 @@
 	.iconbtn.on { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 	.iconbtn.recording { background: var(--err-soft); color: var(--err); border-color: transparent; animation: recPulse 1.2s ease-in-out infinite; }
 	@keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-	.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; display: inline-block; }
+	.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); flex: none; display: inline-block; transition: background 0.3s ease, box-shadow 0.3s ease; }
 	.dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 	.dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
 	.dot.err { background: var(--err); box-shadow: 0 0 8px var(--err); }
@@ -122,6 +122,7 @@
 		text-transform: uppercase;
 		cursor: pointer;
 		text-align: left;
+		transition: background 0.18s ease, color 0.18s ease;
 	}
 	.navitem:hover { background: var(--panel-2); color: var(--text); }
 	.navitem.on { background: var(--panel-2); color: var(--text); }
@@ -158,6 +159,7 @@
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		cursor: pointer;
+		transition: background 0.2s ease, color 0.2s ease, filter 0.15s ease;
 	}
 	#micBtn:hover { filter: brightness(0.92); }
 	#micBtn.live { background: var(--warn); animation: micPulse 1.4s ease-in-out infinite; }
@@ -171,7 +173,8 @@
 	#mobileTop { display: none; }
 	.viewport { flex: 1; min-height: 0; overflow-y: auto; padding: 26px 30px 8px; }
 	.view { display: none; }
-	.view.on { display: block; }
+	.view.on { display: block; animation: viewIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+	@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 	#view-dashboard.on {
 		display: grid;
@@ -202,7 +205,7 @@
 			0 0 42px 8px rgba(255, 255, 255, 0.28),
 			0 0 90px 22px rgba(255, 255, 255, 0.1),
 			inset 0 0 34px rgba(0, 0, 0, 0.65);
-		transition: border-color 0.4s, box-shadow 0.4s;
+		transition: border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
 		animation: breathe 4.5s ease-in-out infinite;
 	}
 	@keyframes breathe { 0%, 100% { transform: scale(0.985); } 50% { transform: scale(1.015); } }
@@ -212,7 +215,7 @@
 	.eye {
 		width: 11%; height: 28%; border-radius: 999px; background: #fff;
 		box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
-		transition: background 0.3s, box-shadow 0.3s;
+		transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 		animation: blink 5.5s ease-in-out infinite;
 	}
 	@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.08); } }
@@ -245,11 +248,11 @@
 	#orbWrap.listening ~ #bars span { background: var(--warn); }
 	#orbWrap.speaking ~ #bars span { background: var(--ok); }
 	#orbWrap.recording ~ #bars span { background: var(--err); }
-	#stateLabel { font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+	#stateLabel { font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); transition: color 0.3s ease; }
 	#stateLabel.listening { color: var(--warn); }
 	#stateLabel.speaking { color: var(--ok); }
 	#stateLabel.error, #stateLabel.recording { color: var(--err); }
-	#caption { max-width: 560px; min-height: 1.6em; font-size: 15px; line-height: 1.5; color: var(--text); }
+	#caption { max-width: 560px; min-height: 1.6em; font-size: 15px; line-height: 1.5; color: var(--text); transition: opacity 0.2s ease; }
 	#caption.dim { color: var(--dim); font-size: 13.5px; }
 	.chip {
 		display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line);
@@ -432,6 +435,7 @@
 		.tabbtn {
 			flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none;
 			color: var(--dim); padding: 6px 2px; font-size: 10px; font-weight: 650; letter-spacing: 0.01em; cursor: pointer; min-height: 44px;
+			transition: color 0.18s ease;
 		}
 		.tabbtn.on { color: var(--text); }
 		#tabMicBtn {
@@ -1412,7 +1416,16 @@ function detachNativeListeners() {
 }
 
 async function startListening(opts) {
-	if (!SR) { toast('No voice input', isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition. Use the keyboard instead.'); return; }
+	if (!SR) {
+		let detail = 'This browser has no speech recognition. Use the keyboard instead.';
+		if (isNative) {
+			detail = !CAP ? 'The native app bridge did not load — try relaunching the app.'
+				: !NativeSpeech ? 'The speech recognition plugin did not load with this build — reinstalling the app after a fresh pod install may fix it.'
+				: 'Speech recognition is unavailable on this device.';
+		}
+		toast('No voice input', detail, 9000);
+		return;
+	}
 	if (recording) return;
 	if (speaking) speechSynthesis.cancel();
 	if (listening) return;
@@ -1532,7 +1545,11 @@ function armWake() {
 function applyListenMode() {
 	stopListening();
 	clearTimeout(armTimer);
-	setMicDisabled(!SR);
+	// Natively, never hard-disable the mic button on a boot-time SR snapshot — if the speech
+	// plugin loaded a moment late, or availability only resolves once tapped, a disabled button
+	// gives zero feedback ("nothing happens"). Tapping it now always reaches startListening(),
+	// which reports a specific reason if voice really is unavailable, instead of just sitting dead.
+	setMicDisabled(isNative ? false : !SR);
 	if (store.mode === 'wake' && SR) armWake();
 }
 
@@ -1621,7 +1638,7 @@ function stopRecording(save) {
 	recording = false;
 	clearInterval(recordTimer);
 	recordBtn.classList.remove('recording');
-	setMicDisabled(!SR);
+	setMicDisabled(isNative ? false : !SR);
 	if (isNative) {
 		detachNativeRecordListeners();
 		if (nativeRecordLast) { recordText += (recordText ? ' ' : '') + nativeRecordLast.trim(); nativeRecordLast = ''; }
