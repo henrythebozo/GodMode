@@ -81,12 +81,12 @@
 	.dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
 	.dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
 	.dot.err { background: var(--err); box-shadow: 0 0 8px var(--err); }
-	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 11px 20px; font-weight: 600; cursor: pointer; }
+	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 11px 20px; font-weight: 600; cursor: pointer; transition: background 0.15s ease; }
 	.ghost:hover { background: var(--panel-3); }
 	.ghost.small { padding: 6px 14px; font-size: 12px; border-radius: 999px; }
-	.primary { background: var(--text); color: #0a0a0a; border: none; border-radius: 999px; padding: 11px 20px; font-weight: 700; cursor: pointer; }
+	.primary { background: var(--text); color: #0a0a0a; border: none; border-radius: 999px; padding: 11px 20px; font-weight: 700; cursor: pointer; transition: filter 0.15s ease; }
 	.primary:hover { filter: brightness(0.92); }
-	.linkbtn { background: none; border: none; color: var(--dim); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; padding: 4px; }
+	.linkbtn { background: none; border: none; color: var(--dim); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
 	.empty { color: var(--dim-2); font-size: 13px; text-align: center; padding: 26px 10px; }
 
@@ -274,8 +274,10 @@
 	.qabtn {
 		display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line);
 		border-radius: 14px; padding: 14px 8px; cursor: pointer; color: var(--text);
+		transition: background 0.15s ease, transform 0.15s ease;
 	}
 	.qabtn:hover { background: var(--panel-3); }
+	.qabtn:active { transform: scale(0.96); }
 	.qabtn svg { color: var(--dim); }
 	.qabtn span { font-size: 11px; font-weight: 600; }
 	.actrow { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; padding: 7px 0; border-top: 1px solid var(--line-soft); }
@@ -300,6 +302,7 @@
 	.appbadge {
 		width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 700;
 		background: var(--panel-3); color: var(--dim-2); border: 1px solid var(--line);
+		transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 	}
 	.appbadge.on { color: #0a0a0a; background: var(--text); border-color: transparent; }
 
@@ -318,7 +321,7 @@
 	.viewhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 	.viewhead h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 	.viewlist { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
-	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); }
+	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); transition: background 0.15s ease; }
 	button.row-item:hover { background: var(--panel-3); }
 
 	/* chat view */
@@ -372,8 +375,21 @@
 	dialog {
 		background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 20px; padding: 24px;
 		max-width: 460px; width: calc(100vw - 36px); box-shadow: var(--shadow); margin: auto; max-height: 88dvh; overflow-y: auto;
+		opacity: 0; transform: translateY(14px) scale(0.98);
+		transition: opacity 0.22s ease, transform 0.22s ease, display 0.22s allow-discrete, overlay 0.22s allow-discrete;
 	}
-	dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+	dialog[open] { opacity: 1; transform: none; }
+	@starting-style {
+		dialog[open] { opacity: 0; transform: translateY(14px) scale(0.98); }
+	}
+	dialog::backdrop {
+		background: rgba(0, 0, 0, 0); backdrop-filter: blur(0);
+		transition: background 0.22s ease, backdrop-filter 0.22s ease, display 0.22s allow-discrete, overlay 0.22s allow-discrete;
+	}
+	dialog[open]::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
+	@starting-style {
+		dialog[open]::backdrop { background: rgba(0, 0, 0, 0); backdrop-filter: blur(0); }
+	}
 	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
 	dialog h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--dim); margin: 18px 0 8px; }
 	.settabs { display: flex; gap: 2px; margin: 14px 0 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -410,8 +426,10 @@
 	/* -------------------------------- toasts ------------------------------ */
 	#toasts { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 80; display: flex; flex-direction: column; gap: 8px; max-width: min(320px, 88vw); }
 	.toast { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 13px; box-shadow: var(--shadow); animation: toastIn 0.25s ease-out; display: flex; gap: 10px; align-items: flex-start; }
+	.toast.out { animation: toastOut 0.35s ease-in forwards; }
 	.toast b { display: block; font-size: 11px; color: var(--text); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px; }
 	@keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+	@keyframes toastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(16px) scale(0.96); } }
 
 	@media (prefers-reduced-motion: reduce) {
 		*, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
@@ -460,7 +478,14 @@
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
 		.gauge svg { width: 50px; height: 50px; }
-		dialog { margin: auto auto 0; width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); }
+		dialog {
+			margin: auto auto 0; width: 100%; max-width: none; border-radius: 22px 22px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+			transform: translateY(60px);
+		}
+		dialog[open] { transform: none; }
+		@starting-style {
+			dialog[open] { transform: translateY(60px); }
+		}
 		dialog::before { content: ""; display: block; width: 38px; height: 4px; border-radius: 99px; background: var(--panel-3); margin: 0 auto 14px; }
 	}
 	@media (max-width: 420px) {
@@ -1031,7 +1056,11 @@ function toast(title, body, ms) {
 	el.className = 'toast';
 	el.innerHTML = '<div><b>' + esc(title) + '</b>' + esc(body) + '</div>';
 	toastsEl.appendChild(el);
-	setTimeout(() => el.remove(), ms || 6000);
+	setTimeout(() => {
+		el.classList.add('out');
+		el.addEventListener('animationend', () => el.remove(), { once: true });
+		setTimeout(() => el.remove(), 400); // fallback in case animationend doesn't fire
+	}, ms || 6000);
 }
 
 /* -- reusable confirm dialog, used for anything security-sensitive (e.g. unlocking a door) -- */
