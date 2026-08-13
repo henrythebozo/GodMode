@@ -660,6 +660,7 @@
 		<button type="button" data-settab="listening">Listening</button>
 		<button type="button" data-settab="home">Smart Home</button>
 		<button type="button" data-settab="media">Media</button>
+		<button type="button" data-settab="calendar">Calendar</button>
 		<button type="button" data-settab="data">Data</button>
 	</div>
 
@@ -675,6 +676,9 @@
 		</label>
 		<label><span>Anthropic key <span class="hint">(optional — enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
 			<input type="password" id="anthKeyInput" placeholder="sk-ant-…" autocomplete="off" />
+		</label>
+		<label><span>Gemini key <span class="hint">(optional — enables model id <code>gemini:gemini-2.5-flash</code> etc.)</span></span>
+			<input type="password" id="geminiKeyInput" placeholder="AIza…" autocomplete="off" />
 		</label>
 		<h3>Models <span class="hint">— add more than one and Jarvis can consult them together</span></h3>
 		<div id="modelRows"></div>
@@ -757,6 +761,32 @@
 		<p class="hint">Only the image endpoint is in Higgsfield's public docs; find the video one for the model you want in your Higgsfield Cloud dashboard and paste its path here.</p>
 	</div>
 
+	<div class="settab" id="settab-calendar">
+		<h3>Calendar <span class="hint">— read-only</span></h3>
+		<p>
+			Shows upcoming events from a calendar you export as an <code>.ics</code> file — Google Calendar, iCloud,
+			Outlook and most others can export one from their settings. Most calendar hosts don't let a webpage fetch
+			their feed directly (a browser rule called CORS — checked against Google, iCloud and Outlook, none allow
+			it), so uploading the file is the reliable path. Syncing a URL below works only for feeds that happen to
+			allow cross-origin requests, which self-hosted calendars often do.
+		</p>
+		<div class="row">
+			<button class="ghost" id="calImportBtn" type="button">Upload .ics file</button>
+			<input type="file" id="calImportFile" accept=".ics,text/calendar" hidden />
+		</div>
+		<label><span>Or a calendar URL <span class="hint">(webcal:// or https:// — only works if the host allows it)</span></span>
+			<input type="text" id="calUrlInput" placeholder="webcal://…/basic.ics" autocomplete="off" />
+		</label>
+		<div class="row">
+			<button class="ghost small" id="calSyncBtn" type="button">Try syncing this URL</button>
+			<span class="hint" id="calSyncResult"></span>
+		</div>
+		<p class="hint" id="calStatus">No calendar connected.</p>
+		<div class="row">
+			<button class="ghost" id="calClearBtn" type="button">Disconnect calendar</button>
+		</div>
+	</div>
+
 	<div class="settab" id="settab-data">
 		<h3>Backup</h3>
 		<p class="hint">Export everything Jarvis knows on this device — memory, reminders, notes, chat history, recordings and devices — to a JSON file, and re-import it later or in another browser.</p>
@@ -809,6 +839,8 @@ const store = {
 	set oaiKey(v) { localStorage.setItem('jarvis.key.openai', v); },
 	get anthKey() { return localStorage.getItem('jarvis.key.anthropic') || ''; },
 	set anthKey(v) { localStorage.setItem('jarvis.key.anthropic', v); },
+	get geminiKey() { return localStorage.getItem('jarvis.key.gemini') || ''; },
+	set geminiKey(v) { localStorage.setItem('jarvis.key.gemini', v); },
 	get models() {
 		try {
 			const v = JSON.parse(localStorage.getItem('jarvis.models'));
@@ -877,6 +909,12 @@ const store = {
 	set briefingTime(v) { localStorage.setItem('jarvis.briefingTime', v); },
 	get briefingLastFired() { return localStorage.getItem('jarvis.briefingLastFired') || ''; },
 	set briefingLastFired(v) { localStorage.setItem('jarvis.briefingLastFired', v); },
+	get calendarIcs() { return localStorage.getItem('jarvis.calendarIcs') || ''; },
+	set calendarIcs(v) { localStorage.setItem('jarvis.calendarIcs', v); },
+	get calendarUrl() { return localStorage.getItem('jarvis.calendarUrl') || ''; },
+	set calendarUrl(v) { localStorage.setItem('jarvis.calendarUrl', v); },
+	get calendarSyncedAt() { return parseInt(localStorage.getItem('jarvis.calendarSyncedAt') || '0', 10); },
+	set calendarSyncedAt(v) { localStorage.setItem('jarvis.calendarSyncedAt', String(v)); },
 };
 
 function seedDevices() {
@@ -1120,6 +1158,7 @@ function openSettings() {
 	document.getElementById('keyInput').value = store.key;
 	document.getElementById('oaiKeyInput').value = store.oaiKey;
 	document.getElementById('anthKeyInput').value = store.anthKey;
+	document.getElementById('geminiKeyInput').value = store.geminiKey;
 	draftModels = store.models.slice();
 	renderModelRows();
 	document.getElementById('teamModeInput').checked = store.teamMode;
@@ -1141,6 +1180,9 @@ function openSettings() {
 	document.getElementById('higgsVideoEndpointInput').value = store.higgsVideoEndpoint;
 	document.getElementById('briefingEnabledInput').checked = store.briefingEnabled;
 	document.getElementById('briefingTimeInput').value = store.briefingTime;
+	document.getElementById('calUrlInput').value = store.calendarUrl;
+	document.getElementById('calSyncResult').textContent = '';
+	updateCalStatus();
 	document.getElementById('exportKeysInput').checked = false;
 	document.getElementById('dataIOResult').textContent = '';
 	populateVoices();
@@ -1172,6 +1214,61 @@ document.getElementById('haTestBtn').addEventListener('click', async () => {
 	}
 });
 
+function updateCalStatus() {
+	const el = document.getElementById('calStatus');
+	if (!store.calendarIcs) { el.textContent = 'No calendar connected.'; return; }
+	let n = 0;
+	try { n = parseIcsEvents(store.calendarIcs).length; } catch {}
+	el.textContent = 'Connected — ' + n + ' event' + (n === 1 ? '' : 's') + ' in the feed, last synced ' + (store.calendarSyncedAt ? new Date(store.calendarSyncedAt).toLocaleString() : 'just now') + '.';
+}
+document.getElementById('calImportBtn').addEventListener('click', () => document.getElementById('calImportFile').click());
+document.getElementById('calImportFile').addEventListener('change', (e) => {
+	const file = e.target.files[0];
+	e.target.value = '';
+	if (!file) return;
+	const reader = new FileReader();
+	reader.onload = () => {
+		const text = String(reader.result);
+		if (!/BEGIN:VCALENDAR/i.test(text)) { document.getElementById('calStatus').textContent = 'That file does not look like a .ics calendar.'; return; }
+		store.calendarIcs = text;
+		store.calendarSyncedAt = Date.now();
+		updateCalStatus();
+		renderUpcoming();
+	};
+	reader.onerror = () => { document.getElementById('calStatus').textContent = 'Could not read that file.'; };
+	reader.readAsText(file);
+});
+document.getElementById('calSyncBtn').addEventListener('click', async () => {
+	const out = document.getElementById('calSyncResult');
+	let url = document.getElementById('calUrlInput').value.trim();
+	if (!url) { out.textContent = 'Add a URL first.'; return; }
+	if (url.startsWith('webcal://')) url = 'https://' + url.slice('webcal://'.length);
+	out.textContent = 'Syncing…';
+	try {
+		const res = await fetch(url);
+		if (!res.ok) throw new Error(String(res.status) + ' ' + res.statusText);
+		const text = await res.text();
+		if (!/BEGIN:VCALENDAR/i.test(text)) throw new Error('not an .ics feed');
+		store.calendarIcs = text;
+		store.calendarUrl = url;
+		store.calendarSyncedAt = Date.now();
+		out.textContent = 'Synced ✓';
+		updateCalStatus();
+		renderUpcoming();
+	} catch {
+		out.textContent = 'Could not fetch that feed directly — most likely blocked by CORS. Export it as a file and upload it instead.';
+	}
+});
+document.getElementById('calClearBtn').addEventListener('click', () => {
+	store.calendarIcs = '';
+	store.calendarUrl = '';
+	store.calendarSyncedAt = 0;
+	document.getElementById('calUrlInput').value = '';
+	document.getElementById('calSyncResult').textContent = '';
+	updateCalStatus();
+	renderUpcoming();
+});
+
 document.getElementById('exportBtn').addEventListener('click', () => exportBackup(document.getElementById('exportKeysInput').checked));
 document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
 document.getElementById('importFile').addEventListener('change', (e) => {
@@ -1188,6 +1285,7 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.key = document.getElementById('keyInput').value.trim();
 	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
 	store.anthKey = document.getElementById('anthKeyInput').value.trim();
+	store.geminiKey = document.getElementById('geminiKeyInput').value.trim();
 	if (draftModels.length) store.models = draftModels.slice();
 	store.teamMode = document.getElementById('teamModeInput').checked;
 	store.assistantName = document.getElementById('assistantNameInput').value.trim() || 'Jarvis';
@@ -1237,7 +1335,7 @@ function populateVoices() {
 }
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = populateVoices;
 
-function anyKey() { return !!(store.key || store.oaiKey || store.anthKey); }
+function anyKey() { return !!(store.key || store.oaiKey || store.anthKey || store.geminiKey); }
 
 /* ============================ text-to-speech ============================ */
 let speaking = false;
@@ -1902,6 +2000,103 @@ function toolGetTranscript(args) {
 	return { ok: true, message: 'Recording "' + t.title + '": ' + body };
 }
 
+/* ------------------------------- calendar -------------------------------- */
+/* Read-only .ics support. Most calendar hosts (Google, iCloud, Outlook) don't set
+   CORS headers on their feed URLs, so a browser fetch() from this page is blocked —
+   verified empirically against all three before building this. Uploading an exported
+   .ics file sidesteps that entirely; "sync a URL" is a bonus that only works for
+   feeds that happen to allow cross-origin requests (self-hosted calendars often do). */
+function unfoldIcs(text) {
+	return String(text).replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '');
+}
+function unescapeIcsText(s) {
+	return String(s).replace(/\\n/gi, ' ').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+}
+function parseIcsDate(v) {
+	const m = String(v || '').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/);
+	if (!m) return null;
+	const [, y, mo, d, h, mi, s, z] = m;
+	if (h === undefined) return { date: new Date(Number(y), Number(mo) - 1, Number(d)), allDay: true };
+	if (z) return { date: new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s))), allDay: false };
+	return { date: new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s)), allDay: false };
+}
+function parseIcsEvents(text) {
+	const events = [];
+	const lines = unfoldIcs(text).split('\n');
+	let cur = null;
+	for (const raw of lines) {
+		const line = raw.trim();
+		if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
+		if (line === 'END:VEVENT') { if (cur) events.push(cur); cur = null; continue; }
+		if (!cur) continue;
+		const idx = line.indexOf(':');
+		if (idx < 0) continue;
+		const key = line.slice(0, idx).split(';')[0];
+		const value = line.slice(idx + 1);
+		if (key === 'SUMMARY') cur.summary = unescapeIcsText(value);
+		else if (key === 'DTSTART') cur.dtstart = value;
+		else if (key === 'RRULE') cur.rrule = value;
+		else if (key === 'LOCATION') cur.location = unescapeIcsText(value);
+	}
+	return events;
+}
+/* Best-effort recurrence: resolves only the next occurrence, for FREQ=DAILY/WEEKLY/MONTHLY/YEARLY
+   with INTERVAL/COUNT/UNTIL. Ignores BYDAY/BYMONTHDAY/etc — not a full RFC5545 engine. */
+function nextIcsOccurrence(ev, now) {
+	const start = parseIcsDate(ev.dtstart);
+	if (!start) return null;
+	if (!ev.rrule) return start.date >= now ? start.date : null;
+	const parts = {};
+	ev.rrule.split(';').forEach((p) => { const [k, v] = p.split('='); if (k) parts[k] = v; });
+	const freq = parts.FREQ;
+	const interval = Math.max(1, parseInt(parts.INTERVAL || '1', 10));
+	const until = parts.UNTIL ? parseIcsDate(parts.UNTIL)?.date : null;
+	const count = parts.COUNT ? parseInt(parts.COUNT, 10) : null;
+	let d = new Date(start.date);
+	let n = 0;
+	if (freq === 'DAILY' || freq === 'WEEKLY') {
+		const stepMs = (freq === 'DAILY' ? 1 : 7) * 86400000 * interval;
+		if (d.getTime() >= now.getTime()) { n = 0; } else {
+			const steps = Math.ceil((now.getTime() - d.getTime()) / stepMs);
+			d = new Date(d.getTime() + steps * stepMs);
+			n = steps;
+		}
+	} else if (freq === 'MONTHLY' || freq === 'YEARLY') {
+		while (d.getTime() < now.getTime() && n < 2000) {
+			if (freq === 'MONTHLY') d.setMonth(d.getMonth() + interval); else d.setFullYear(d.getFullYear() + interval);
+			n++;
+		}
+	} else {
+		return start.date >= now ? start.date : null; // unsupported FREQ — only surface the original occurrence
+	}
+	if (count && n >= count) return null;
+	if (until && d > until) return null;
+	return d;
+}
+function getUpcomingCalendarEvents(limit) {
+	if (!store.calendarIcs) return [];
+	let events;
+	try { events = parseIcsEvents(store.calendarIcs); } catch { return []; }
+	const now = new Date();
+	const withNext = events.map((ev) => {
+		const next = nextIcsOccurrence(ev, now);
+		return next ? { summary: ev.summary || '(untitled event)', start: next, location: ev.location } : null;
+	}).filter(Boolean);
+	withNext.sort((a, b) => a.start - b.start);
+	return withNext.slice(0, limit || 10);
+}
+function toolListCalendarEvents() {
+	if (!store.calendarIcs) return { ok: false, message: 'No calendar connected. Add one in Settings > Calendar.' };
+	const events = getUpcomingCalendarEvents(8);
+	if (!events.length) return { ok: true, message: 'No upcoming events found in the connected calendar.' };
+	return {
+		ok: true,
+		message: 'Upcoming events: ' + events.map((e) =>
+			e.summary + ' — ' + e.start.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) +
+			(e.location ? ' (' + e.location + ')' : '')).join('; '),
+	};
+}
+
 async function runTool(action) {
 	const name = action && action.tool;
 	const args = (action && action.args) || {};
@@ -1929,6 +2124,7 @@ async function runTool(action) {
 			case 'generate_video': return await toolGenerateVideo(args);
 			case 'list_transcripts': return toolListTranscripts();
 			case 'get_transcript': return toolGetTranscript(args);
+			case 'list_calendar_events': return toolListCalendarEvents();
 			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
 		}
 	} catch (err) {
@@ -1958,7 +2154,7 @@ function stripActions(text) {
 /* ============================== backend/LLM ============================== */
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1';
 function backendFor(modelId) {
-	const m = (modelId || '').match(/^(gpt|claude):(.*)$/);
+	const m = (modelId || '').match(/^(gpt|claude|gemini):(.*)$/);
 	if (!m) {
 		if (!store.key) throw new Error('Add your OpenRouter API key in Settings');
 		return { kind: 'openai', url: OPENROUTER_BASE + '/chat/completions', model: modelId, headers: { Authorization: 'Bearer ' + store.key, 'Content-Type': 'application/json', 'X-Title': 'Jarvis' } };
@@ -1967,6 +2163,15 @@ function backendFor(modelId) {
 	if (vendor === 'gpt') {
 		if (!store.oaiKey) throw new Error('Add your OpenAI API key in Settings');
 		return { kind: 'openai', url: 'https://api.openai.com/v1/chat/completions', model, headers: { Authorization: 'Bearer ' + store.oaiKey, 'Content-Type': 'application/json' } };
+	}
+	if (vendor === 'gemini') {
+		if (!store.geminiKey) throw new Error('Add your Gemini API key in Settings');
+		return {
+			kind: 'gemini',
+			url: 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':streamGenerateContent?alt=sse',
+			model,
+			headers: { 'x-goog-api-key': store.geminiKey, 'Content-Type': 'application/json' },
+		};
 	}
 	if (!store.anthKey) throw new Error('Add your Anthropic API key in Settings');
 	return {
@@ -1981,17 +2186,28 @@ function parseDelta(kind, data) {
 		const ev = JSON.parse(data);
 		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
 	}
+	if (kind === 'gemini') {
+		const ev = JSON.parse(data);
+		const parts = ev.candidates?.[0]?.content?.parts;
+		return Array.isArray(parts) ? parts.map((p) => p.text || '').join('') : undefined;
+	}
 	return JSON.parse(data).choices?.[0]?.delta?.content;
 }
 async function streamCompletion(model, messages, onDelta) {
 	const backend = backendFor(model);
-	let sysMsg = null, chatMsgs = messages;
-	if (backend.kind === 'anthropic') {
+	let sysMsg = null, chatMsgs = messages, body;
+	if (backend.kind === 'gemini') {
 		sysMsg = messages.find((m) => m.role === 'system');
-		chatMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+		body = { contents: messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })) };
+		if (sysMsg) body.systemInstruction = { parts: [{ text: sysMsg.content }] };
+	} else {
+		if (backend.kind === 'anthropic') {
+			sysMsg = messages.find((m) => m.role === 'system');
+			chatMsgs = messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+		}
+		body = { model: backend.model, messages: chatMsgs, stream: true };
+		if (backend.kind === 'anthropic') { body.max_tokens = 1024; if (sysMsg) body.system = sysMsg.content; }
 	}
-	const body = { model: backend.model, messages: chatMsgs, stream: true };
-	if (backend.kind === 'anthropic') { body.max_tokens = 1024; if (sysMsg) body.system = sysMsg.content; }
 	const res = await fetch(backend.url, { method: 'POST', headers: backend.headers, body: JSON.stringify(body) });
 	if (!res.ok) {
 		let detail = res.status + ' ' + res.statusText;
@@ -2042,6 +2258,7 @@ const TOOL_DOCS = [
 	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
 	'generate_image {"prompt": string, "aspect_ratio": string optional (e.g. "16:9", "1:1", "4:3"), "resolution": string optional ("720p" or "1080p")} — generate an image with Higgsfield AI; takes up to about a minute.',
 	'generate_video {"prompt": string, "aspect_ratio": string optional} — generate a short video with Higgsfield AI; takes a few minutes. Only works if a video model is configured in Settings.',
+	'list_calendar_events {} — list upcoming events from the user\'s connected read-only calendar, if any.',
 ].join('\n- ');
 
 function buildSystemPrompt() {
@@ -2059,7 +2276,7 @@ function buildSystemPrompt() {
 		'You may include more than one such block to call multiple tools in one turn.',
 		'',
 		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
-		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video, list_calendar_events) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
 		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
@@ -2493,8 +2710,10 @@ const PROVIDERS = [
 	{ key: 'or', label: 'OpenRouter', sub: '300+ models through one key', connected: () => !!store.key },
 	{ key: 'gpt', label: 'OpenAI', sub: 'Enables gpt: model ids', connected: () => !!store.oaiKey },
 	{ key: 'cl', label: 'Anthropic', sub: 'Enables claude: model ids', connected: () => !!store.anthKey },
+	{ key: 'ge', label: 'Gemini', sub: 'Enables gemini: model ids', connected: () => !!store.geminiKey },
 	{ key: 'ha', label: 'Home Assistant', sub: 'Real smart home control', connected: () => store.haEnabled && !!store.haUrl && !!store.haToken },
 	{ key: 'hf', label: 'Higgsfield', sub: 'Image and video generation', connected: () => !!store.higgsKeyId && !!store.higgsKeySecret },
+	{ key: 'cal', label: 'Calendar', sub: 'Read-only .ics feed', connected: () => !!store.calendarIcs },
 ];
 function renderAppsView() {
 	const box = document.getElementById('appsList');
@@ -2599,13 +2818,15 @@ function renderSystemOverview() {
 
 function renderUpcoming() {
 	const box = document.getElementById('upcomingList');
-	const list = store.reminders.slice().sort((a, b) => a.at - b.at).slice(0, 4);
+	const reminders = store.reminders.map((r) => ({ text: r.text, at: r.at, cal: false }));
+	const events = getUpcomingCalendarEvents(5).map((e) => ({ text: e.summary, at: e.start.getTime(), cal: true }));
+	const list = reminders.concat(events).sort((a, b) => a.at - b.at).slice(0, 5);
 	if (!list.length) { box.innerHTML = '<div class="empty">No upcoming tasks.</div>'; return; }
 	box.innerHTML = '';
 	list.forEach((r) => {
 		const row = document.createElement('div');
 		row.className = 'taskrow';
-		row.innerHTML = '<span class="ttext">' + esc(r.text) + '</span><span class="ttime">' + new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</span>';
+		row.innerHTML = '<span class="ttext">' + (r.cal ? '📅 ' : '') + esc(r.text) + '</span><span class="ttime">' + new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '</span>';
 		box.appendChild(row);
 	});
 }
@@ -2633,12 +2854,12 @@ function renderDashboard() {
 
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
-	'key', 'oaiKey', 'anthKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch',
+	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch',
 	'mode', 'wakeWord', 'autoListen', 'muted', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
-	'briefingEnabled', 'briefingTime', 'briefingLastFired',
+	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt',
 ];
-const SENSITIVE_FIELDS = ['key', 'oaiKey', 'anthKey', 'haToken', 'higgsKeyId', 'higgsKeySecret'];
+const SENSITIVE_FIELDS = ['key', 'oaiKey', 'anthKey', 'geminiKey', 'haToken', 'higgsKeyId', 'higgsKeySecret'];
 
 function exportBackup(includeKeys) {
 	const data = {};
@@ -2690,6 +2911,7 @@ function collectSearchIndex() {
 	store.notes.forEach((n) => items.push({ view: 'tasks', title: n.text, sub: 'Note · ' + new Date(n.at).toLocaleDateString(), text: n.text }));
 	store.reminders.forEach((r) => items.push({ view: 'tasks', title: r.text, sub: 'Reminder · ' + new Date(r.at).toLocaleString(), text: r.text }));
 	store.transcripts.forEach((t) => items.push({ view: 'systems', title: t.title, sub: 'Recording', text: [t.title, t.text, t.analysis || ''].join(' ') }));
+	getUpcomingCalendarEvents(50).forEach((e) => items.push({ view: 'dashboard', title: e.summary, sub: 'Calendar · ' + e.start.toLocaleString(), text: e.summary + ' ' + (e.location || '') }));
 	store.history.forEach((m) => {
 		if (m.role !== 'user' && m.role !== 'assistant') return;
 		items.push({ view: 'chat', title: m.content.slice(0, 90), sub: 'Chat · ' + m.role, text: m.content });
@@ -2752,6 +2974,8 @@ async function generateBriefing() {
 	parts.push(todays.length
 		? 'Today: ' + todays.map((r) => r.text + ' at ' + new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })).join('; ') + '.'
 		: 'Nothing on your reminders for today.');
+	const nextEvent = getUpcomingCalendarEvents(1)[0];
+	if (nextEvent) parts.push('Next on your calendar: ' + nextEvent.summary + ' at ' + nextEvent.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.');
 	const mem = store.memory;
 	if (mem.length) parts.push(mem[Math.floor(Math.random() * mem.length)]);
 	const text = 'Good morning' + (store.userName ? ', ' + store.userName : '') + '. ' + parts.join(' ');
