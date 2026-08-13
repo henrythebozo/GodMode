@@ -315,6 +315,8 @@
 	.viewhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 	.viewhead h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
 	.viewlist { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
+	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); }
+	button.row-item:hover { background: var(--panel-3); }
 
 	/* chat view */
 	.logmsg { font-size: 13.5px; padding: 4px 0; max-width: 640px; }
@@ -385,9 +387,10 @@
 	.settab h3:first-child { margin-top: 4px; }
 	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
 	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-	dialog input[type="text"], dialog input[type="password"], dialog select {
+	dialog input[type="text"], dialog input[type="password"], dialog input[type="time"], dialog select {
 		width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 12px;
 		padding: 11px 13px; font: inherit; font-size: 13.5px;
+		color-scheme: dark;
 	}
 	dialog input:focus, dialog select:focus { outline: none; border-color: var(--text); }
 	dialog input[type="range"] { width: 100%; accent-color: var(--text); }
@@ -473,6 +476,7 @@
 		<button class="navitem" data-view="memory"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>Memory</button>
 		<button class="navitem" data-view="systems"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>Systems</button>
 		<button class="navitem" data-view="apps"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
+		<button class="navitem" id="navSearch"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Search</button>
 		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>Settings</button>
 	</nav>
 	<div class="voicecard">
@@ -488,6 +492,7 @@
 <div id="contentArea">
 	<div id="mobileTop">
 		<div class="brand" id="brandMobile">JARVIS</div>
+		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg></button>
 		<button class="iconbtn" id="mobileSettingsBtn" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg></button>
 	</div>
 	<div id="topRow">
@@ -655,6 +660,7 @@
 		<button type="button" data-settab="listening">Listening</button>
 		<button type="button" data-settab="home">Smart Home</button>
 		<button type="button" data-settab="media">Media</button>
+		<button type="button" data-settab="data">Data</button>
 	</div>
 
 	<div class="settab on" id="settab-account">
@@ -691,6 +697,13 @@
 		<label>Speaking voice<select id="voiceSelect"></select></label>
 		<label>Rate<div class="rangerow"><input type="range" id="rateInput" min="0.6" max="1.6" step="0.05" /><span id="rateVal"></span></div></label>
 		<label>Pitch<div class="rangerow"><input type="range" id="pitchInput" min="0.5" max="1.6" step="0.05" /><span id="pitchVal"></span></div></label>
+
+		<h3>Daily Briefing</h3>
+		<div class="row">
+			<label class="inline"><input type="checkbox" id="briefingEnabledInput" /> Give me a briefing each day</label>
+		</div>
+		<label>Briefing time<input type="time" id="briefingTimeInput" /></label>
+		<p class="hint">Speaks the weather, today's reminders, and a memory highlight out loud — only while this tab is open.</p>
 	</div>
 
 	<div class="settab" id="settab-listening">
@@ -744,10 +757,45 @@
 		<p class="hint">Only the image endpoint is in Higgsfield's public docs; find the video one for the model you want in your Higgsfield Cloud dashboard and paste its path here.</p>
 	</div>
 
+	<div class="settab" id="settab-data">
+		<h3>Backup</h3>
+		<p class="hint">Export everything Jarvis knows on this device — memory, reminders, notes, chat history, recordings and devices — to a JSON file, and re-import it later or in another browser.</p>
+		<div class="row">
+			<label class="inline"><input type="checkbox" id="exportKeysInput" /> Include API keys in the export</label>
+		</div>
+		<div class="row">
+			<button class="ghost" id="exportBtn" type="button">Export backup</button>
+			<button class="ghost" id="importBtn" type="button">Import backup</button>
+			<input type="file" id="importFile" accept="application/json" hidden />
+		</div>
+		<p class="hint" id="dataIOResult"></p>
+
+		<h3>Reset</h3>
+		<p class="hint">Erases everything Jarvis has stored on this device — memory, reminders, notes, history, recordings, devices, keys and preferences — and reloads the page. This cannot be undone.</p>
+		<div class="row">
+			<button class="ghost" id="resetJarvisBtn" type="button" style="color: var(--err)">Reset Jarvis…</button>
+		</div>
+	</div>
+
 	<div class="row">
 		<button class="ghost" id="settingsCancel" type="button">Close</button>
 		<button class="primary" id="settingsSave" type="button">Save</button>
 	</div>
+</dialog>
+
+<dialog id="confirmDlg">
+	<h2 id="confirmTitle">Are you sure?</h2>
+	<p class="hint" id="confirmBody"></p>
+	<div class="row">
+		<button class="ghost" id="confirmCancelBtn" type="button">Cancel</button>
+		<button class="primary" id="confirmOkBtn" type="button">Confirm</button>
+	</div>
+</dialog>
+
+<dialog id="searchDlg">
+	<h2>Search</h2>
+	<input type="text" id="searchInput" placeholder="Search memory, notes, reminders, recordings, chat…" autocomplete="off" />
+	<div class="viewlist" id="searchResults" style="margin-top: 14px"></div>
 </dialog>
 
 <script>
@@ -823,6 +871,12 @@ const store = {
 	set higgsVideoEndpoint(v) { localStorage.setItem('jarvis.higgsVideoEndpoint', v); },
 	get activity() { try { return JSON.parse(localStorage.getItem('jarvis.activity')) || []; } catch { return []; } },
 	set activity(v) { localStorage.setItem('jarvis.activity', JSON.stringify(v)); },
+	get briefingEnabled() { return localStorage.getItem('jarvis.briefingEnabled') === '1'; },
+	set briefingEnabled(v) { localStorage.setItem('jarvis.briefingEnabled', v ? '1' : '0'); },
+	get briefingTime() { return localStorage.getItem('jarvis.briefingTime') || '08:00'; },
+	set briefingTime(v) { localStorage.setItem('jarvis.briefingTime', v); },
+	get briefingLastFired() { return localStorage.getItem('jarvis.briefingLastFired') || ''; },
+	set briefingLastFired(v) { localStorage.setItem('jarvis.briefingLastFired', v); },
 };
 
 function seedDevices() {
@@ -938,6 +992,33 @@ function toast(title, body, ms) {
 	setTimeout(() => el.remove(), ms || 6000);
 }
 
+/* -- reusable confirm dialog, used for anything security-sensitive (e.g. unlocking a door) -- */
+function confirmAction(title, body) {
+	return new Promise((resolve) => {
+		const dlg = document.getElementById('confirmDlg');
+		document.getElementById('confirmTitle').textContent = title;
+		document.getElementById('confirmBody').textContent = body;
+		const okBtn = document.getElementById('confirmOkBtn');
+		const cancelBtn = document.getElementById('confirmCancelBtn');
+		let done = false;
+		const finish = (v) => {
+			if (done) return;
+			done = true;
+			okBtn.removeEventListener('click', onOk);
+			cancelBtn.removeEventListener('click', onCancel);
+			dlg.removeEventListener('cancel', onCancel);
+			dlg.close();
+			resolve(v);
+		};
+		const onOk = () => finish(true);
+		const onCancel = () => finish(false);
+		okBtn.addEventListener('click', onOk);
+		cancelBtn.addEventListener('click', onCancel);
+		dlg.addEventListener('cancel', onCancel); // Esc key
+		dlg.showModal();
+	});
+}
+
 /* ================================ navigation ============================= */
 const MORE_VIEWS = ['memory', 'systems', 'apps'];
 let currentView = 'dashboard';
@@ -972,6 +1053,10 @@ document.getElementById('mobileSettingsBtn').addEventListener('click', () => ope
 document.getElementById('moreSettingsBtn').addEventListener('click', () => { document.getElementById('moreSheet').close(); openSettings(); });
 document.getElementById('moreTabBtn').addEventListener('click', () => document.getElementById('moreSheet').showModal());
 document.getElementById('moreSheet').addEventListener('click', (e) => { if (e.target.id === 'moreSheet') e.target.close(); });
+document.getElementById('navSearch').addEventListener('click', () => openSearch());
+document.getElementById('mobileSearchBtn').addEventListener('click', () => openSearch());
+document.getElementById('searchDlg').addEventListener('click', (e) => { if (e.target.id === 'searchDlg') e.target.close(); });
+document.getElementById('searchInput').addEventListener('input', (e) => runSearch(e.target.value));
 document.getElementById('expandBtn').addEventListener('click', () => {
 	const dash = document.getElementById('view-dashboard');
 	dash.classList.toggle('focus');
@@ -1054,6 +1139,10 @@ function openSettings() {
 	document.getElementById('higgsKeyIdInput').value = store.higgsKeyId;
 	document.getElementById('higgsKeySecretInput').value = store.higgsKeySecret;
 	document.getElementById('higgsVideoEndpointInput').value = store.higgsVideoEndpoint;
+	document.getElementById('briefingEnabledInput').checked = store.briefingEnabled;
+	document.getElementById('briefingTimeInput').value = store.briefingTime;
+	document.getElementById('exportKeysInput').checked = false;
+	document.getElementById('dataIOResult').textContent = '';
 	populateVoices();
 	const hint = document.getElementById('speechSupportHint');
 	hint.textContent = SR ? 'Voice recognition is supported in this browser.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).';
@@ -1083,6 +1172,18 @@ document.getElementById('haTestBtn').addEventListener('click', async () => {
 	}
 });
 
+document.getElementById('exportBtn').addEventListener('click', () => exportBackup(document.getElementById('exportKeysInput').checked));
+document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e) => {
+	const file = e.target.files[0];
+	e.target.value = '';
+	if (file) importBackup(file);
+});
+document.getElementById('resetJarvisBtn').addEventListener('click', async () => {
+	const ok = await confirmAction('Reset Jarvis?', 'This erases everything stored on this device — memory, reminders, notes, history, recordings, devices, keys and preferences — and cannot be undone.');
+	if (ok) resetJarvis();
+});
+
 document.getElementById('settingsSave').addEventListener('click', () => {
 	store.key = document.getElementById('keyInput').value.trim();
 	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
@@ -1103,10 +1204,13 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.higgsKeyId = document.getElementById('higgsKeyIdInput').value.trim();
 	store.higgsKeySecret = document.getElementById('higgsKeySecretInput').value.trim();
 	store.higgsVideoEndpoint = document.getElementById('higgsVideoEndpointInput').value.trim();
+	store.briefingEnabled = document.getElementById('briefingEnabledInput').checked;
+	store.briefingTime = document.getElementById('briefingTimeInput').value || '08:00';
 	updateBrand();
 	applyListenMode();
 	renderHome();
 	updateDashStatus();
+	scheduleBriefing();
 	settingsDlg.close();
 	if (!anyKey()) toast('Setup needed', 'Add an API key above to start talking to ' + store.assistantName + '.');
 });
@@ -1679,6 +1783,10 @@ async function toolGetDevice(args) {
 	return { ok: true, message: describeDevice(d) };
 }
 async function toolSetDevice(args) {
+	if (args.lock === 'unlocked') {
+		const ok = await confirmAction('Unlock ' + (args.name || 'this device') + '?', 'Jarvis wants to unlock "' + (args.name || 'a device') + '". Confirm to allow it.');
+		if (!ok) return { ok: false, message: 'Unlock cancelled — not confirmed in the app.' };
+	}
 	if (store.haEnabled) return haSetDevice(args);
 	const list = store.devices;
 	const d = findDevice(list, args.name);
@@ -1928,7 +2036,7 @@ const TOOL_DOCS = [
 	'web_search {"query": string} — search the web for this query in a new tab.',
 	'list_devices {} — list smart home devices and their current state.',
 	'get_device {"name": string} — get one smart home device\'s current state.',
-	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock.',
+	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock. Unlocking always pops an in-app confirmation the user must approve before it takes effect — mention that in your reply.',
 	'run_scene {"name": string} — run a smart home scene, e.g. "Good Night" or "Good Morning".',
 	'list_transcripts {} — list recorded conversation/meeting transcripts with title and length.',
 	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
@@ -2523,9 +2631,139 @@ function renderDashboard() {
 	renderConnectedApps();
 }
 
+/* ============================= backup / reset ============================ */
+const STORE_FIELDS = [
+	'key', 'oaiKey', 'anthKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch',
+	'mode', 'wakeWord', 'autoListen', 'muted', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
+	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
+	'briefingEnabled', 'briefingTime', 'briefingLastFired',
+];
+const SENSITIVE_FIELDS = ['key', 'oaiKey', 'anthKey', 'haToken', 'higgsKeyId', 'higgsKeySecret'];
+
+function exportBackup(includeKeys) {
+	const data = {};
+	STORE_FIELDS.forEach((f) => {
+		if (!includeKeys && SENSITIVE_FIELDS.includes(f)) return;
+		data[f] = store[f];
+	});
+	const payload = { app: 'jarvis', version: 1, exportedAt: new Date().toISOString(), includesKeys: !!includeKeys, data };
+	const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	a.href = url;
+	a.download = 'jarvis-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+	document.body.appendChild(a);
+	a.click();
+	a.remove();
+	URL.revokeObjectURL(url);
+	document.getElementById('dataIOResult').textContent = 'Exported' + (includeKeys ? ' (with API keys — keep this file private).' : '.');
+}
+
+function importBackup(file) {
+	const out = document.getElementById('dataIOResult');
+	const reader = new FileReader();
+	reader.onload = () => {
+		try {
+			const payload = JSON.parse(String(reader.result));
+			const data = payload && typeof payload === 'object' && payload.data ? payload.data : payload;
+			if (!data || typeof data !== 'object') throw new Error('Not a Jarvis backup file.');
+			STORE_FIELDS.forEach((f) => { if (f in data) store[f] = data[f]; });
+			out.textContent = 'Imported — reloading…';
+			setTimeout(() => location.reload(), 700);
+		} catch (err) {
+			out.textContent = 'Import failed: ' + (err && err.message ? err.message : err);
+		}
+	};
+	reader.onerror = () => { out.textContent = 'Could not read that file.'; };
+	reader.readAsText(file);
+}
+
+function resetJarvis() {
+	Object.keys(localStorage).filter((k) => k.startsWith('jarvis.')).forEach((k) => localStorage.removeItem(k));
+	location.reload();
+}
+
+/* ================================= search ================================ */
+function collectSearchIndex() {
+	const items = [];
+	store.memory.forEach((fact) => items.push({ view: 'memory', title: fact, sub: 'Memory', text: fact }));
+	store.notes.forEach((n) => items.push({ view: 'tasks', title: n.text, sub: 'Note · ' + new Date(n.at).toLocaleDateString(), text: n.text }));
+	store.reminders.forEach((r) => items.push({ view: 'tasks', title: r.text, sub: 'Reminder · ' + new Date(r.at).toLocaleString(), text: r.text }));
+	store.transcripts.forEach((t) => items.push({ view: 'systems', title: t.title, sub: 'Recording', text: [t.title, t.text, t.analysis || ''].join(' ') }));
+	store.history.forEach((m) => {
+		if (m.role !== 'user' && m.role !== 'assistant') return;
+		items.push({ view: 'chat', title: m.content.slice(0, 90), sub: 'Chat · ' + m.role, text: m.content });
+	});
+	return items;
+}
+function runSearch(q) {
+	const box = document.getElementById('searchResults');
+	q = (q || '').trim().toLowerCase();
+	if (!q) { box.innerHTML = ''; return; }
+	const hits = collectSearchIndex().filter((it) => it.text.toLowerCase().includes(q)).slice(0, 40);
+	if (!hits.length) { box.innerHTML = '<div class="empty">No matches.</div>'; return; }
+	box.innerHTML = '';
+	hits.forEach((it) => {
+		const row = document.createElement('button');
+		row.type = 'button';
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(it.title.slice(0, 90) || '(untitled)') + '</b><small>' + esc(it.sub) + '</small></div>';
+		row.addEventListener('click', () => { document.getElementById('searchDlg').close(); showView(it.view); });
+		box.appendChild(row);
+	});
+}
+function openSearch() {
+	document.getElementById('searchInput').value = '';
+	document.getElementById('searchResults').innerHTML = '';
+	document.getElementById('searchDlg').showModal();
+	setTimeout(() => document.getElementById('searchInput').focus(), 50);
+}
+
+/* ============================== daily briefing ============================ */
+let briefingTimer = null;
+function nextBriefingTime() {
+	const [h, m] = (store.briefingTime || '08:00').split(':').map(Number);
+	const next = new Date();
+	next.setHours(Number.isFinite(h) ? h : 8, Number.isFinite(m) ? m : 0, 0, 0);
+	if (next.getTime() <= Date.now()) next.setDate(next.getDate() + 1);
+	return next;
+}
+function scheduleBriefing() {
+	clearTimeout(briefingTimer);
+	briefingTimer = null;
+	if (!store.briefingEnabled) return;
+	const delay = nextBriefingTime().getTime() - Date.now();
+	if (delay > 2147000000) return; // setTimeout overflow guard (~24.8 days), same as reminders
+	briefingTimer = setTimeout(async () => {
+		store.briefingLastFired = new Date().toDateString();
+		await generateBriefing();
+		scheduleBriefing(); // line up tomorrow's briefing
+	}, delay);
+}
+async function generateBriefing() {
+	const parts = [];
+	try {
+		const w = await toolGetWeather({});
+		if (w.ok) parts.push(w.message);
+	} catch {}
+	const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+	const endOfDay = startOfDay.getTime() + 86400000;
+	const todays = store.reminders.filter((r) => r.at >= startOfDay.getTime() && r.at < endOfDay).sort((a, b) => a.at - b.at);
+	parts.push(todays.length
+		? 'Today: ' + todays.map((r) => r.text + ' at ' + new Date(r.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })).join('; ') + '.'
+		: 'Nothing on your reminders for today.');
+	const mem = store.memory;
+	if (mem.length) parts.push(mem[Math.floor(Math.random() * mem.length)]);
+	const text = 'Good morning' + (store.userName ? ', ' + store.userName : '') + '. ' + parts.join(' ');
+	logActivity('Gave the daily briefing.');
+	toast('Daily briefing', text, 18000);
+	if (!recording) speak(text);
+}
+
 /* ================================ boot ================================ */
 applyListenMode();
 showView('dashboard');
+scheduleBriefing();
 if (!anyKey()) setTimeout(openSettings, 300);
 </script>
 </body>
