@@ -13,8 +13,23 @@
 <link rel="apple-touch-icon" href="icon-180.png" />
 <link rel="icon" type="image/png" href="icon-512.png" />
 <style>
+	/* ============================ the rulebook ============================= */
+	/* Consistency rules every surface in the app follows, so it reads as one
+	   continuous material rather than disconnected screens:
+	   - Depth: exactly two layers. A blurred glass panel (backdrop-filter,
+	     var(--glass-blur)) for the big containers — sidebar, dialogs, the
+	     dashboard panel; flat translucent chips (no re-blur) nested inside
+	     them — buttons, badges, rows. Never blur-on-blur.
+	   - Light: one soft multi-color gradient backdrop (body), never changes
+	     per view. A single accent (--ring, blue) marks anything selected or
+	     primary. Warm/cool status colors (--ok/--warn/--err, deepened for
+	     text vs. --glow-* vivid for the orb/dots/toggles) are the only other
+	     color in the system — no per-feature palettes.
+	   - Motion: every state change gets a transition (color, background,
+	     transform) — nothing snaps. Views fade+lift in on entry, dialogs
+	     fade+scale (or slide up as a sheet on mobile), never pop instantly.
+	   ---- Liquid Glass: translucent frosted panels over a soft gradient backdrop ---- */
 	:root {
-		/* ---- Liquid Glass: translucent frosted panels over a soft gradient backdrop ---- */
 		--glass-blur: 24px;   /* tuned live by the Appearance slider in Settings */
 		--glass-alpha: 0.55;  /* ditto */
 		--bg: #eef1f8;
@@ -3284,15 +3299,22 @@ function initIntro() {
 	overlay.hidden = false;
 	document.getElementById('introGreeting').textContent = 'Hello' + (store.userName ? ', ' + store.userName : '') + '.';
 
+	/* Timing pass: the original cut had the climax (the greeting) on screen for
+	   under a second before the whole thing started fading — the emotional
+	   beat the entire sequence builds toward needs real hold time, not a
+	   rushed exit. Retimed so every beat gets room to actually land: */
 	let timers = [];
 	const at = (ms, fn) => timers.push(setTimeout(fn, ms));
 	const stage = (name) => overlay.classList.add(name);
 	at(900, () => stage('stage-line1'));
-	at(2600, () => stage('stage-line2'));
-	at(4000, () => stage('stage-glow'));
-	at(5600, () => stage('stage-awake'));
-	at(7400, () => stage('stage-greet'));
-	at(9200, finish);
+	at(2700, () => stage('stage-line2'));
+	at(4200, () => stage('stage-glow'));
+	at(6000, () => {
+		stage('stage-awake');
+		try { if (navigator.vibrate) navigator.vibrate(12); } catch {} // a barely-there pulse right as the eyes open — silently no-ops where unsupported
+	});
+	at(8200, () => stage('stage-greet'));
+	at(11600, finish); // ~2.4s of the greeting fully held before the fade-out begins
 
 	function finish() {
 		timers.forEach(clearTimeout);
