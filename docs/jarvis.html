@@ -281,6 +281,72 @@
 	#stateLabel.error, #stateLabel.recording { color: var(--err); }
 	#caption { max-width: 560px; min-height: 1.6em; font-size: 15px; line-height: 1.5; color: var(--text); transition: opacity 0.2s ease; }
 	#caption.dim { color: var(--dim); font-size: 13.5px; }
+
+	/* ============================ boot intro film ============================ */
+	/* A short, skippable "quiet awakening" plays once per browser before the
+	   dashboard appears — see initIntro(). Deliberately near-black regardless
+	   of the app's light Liquid Glass theme: the whole point is darkness
+	   blooming into light, then resolving into the dashboard underneath. */
+	#introOverlay {
+		position: fixed; inset: 0; z-index: 999; background: #050506; color: #fff;
+		display: flex; align-items: center; justify-content: center;
+		opacity: 1; transition: opacity 1.1s ease;
+	}
+	#introOverlay.hidden { opacity: 0; pointer-events: none; }
+	#introOverlay[hidden] { display: none; }
+	#introSkip {
+		position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; z-index: 1;
+		background: none; border: 1px solid rgba(255, 255, 255, 0.25); color: rgba(255, 255, 255, 0.6);
+		border-radius: 999px; padding: 8px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+		cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease;
+	}
+	#introSkip:hover { color: #fff; border-color: rgba(255, 255, 255, 0.6); }
+	.introstage { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 24px; }
+
+	#introOrb { position: relative; width: 140px; height: 140px; flex: none; }
+	#introCore {
+		position: absolute; inset: 14px; border-radius: 50%;
+		background: radial-gradient(circle at 50% 42%, #17171c 0%, #050506 68%, #000 100%);
+		border: 2px solid rgba(255, 255, 255, 0.12);
+		box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.7);
+		transition: border-color 2.5s ease, box-shadow 2.5s ease;
+		animation: introBreathe 4.5s ease-in-out infinite;
+	}
+	@keyframes introBreathe { 0%, 100% { transform: scale(0.99); } 50% { transform: scale(1.015); } }
+	#introEyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; }
+	.introeye {
+		width: 11%; height: 28%; border-radius: 999px; background: #fff; opacity: 0; transform: scaleY(0.08);
+		box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
+		transition: opacity 1.2s ease, transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 1.2s ease;
+	}
+
+	/* stage classes toggled by JS at each beat of the sequence */
+	#introOverlay.stage-glow #introCore, #introOverlay.stage-awake #introCore, #introOverlay.stage-greet #introCore {
+		border-color: rgba(255, 255, 255, 0.55); box-shadow: 0 0 18px 2px rgba(255, 255, 255, 0.35), inset 0 0 34px rgba(0, 0, 0, 0.7);
+	}
+	#introOverlay.stage-awake .introeye, #introOverlay.stage-greet .introeye { opacity: 1; transform: scaleY(1); }
+	#introOverlay.stage-awake #introCore, #introOverlay.stage-greet #introCore {
+		border-color: rgba(255, 255, 255, 0.95);
+		box-shadow: 0 0 10px 1px #fff, 0 0 42px 8px rgba(255, 255, 255, 0.4), 0 0 90px 26px rgba(255, 255, 255, 0.15), inset 0 0 34px rgba(0, 0, 0, 0.65);
+	}
+
+	.introline {
+		font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: rgba(255, 255, 255, 0.75);
+		opacity: 0; transform: translateY(6px); transition: opacity 1s ease, transform 1s ease;
+		position: absolute; top: 100%; margin-top: 26px; white-space: nowrap;
+	}
+	#introOverlay.stage-line1 #introLine1 { opacity: 1; transform: none; }
+	#introOverlay.stage-line2 #introLine1 { opacity: 0; }
+	#introOverlay.stage-line2 #introLine2 { opacity: 1; transform: none; }
+	#introOverlay.stage-awake #introLine2 { opacity: 0; }
+	#introOverlay.stage-awake #introLine3 { opacity: 1; transform: none; }
+	#introOverlay.stage-greet #introLine3 { opacity: 0; }
+	#introOverlay.stage-greet #introGreeting { opacity: 1; transform: none; font-size: 26px; font-weight: 700; color: #fff; }
+	@media (max-width: 480px) {
+		.introline { font-size: 16px; }
+		#introOverlay.stage-greet #introGreeting { font-size: 21px; }
+	}
+
 	.chip {
 		display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line);
 		border-radius: 999px; padding: 6px 13px; font-size: 12px; color: var(--text); margin: 4px 4px 0; cursor: pointer;
@@ -545,6 +611,19 @@
 </style>
 </head>
 <body>
+
+<div id="introOverlay" hidden>
+	<button type="button" id="introSkip">Skip</button>
+	<div class="introstage">
+		<div id="introOrb">
+			<div id="introCore"><div id="introEyes"><span class="introeye" id="introEyeL"></span><span class="introeye" id="introEyeR"></span></div></div>
+		</div>
+		<div id="introLine1" class="introline">Everything you need.</div>
+		<div id="introLine2" class="introline">Quietly present.</div>
+		<div id="introLine3" class="introline">Awake.</div>
+		<div id="introGreeting" class="introline"></div>
+	</div>
+</div>
 
 <aside id="sidebar">
 	<div class="brand" id="brandSide">JARVIS</div>
@@ -1044,6 +1123,8 @@ const store = {
 	set calendarSyncedAt(v) { localStorage.setItem('jarvis.calendarSyncedAt', String(v)); },
 	get glassIntensity() { const v = parseInt(localStorage.getItem('jarvis.glassIntensity'), 10); return Number.isFinite(v) ? v : 50; },
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
+	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
+	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
 };
 
 function seedDevices() {
@@ -3186,11 +3267,50 @@ async function generateBriefing() {
 	if (!recording) speak(text);
 }
 
+/* ============================ boot intro film ============================ */
+/* "Quiet Awakening" — plays once per browser, before the first key prompt or
+   anything else. Genre: elegant, intimate, not a spectacle. Central metaphor:
+   the orb as a dormant intelligence. Climax: the eyes open and it recognizes
+   you by name, then the real dashboard (already rendered behind it) is
+   revealed. Skippable at any point; never replays once seen; never shown at
+   all under prefers-reduced-motion, rather than just speeding it up. */
+function maybePromptSettings() {
+	if (!anyKey()) setTimeout(openSettings, 300);
+}
+function initIntro() {
+	const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	if (store.introSeen || reduced) { maybePromptSettings(); return; }
+	const overlay = document.getElementById('introOverlay');
+	overlay.hidden = false;
+	document.getElementById('introGreeting').textContent = 'Hello' + (store.userName ? ', ' + store.userName : '') + '.';
+
+	let timers = [];
+	const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+	const stage = (name) => overlay.classList.add(name);
+	at(900, () => stage('stage-line1'));
+	at(2600, () => stage('stage-line2'));
+	at(4000, () => stage('stage-glow'));
+	at(5600, () => stage('stage-awake'));
+	at(7400, () => stage('stage-greet'));
+	at(9200, finish);
+
+	function finish() {
+		timers.forEach(clearTimeout);
+		timers = [];
+		overlay.classList.add('hidden');
+		store.introSeen = true;
+		setTimeout(() => { overlay.hidden = true; }, 1200);
+		maybePromptSettings();
+	}
+	document.getElementById('introSkip').addEventListener('click', finish);
+	overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(); });
+}
+
 /* ================================ boot ================================ */
 applyListenMode();
 showView('dashboard');
 scheduleBriefing();
-if (!anyKey()) setTimeout(openSettings, 300);
+initIntro();
 </script>
 </body>
 </html>
