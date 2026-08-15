@@ -4,8 +4,8 @@
 	"description": "A voice-first personal assistant with memory, reminders, notes, weather and web search — bring your own AI key.",
 	"start_url": "jarvis.html",
 	"display": "standalone",
-	"background_color": "#eef1f8",
-	"theme_color": "#eef1f8",
+	"background_color": "#08080c",
+	"theme_color": "#08080c",
 	"icons": [
 		{
 			"src": "icon-180.png",
