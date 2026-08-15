@@ -293,13 +293,19 @@
 	/* The home screen is the assistant and nothing else — orb, greeting,
 	   composer — centred on its own. Everything that used to crowd it (quick
 	   access, gauges, upcoming, connected, business) lives in Overview. */
-	#view-dashboard.on { display: grid; place-items: center; min-height: calc(100% - var(--vp-pad-y)); }
-	.heropanel { width: 100%; max-width: 620px; }
+	#view-dashboard.on { display: block; min-height: calc(100% - var(--vp-pad-y)); }
+	.heroscreen {
+		width: 100%; max-width: 620px; margin: 0 auto;
+		min-height: calc(100% - var(--vp-pad-y));
+		display: flex; flex-direction: column; gap: 18px;
+	}
+	/* the orb owns the empty middle, so the greeting stays at the top and the
+	   composer stays at the bottom however tall the window is */
+	.heroscreen .orbstage { flex: 1; justify-content: center; }
 
 	/* one continuous glass surface instead of separate boxed cards — sections
 	   inside it are divided by hairlines rather than their own panel/border/shadow */
 	.dashboardpanel { padding: 0; overflow: hidden; }
-	.dsec-hero { padding: 26px; display: flex; flex-direction: column; gap: 18px; }
 	.dgrid { display: grid; grid-template-columns: 1fr 300px; }
 	.dcol { display: flex; flex-direction: column; min-width: 0; }
 	.dcol-side { border-left: 1px solid var(--line-soft); }
@@ -688,7 +694,7 @@
 
 		.quote { display: none; }
 		.viewport { --vp-pad-y: calc(114px + env(safe-area-inset-bottom)); padding: 18px 16px calc(96px + env(safe-area-inset-bottom)); }
-		.dsec-hero { padding: 18px; gap: 14px; }
+		.heroscreen { gap: 14px; }
 		.dgrid { grid-template-columns: 1fr; }
 		.dcol-side { border-left: none; border-top: 1px solid var(--line-soft); }
 		#orbWrap { width: 140px; height: 140px; }
@@ -742,7 +748,7 @@
 		<button class="navitem" data-view="apps"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
 		<button class="navitem" id="navSearch"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Search</button>
 		<button class="navitem" id="navActivity"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>Activity</button>
-		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>Settings</button>
+		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>Settings</button>
 	</nav>
 	<div class="voicecard">
 		<div id="sideBars" aria-hidden="true"></div>
@@ -759,15 +765,14 @@
 		<div class="brand" id="brandMobile">JARVIS</div>
 		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg></button>
 		<button class="iconbtn" id="mobileActivityBtn" aria-label="Activity"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg></button>
-		<button class="iconbtn" id="mobileSettingsBtn" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg></button>
+		<button class="iconbtn" id="mobileSettingsBtn" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg></button>
 	</div>
 	<div id="topRow">
 		<div id="main">
 			<div class="viewport">
 
 				<div class="view on" id="view-dashboard">
-					<div class="glasspanel dashboardpanel heropanel">
-						<div class="dsec dsec-hero">
+					<div class="heroscreen">
 							<div class="herotop">
 								<div>
 									<div class="statusbig" id="dashGreeting">Hello.</div>
@@ -791,7 +796,6 @@
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
 								<button id="textSend" title="Send" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
 							</div>
-						</div>
 					</div>
 				</div>
 
@@ -937,7 +941,7 @@
 			<span class="txt">Apps</span>
 		</button>
 		<button type="button" class="row-item morerow" id="moreSettingsBtn">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>
 			<span class="txt">Settings</span>
 		</button>
 	</div>
@@ -1198,7 +1202,7 @@
 			<span class="txt">Apps</span>
 		</button>
 		<button type="button" class="row-item morerow" id="activitySettingsBtn">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>
 			<span class="txt">Settings</span>
 		</button>
 	</div>
