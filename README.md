@@ -36,6 +36,9 @@ the button next to "Henry OS" in the sidebar, or go straight to
   mode (say "Jarvis" to wake it, hands-free), or just type. It answers out
   loud with the browser's built-in text-to-speech — pick a voice, rate, and
   pitch in Settings.
+- **The home screen is just the assistant** — orb, greeting and composer,
+  nothing else. Quick access, gauges, upcoming tasks, connected apps and your
+  business all live under **Overview** in the nav.
 - **It remembers you.** Ask it to remember a fact ("remember that I'm
   allergic to shellfish") and it'll recall it in every future conversation.
 - **It gets things done.** Built-in tools for reminders ("remind me to call
