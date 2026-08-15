@@ -70,9 +70,19 @@ the button next to "Henry OS" in the sidebar, or go straight to
   everything, from Settings → Data.
 - Unlocking a door by voice always pops an in-app confirmation first —
   enforced in code, not just prompted to the model.
+- **Works offline.** Everything Jarvis knows lives on your device, so with the
+  app installed (Add to Home Screen) your memory, reminders, notes and
+  recordings all still open with no connection — only the AI, weather and
+  smart-home calls need the network.
+- **Keyboard shortcuts:** `⌘/Ctrl+K` search, `⌘/Ctrl+J` activity,
+  `⌘/Ctrl+,` settings, `/` jump to the composer, `M` toggle the mic.
+- If your lead model fails (rate limit, outage, bad key), Jarvis automatically
+  falls back to the next model you've configured rather than dropping the turn.
 - Same bring-your-own-key model as Henry OS — an OpenRouter key, or your own
   OpenAI/Anthropic/[Gemini](https://ai.google.dev) key, stored only on your
-  device.
+  device. Out of the box it runs Team mode with Claude Sonnet 5 leading and
+  Opus 5 consulting; switch to a single model in Settings → Account to halve
+  the per-question cost.
 
 ### 📱 Jarvis for iOS
 

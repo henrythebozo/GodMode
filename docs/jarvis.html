@@ -654,7 +654,7 @@
 		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>Settings</button>
 	</nav>
 	<div class="voicecard">
-		<div id="sideBars"></div>
+		<div id="sideBars" aria-hidden="true"></div>
 		<div class="vlabel" id="voiceModeLabel">VOICE MODE<br /><b>Standby</b></div>
 		<button id="micBtn" title="Talk to Jarvis" aria-label="Talk to Jarvis">
 			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
@@ -689,13 +689,13 @@
 								</div>
 							</div>
 							<div class="orbstage">
-								<div id="orbWrap" class="idle">
+								<div id="orbWrap" class="idle" aria-hidden="true">
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
 								</div>
-								<div id="orbShadow"></div>
-								<div id="bars"></div>
-								<div id="stateLabel">Standby</div>
-								<div id="caption" class="dim">Tap the mic, or type below, to talk to Jarvis.</div>
+								<div id="orbShadow" aria-hidden="true"></div>
+								<div id="bars" aria-hidden="true"></div>
+								<div id="stateLabel" role="status" aria-live="polite">Standby</div>
+								<div id="caption" class="dim" role="status" aria-live="polite" aria-atomic="true">Tap the mic, or type below, to talk to Jarvis.</div>
 							</div>
 							<div class="composer">
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
@@ -839,7 +839,7 @@
 	</div>
 </dialog>
 
-<div id="toasts"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
 
 <dialog id="settings">
 	<h2>Configure Jarvis</h2>
@@ -885,6 +885,13 @@
 		<h3>Appearance</h3>
 		<label>Glass intensity<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
 		<p class="hint">How much blur and translucency the Liquid Glass panels use — lower is more solid/readable, higher is more see-through.</p>
+
+		<h3>Units</h3>
+		<div class="seg2" id="unitsSeg">
+			<button type="button" data-units="metric">Celsius, km/h</button>
+			<button type="button" data-units="imperial">Fahrenheit, mph</button>
+		</div>
+		<p class="hint">Used for weather. Defaults to your device's region.</p>
 
 		<h3>Persona</h3>
 		<label>Jarvis' name<input type="text" id="assistantNameInput" placeholder="Jarvis" autocomplete="off" /></label>
@@ -1092,6 +1099,15 @@ const store = {
 	set autoListen(v) { localStorage.setItem('jarvis.autoListen', v ? '1' : '0'); },
 	get muted() { return localStorage.getItem('jarvis.muted') === '1'; },
 	set muted(v) { localStorage.setItem('jarvis.muted', v ? '1' : '0'); },
+	get units() {
+		const v = localStorage.getItem('jarvis.units');
+		if (v === 'metric' || v === 'imperial') return v;
+		// Guess from locale rather than assuming everyone is American: the US (plus
+		// Liberia and Myanmar) is the only place °F/mph is the everyday default.
+		const loc = (navigator.language || 'en-US').toUpperCase();
+		return /-(US|LR|MM)$/.test(loc) ? 'imperial' : 'metric';
+	},
+	set units(v) { localStorage.setItem('jarvis.units', v); },
 	get memory() { try { return JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch { return []; } },
 	set memory(v) { localStorage.setItem('jarvis.memory', JSON.stringify(v)); },
 	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
@@ -1219,6 +1235,8 @@ function animateBars(active) {
 function setMicLive(on) {
 	micBtn.classList.toggle('live', on);
 	tabMicBtn.classList.toggle('live', on);
+	micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+	tabMicBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
 function setMicDisabled(on) {
 	micBtn.disabled = on;
@@ -1345,6 +1363,27 @@ document.getElementById('expandBtn').addEventListener('click', () => {
 	dash.classList.toggle('focus');
 });
 
+/* ---------------------------- keyboard shortcuts -------------------------- */
+/* Esc is deliberately not handled here — <dialog> closes on Esc natively, and
+ * intercepting it would fight that (and break confirmAction's cancel path). */
+function isTypingTarget(el) {
+	if (!el) return false;
+	const tag = el.tagName;
+	return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+}
+document.addEventListener('keydown', (e) => {
+	const mod = e.metaKey || e.ctrlKey;
+	if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch(); return; }
+	if (mod && e.key.toLowerCase() === 'j') { e.preventDefault(); openActivity(); return; }
+	if (mod && e.key === ',') { e.preventDefault(); openSettings(); return; }
+	if (mod) return; // leave every other modifier combo to the browser (copy/paste/reload…)
+
+	// Unmodified single keys only apply when you're not typing into something.
+	if (isTypingTarget(e.target) || document.querySelector('dialog[open]')) return;
+	if (e.key === '/') { e.preventDefault(); showView('dashboard'); textInput.focus(); return; }
+	if (e.key.toLowerCase() === 'm') { e.preventDefault(); micBtn.click(); }
+});
+
 /* ============================== settings ============================== */
 const settingsDlg = document.getElementById('settings');
 let draftModels = store.models.slice();
@@ -1402,6 +1441,7 @@ function openSettings() {
 	showSetTab('account');
 	document.getElementById('glassIntensityInput').value = store.glassIntensity;
 	document.getElementById('glassIntensityVal').textContent = store.glassIntensity + '%';
+	document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x.dataset.units === store.units));
 	document.getElementById('keyInput').value = store.key;
 	document.getElementById('oaiKeyInput').value = store.oaiKey;
 	document.getElementById('anthKeyInput').value = store.anthKey;
@@ -1440,6 +1480,9 @@ function openSettings() {
 document.getElementById('settingsCancel').addEventListener('click', () => { applyGlassIntensity(store.glassIntensity); settingsDlg.close(); });
 document.querySelectorAll('#modeSeg button').forEach((b) => {
 	b.addEventListener('click', () => document.querySelectorAll('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b)));
+});
+document.querySelectorAll('#unitsSeg button').forEach((b) => {
+	b.addEventListener('click', () => document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x === b)));
 });
 document.getElementById('rateInput').addEventListener('input', (e) => (document.getElementById('rateVal').textContent = parseFloat(e.target.value).toFixed(2) + 'x'));
 document.getElementById('pitchInput').addEventListener('input', (e) => (document.getElementById('pitchVal').textContent = parseFloat(e.target.value).toFixed(2)));
@@ -1548,6 +1591,7 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.autoListen = document.getElementById('autoListenInput').checked;
 	store.voiceName = selectedVoiceName;
 	store.mode = document.querySelector('#modeSeg button.on')?.dataset.mode || 'push';
+	store.units = document.querySelector('#unitsSeg button.on')?.dataset.units || store.units;
 	store.haEnabled = document.getElementById('haEnabledInput').checked;
 	store.haUrl = document.getElementById('haUrlInput').value.trim();
 	store.haToken = document.getElementById('haTokenInput').value.trim();
@@ -1838,18 +1882,34 @@ async function toolGetWeather(args) {
 		if (!loc) return { ok: false, message: 'No location given and browser location is unavailable — ask the user which city.' };
 		lat = loc.lat; lon = loc.lon; label = 'your location';
 	}
+	const imperial = store.units === 'imperial';
+	const tUnit = imperial ? '°F' : '°C';
+	const wUnit = imperial ? 'mph' : 'km/h';
+	// 0 = just current conditions; 1-7 asks Open-Meteo for that many days of daily forecast too.
+	const days = Math.max(0, Math.min(7, Math.round(Number(args.days) || 0)));
 	const data = await fetch(
 		'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
-		'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph',
+		'&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m' +
+		(days ? '&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=' + days : '') +
+		'&timezone=auto' + // without this the daily buckets are UTC days, which straddle local nights
+		'&temperature_unit=' + (imperial ? 'fahrenheit' : 'celsius') +
+		'&wind_speed_unit=' + (imperial ? 'mph' : 'kmh'),
 	).then((r) => r.json()).catch(() => null);
 	if (!data || !data.current) return { ok: false, message: 'Weather service did not respond.' };
 	const c = data.current;
-	return {
-		ok: true,
-		message: 'Weather for ' + label + ': ' + Math.round(c.temperature_2m) + '°F, feels like ' + Math.round(c.apparent_temperature) +
-			'°F, ' + (WMO[c.weather_code] || 'conditions code ' + c.weather_code) + ', humidity ' + c.relative_humidity_2m +
-			'%, wind ' + Math.round(c.wind_speed_10m) + ' mph.',
-	};
+	let message = 'Weather for ' + label + ': ' + Math.round(c.temperature_2m) + tUnit + ', feels like ' + Math.round(c.apparent_temperature) +
+		tUnit + ', ' + (WMO[c.weather_code] || 'conditions code ' + c.weather_code) + ', humidity ' + c.relative_humidity_2m +
+		'%, wind ' + Math.round(c.wind_speed_10m) + ' ' + wUnit + '.';
+	const d = data.daily;
+	if (days && d && Array.isArray(d.time)) {
+		const rows = d.time.map((iso, i) => {
+			const when = i === 0 ? 'today' : new Date(iso + 'T12:00:00').toLocaleDateString([], { weekday: 'long' });
+			return when + ': ' + (WMO[d.weather_code[i]] || 'code ' + d.weather_code[i]) +
+				', high ' + Math.round(d.temperature_2m_max[i]) + tUnit + ', low ' + Math.round(d.temperature_2m_min[i]) + tUnit;
+		});
+		message += ' Forecast — ' + rows.join('; ') + '.';
+	}
+	return { ok: true, message };
 }
 
 async function toolGetStatus() {
@@ -2493,9 +2553,33 @@ async function streamCompletion(model, messages, onDelta) {
 	return text;
 }
 
+/* Try the lead model, then fall back down the configured list if it fails —
+ * a rate limit, outage, or unusable key on one model shouldn't kill the whole
+ * turn when there's another model sitting right there. Only falls back on a
+ * model that produced nothing; a model that answered (even briefly) is done.
+ * Throws the LAST error if every model fails, so the user sees a real reason. */
+async function streamWithFallback(messages, onDelta) {
+	const models = store.models;
+	let lastErr = null;
+	for (let i = 0; i < models.length; i++) {
+		try {
+			const text = await streamCompletion(models[i], messages, onDelta);
+			if (i > 0) {
+				toast('Switched models', shortModelName(models[0]) + ' failed, so ' + shortModelName(models[i]) + ' answered instead.', 8000);
+				logActivity('Fell back to ' + shortModelName(models[i]) + '.');
+			}
+			return text;
+		} catch (err) {
+			lastErr = err;
+			onDelta(''); // clear any partial text from the failed attempt before the next one streams in
+		}
+	}
+	throw lastErr || new Error('No model is configured — add one in Settings.');
+}
+
 const TOOL_DOCS = [
 	'get_time {} — current local date and time.',
-	'get_weather {"location": string optional} — current weather; omit location to use the browser\'s location.',
+	'get_weather {"location": string optional, "days": number optional 1-7} — current weather; omit location to use the browser\'s location. Add "days" to also get a daily forecast (e.g. days 2 for tomorrow, days 7 for the week) — use it whenever asked about a future day, not just today.',
 	'get_status {} — battery, connectivity, model, and memory/reminder/note counts.',
 	'remember {"fact": string} — permanently remember a fact about the user.',
 	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
@@ -2623,7 +2707,7 @@ async function submitCommand(text, depth) {
 	setState('thinking', 'Thinking');
 	let raw = '';
 	try {
-		raw = await streamCompletion(store.models[0], messages, (partial) => {
+		raw = await streamWithFallback(messages, (partial) => {
 			const { cleaned } = stripActions(partial);
 			if (cleaned) setCaption(cleaned);
 		});
@@ -2926,7 +3010,7 @@ async function analyzeTranscript(id) {
 	renderTranscripts();
 	const prompt = 'Analyze this transcript of a recorded conversation or meeting. Reply in plain text with no markdown, using exactly these three labeled sections on their own lines:\nSummary: a 2-4 sentence summary.\nKey Points: the important points, semicolon-separated.\nAction Items: who owes what, semicolon-separated, or "none" if there are none.\n\nTranscript:\n' + t.text.slice(0, 12000);
 	try {
-		const out = await streamCompletion(store.models[0], [
+		const out = await streamWithFallback([
 			{ role: 'system', content: 'You are a precise meeting-notes analyst. Be concise and factual; never invent details not present in the transcript.' },
 			{ role: 'user', content: prompt },
 		], () => {});
@@ -3113,7 +3197,7 @@ function renderDashboard() {
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
 	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch',
-	'mode', 'wakeWord', 'autoListen', 'muted', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
+	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity',
 ];
@@ -3328,6 +3412,20 @@ function initIntro() {
 	}
 	document.getElementById('introSkip').addEventListener('click', finish);
 	overlay.addEventListener('click', (e) => { if (e.target === overlay) finish(); });
+}
+
+/* Register the offline service worker. Guarded rather than assumed: service
+ * workers need a secure context, so this is a no-op over file:// (opening the
+ * .html directly). Explicitly skipped in the native Capacitor shell too — it
+ * serves from capacitor://localhost, which would slip past a naive
+ * protocol/hostname check, and it doesn't need a service worker anyway since
+ * its files are already bundled on-device. Failure must never block the app,
+ * so it only logs. */
+const nativeShell = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if ('serviceWorker' in navigator && !nativeShell && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+	window.addEventListener('load', () => {
+		navigator.serviceWorker.register('jarvis-sw.js').catch((err) => console.warn('Offline support unavailable:', err));
+	});
 }
 
 /* ================================ boot ================================ */
