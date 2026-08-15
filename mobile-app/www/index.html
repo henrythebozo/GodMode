@@ -1067,10 +1067,12 @@ const store = {
 			const v = JSON.parse(localStorage.getItem('jarvis.models'));
 			if (Array.isArray(v) && v.length) return v;
 		} catch {}
-		return [localStorage.getItem('jarvis.model') || 'anthropic/claude-sonnet-5']; // migrate the old single-model setting
+		const legacy = localStorage.getItem('jarvis.model');
+		if (legacy) return [legacy]; // migrate the old single-model setting, exactly as it was — don't silently add a second model to someone's existing setup
+		return ['anthropic/claude-sonnet-5', 'anthropic/claude-opus-5']; // brand-new default: Sonnet 5 leads (fast, drives voice/tools), Opus 5 gets consulted in Team mode
 	},
 	set models(v) { localStorage.setItem('jarvis.models', JSON.stringify(v)); },
-	get teamMode() { return localStorage.getItem('jarvis.teamMode') === '1'; },
+	get teamMode() { return localStorage.getItem('jarvis.teamMode') !== '0'; }, // on by default, pairing with the two-model default above; explicit '0' (Settings toggle) always wins
 	set teamMode(v) { localStorage.setItem('jarvis.teamMode', v ? '1' : '0'); },
 	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
 	set assistantName(v) { localStorage.setItem('jarvis.assistantName', v); },
