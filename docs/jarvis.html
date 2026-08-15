@@ -15,7 +15,7 @@
 <script>
 	/* Runs before any CSS paints so switching themes never flashes the wrong one
 	   on load. Deliberately duplicates the storage key rather than waiting for
-	   the main script at the end of <body> — by then the first paint has
+	   the main script at the end of the document — by then the first paint has
 	   already happened. Dark is the default. */
 	try { document.documentElement.dataset.theme = localStorage.getItem('jarvis.theme') === 'light' ? 'light' : 'dark'; } catch { document.documentElement.dataset.theme = 'dark'; }
 </script>
