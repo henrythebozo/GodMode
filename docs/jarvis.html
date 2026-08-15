@@ -529,12 +529,30 @@
 	.settab h3:first-child { margin-top: 4px; }
 	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
 	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
-	dialog input[type="text"], dialog input[type="password"], dialog input[type="time"], dialog select {
+	dialog input[type="text"], dialog input[type="password"], dialog input[type="time"], dialog select, dialog textarea {
 		width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 12px;
 		padding: 11px 13px; font: inherit; font-size: 13.5px;
 		color-scheme: light;
 	}
-	dialog input:focus, dialog select:focus { outline: none; border-color: var(--ring); }
+	dialog textarea { resize: vertical; min-height: 88px; line-height: 1.5; }
+	dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; border-color: var(--ring); }
+	dialog input[type="color"] { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); cursor: pointer; flex: none; }
+
+	/* -------------------------------- business ----------------------------- */
+	.bizlogorow { display: flex; align-items: center; gap: 16px; margin: 12px 0 4px; }
+	.bizlogoctl { flex: 1; min-width: 0; }
+	.bizlogo {
+		width: 64px; height: 64px; border-radius: 16px; flex: none; overflow: hidden;
+		display: grid; place-items: center; background: var(--panel-3); border: 1px solid var(--line);
+		font-size: 22px; font-weight: 800; letter-spacing: 0.02em; color: #fff;
+	}
+	.bizlogo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+	.bizrow { display: flex; align-items: center; gap: 12px; }
+	.bizrow .bizlogo { width: 44px; height: 44px; border-radius: 12px; font-size: 16px; }
+	.bizrow .biztext { flex: 1; min-width: 0; }
+	.bizrow .bizname { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.bizrow .bizwhat { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.bizempty { font-size: 12.5px; color: var(--dim); margin-bottom: 10px; }
 	dialog input[type="range"] { width: 100%; accent-color: var(--ring); }
 	dialog .rangerow { display: flex; align-items: center; gap: 10px; }
 	dialog .rangerow span { flex: none; width: 34px; font-size: 12px; color: var(--dim); text-align: right; }
@@ -705,6 +723,10 @@
 						<div class="dgrid">
 							<div class="dcol">
 								<div class="dsec">
+									<div class="eyebrow">Business</div>
+									<div id="bizCard"></div>
+								</div>
+								<div class="dsec">
 									<div class="eyebrow">Quick Access</div>
 									<div class="qagrid" id="quickAccessGrid"></div>
 								</div>
@@ -849,6 +871,7 @@
 		<button type="button" data-settab="listening">Listening</button>
 		<button type="button" data-settab="home">Smart Home</button>
 		<button type="button" data-settab="media">Media</button>
+		<button type="button" data-settab="business">Business</button>
 		<button type="button" data-settab="calendar">Calendar</button>
 		<button type="button" data-settab="data">Data</button>
 	</div>
@@ -959,6 +982,44 @@
 			<input type="text" id="higgsVideoEndpointInput" placeholder="/higgsfield-ai/…" autocomplete="off" />
 		</label>
 		<p class="hint">Only the image endpoint is in Higgsfield's public docs; find the video one for the model you want in your Higgsfield Cloud dashboard and paste its path here.</p>
+	</div>
+
+	<div class="settab" id="settab-business">
+		<h3>Your Business</h3>
+		<p>Give Jarvis a business to focus on and it'll factor that into every answer — advice, reminders, notes and drafting all get framed around what you actually do.</p>
+		<label>Business name<input type="text" id="bizNameInput" placeholder="e.g. Northwind Coffee" autocomplete="off" /></label>
+		<label><span>What it does <span class="hint">(one line)</span></span>
+			<input type="text" id="bizWhatInput" placeholder="e.g. A small-batch coffee roaster and cafe in Denver" autocomplete="off" />
+		</label>
+		<label><span>Background <span class="hint">(goals, customers, voice, anything Jarvis should know)</span></span>
+			<textarea id="bizNotesInput" rows="5" placeholder="Who your customers are, what you're working toward this year, how you like to sound…"></textarea>
+		</label>
+
+		<h3>Logo</h3>
+		<div class="bizlogorow">
+			<div id="bizLogoPreview" class="bizlogo"></div>
+			<div class="bizlogoctl">
+				<div class="row" style="margin: 0">
+					<button class="ghost small" id="bizLogoBtn" type="button">Upload image</button>
+					<button class="ghost small" id="bizLogoClear" type="button">Use monogram</button>
+					<input type="file" id="bizLogoFile" accept="image/*" hidden />
+				</div>
+				<label class="inline" style="margin: 10px 0 0">
+					<span class="hint" style="margin: 0">Monogram colour</span>
+					<input type="color" id="bizColorInput" />
+				</label>
+			</div>
+		</div>
+		<p class="hint">No logo yet? Jarvis makes a clean monogram from your initials — pick a colour above. Uploaded images are shrunk to 256px and kept on this device only.</p>
+
+		<h3>Background Documents</h3>
+		<p class="hint">Import plain-text work — notes, briefs, price lists, transcripts, exported docs (.txt, .md, .csv, .json). Jarvis reads these when a question calls for them.</p>
+		<div class="row">
+			<button class="ghost" id="bizDocBtn" type="button">Import documents</button>
+			<input type="file" id="bizDocFile" accept=".txt,.md,.markdown,.csv,.tsv,.json,.log,text/*" multiple hidden />
+		</div>
+		<div class="viewlist" id="bizDocList" style="margin-top: 10px"></div>
+		<p class="hint">PDFs and Word files can't be read here — this app has no document parser and adding one would mean pulling in an external library. Copy the text out and paste it into Background above, or save it as .txt first.</p>
 	</div>
 
 	<div class="settab" id="settab-calendar">
@@ -1158,7 +1219,32 @@ const store = {
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
+	/* ---- the business Jarvis is focused on ---- */
+	get bizName() { return localStorage.getItem('jarvis.bizName') || ''; },
+	set bizName(v) { localStorage.setItem('jarvis.bizName', v); },
+	get bizWhat() { return localStorage.getItem('jarvis.bizWhat') || ''; },
+	set bizWhat(v) { localStorage.setItem('jarvis.bizWhat', v); },
+	get bizNotes() { return localStorage.getItem('jarvis.bizNotes') || ''; },
+	set bizNotes(v) { localStorage.setItem('jarvis.bizNotes', v); },
+	get bizLogo() { return localStorage.getItem('jarvis.bizLogo') || ''; }, // data URL, only when a real image was uploaded
+	set bizLogo(v) { localStorage.setItem('jarvis.bizLogo', v); },
+	get bizColor() { return localStorage.getItem('jarvis.bizColor') || '#007aff'; }, // drives the generated monogram mark
+	set bizColor(v) { localStorage.setItem('jarvis.bizColor', v); },
+	get bizDocs() { try { return JSON.parse(localStorage.getItem('jarvis.bizDocs')) || []; } catch { return []; } },
+	set bizDocs(v) { localStorage.setItem('jarvis.bizDocs', JSON.stringify(v)); },
 };
+
+/* localStorage is a few MB total, and business docs plus a logo are by far the
+ * biggest things Jarvis stores. Fail loudly and reversibly instead of silently
+ * losing data when that ceiling is hit. */
+function trySave(fn) {
+	try { fn(); return true; } catch (err) {
+		const full = err && (err.name === 'QuotaExceededError' || err.code === 22);
+		toast(full ? 'Out of storage' : 'Could not save',
+			full ? 'This device\'s storage for Jarvis is full. Remove a document or the logo and try again.' : String(err && err.message ? err.message : err), 9000);
+		return false;
+	}
+}
 
 function seedDevices() {
 	return [
@@ -1437,8 +1523,8 @@ function showSetTab(name) {
 }
 document.querySelectorAll('#setTabs button').forEach((b) => b.addEventListener('click', () => showSetTab(b.dataset.settab)));
 
-function openSettings() {
-	showSetTab('account');
+function openSettings(tab) {
+	showSetTab(tab || 'account');
 	document.getElementById('glassIntensityInput').value = store.glassIntensity;
 	document.getElementById('glassIntensityVal').textContent = store.glassIntensity + '%';
 	document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x.dataset.units === store.units));
@@ -1467,6 +1553,12 @@ function openSettings() {
 	document.getElementById('higgsVideoEndpointInput').value = store.higgsVideoEndpoint;
 	document.getElementById('briefingEnabledInput').checked = store.briefingEnabled;
 	document.getElementById('briefingTimeInput').value = store.briefingTime;
+	document.getElementById('bizNameInput').value = store.bizName;
+	document.getElementById('bizWhatInput').value = store.bizWhat;
+	document.getElementById('bizNotesInput').value = store.bizNotes;
+	document.getElementById('bizColorInput').value = store.bizColor;
+	paintBizLogo(document.getElementById('bizLogoPreview'));
+	renderBizDocs();
 	document.getElementById('calUrlInput').value = store.calendarUrl;
 	document.getElementById('calSyncResult').textContent = '';
 	updateCalStatus();
@@ -1508,6 +1600,136 @@ document.getElementById('haTestBtn').addEventListener('click', async () => {
 	}
 });
 
+/* ================================ business ================================ */
+const BIZ_DOC_MAX = 40000; // chars kept per document — enough for a long brief, small enough not to eat the storage quota
+
+function bizInitials() {
+	const words = store.bizName.trim().split(/\s+/).filter(Boolean);
+	if (!words.length) return '?';
+	if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+	return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
+/* One renderer for both the real uploaded logo and the generated monogram, so
+   the dashboard and Settings can never drift out of sync. */
+function paintBizLogo(el) {
+	if (store.bizLogo) {
+		el.style.background = '';
+		el.innerHTML = '';
+		const img = document.createElement('img');
+		img.src = store.bizLogo;
+		img.alt = store.bizName ? store.bizName + ' logo' : 'Business logo';
+		el.appendChild(img);
+	} else {
+		el.style.background = store.bizColor;
+		el.textContent = bizInitials();
+	}
+}
+function renderBizCard() {
+	const box = document.getElementById('bizCard');
+	box.innerHTML = '';
+	if (!store.bizName) {
+		const p = document.createElement('div');
+		p.className = 'bizempty';
+		p.textContent = 'Point Jarvis at a business and it\'ll factor that into everything it does.';
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Set up a business';
+		btn.addEventListener('click', () => openSettings('business'));
+		box.append(p, btn);
+		return;
+	}
+	const row = document.createElement('div');
+	row.className = 'bizrow';
+	const logo = document.createElement('div');
+	logo.className = 'bizlogo';
+	paintBizLogo(logo);
+	const txt = document.createElement('div');
+	txt.className = 'biztext';
+	const docs = store.bizDocs.length;
+	txt.innerHTML = '<div class="bizname">' + esc(store.bizName) + '</div>' +
+		'<div class="bizwhat">' + esc(store.bizWhat || (docs ? docs + ' document' + (docs === 1 ? '' : 's') : 'No description yet')) + '</div>';
+	row.append(logo, txt);
+	const manage = document.createElement('button');
+	manage.type = 'button';
+	manage.className = 'linkbtn';
+	manage.textContent = 'Manage';
+	manage.addEventListener('click', () => openSettings('business'));
+	box.append(row, manage);
+}
+function renderBizDocs() {
+	const box = document.getElementById('bizDocList');
+	const docs = store.bizDocs;
+	if (!docs.length) { box.innerHTML = '<div class="empty">No documents imported yet.</div>'; return; }
+	box.innerHTML = '';
+	docs.forEach((d) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		const kb = Math.max(1, Math.round(d.text.length / 1024));
+		row.innerHTML = '<div class="txt"><b>' + esc(d.name) + '</b><small>' + kb + ' KB · added ' + new Date(d.at).toLocaleDateString() + '</small></div>';
+		const del = document.createElement('button');
+		del.innerHTML = '✕';
+		del.title = 'Remove document';
+		del.addEventListener('click', () => {
+			store.bizDocs = store.bizDocs.filter((x) => x.id !== d.id);
+			renderBizDocs();
+			renderBizCard();
+		});
+		row.appendChild(del);
+		box.appendChild(row);
+	});
+}
+/* Downscale before storing: a phone photo of a logo can be several MB, which
+   would blow the whole localStorage budget on one image. */
+function importBizLogo(file) {
+	const reader = new FileReader();
+	reader.onload = () => {
+		const img = new Image();
+		img.onload = () => {
+			const max = 256;
+			const scale = Math.min(1, max / Math.max(img.width, img.height));
+			const w = Math.max(1, Math.round(img.width * scale));
+			const h = Math.max(1, Math.round(img.height * scale));
+			const canvas = document.createElement('canvas');
+			canvas.width = w; canvas.height = h;
+			canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+			let url;
+			try { url = canvas.toDataURL('image/png'); } catch { toast('Could not read that image', 'The file may be corrupt or an unsupported format.'); return; }
+			if (!trySave(() => { store.bizLogo = url; })) return;
+			paintBizLogo(document.getElementById('bizLogoPreview'));
+			renderBizCard();
+		};
+		img.onerror = () => toast('Could not read that image', 'The file may be corrupt or an unsupported format.');
+		img.src = String(reader.result);
+	};
+	reader.onerror = () => toast('Could not read that file', 'Try a different image.');
+	reader.readAsDataURL(file);
+}
+function importBizDocs(files) {
+	let pending = files.length;
+	const done = () => { if (--pending <= 0) { renderBizDocs(); renderBizCard(); } };
+	Array.from(files).forEach((file) => {
+		const reader = new FileReader();
+		reader.onload = () => {
+			let text = String(reader.result || '').trim();
+			if (!text) { toast('Nothing to import', file.name + ' looks empty.'); return done(); }
+			// A binary file read as text is mostly control characters — catch that
+			// rather than storing garbage the model would then try to reason over.
+			const junk = (text.slice(0, 2000).match(/[\x00-\x08\x0E-\x1F]/g) || []).length;
+			if (junk > 40) { toast('Not a text file', file.name + ' looks binary (PDF, Word, image…). Save it as .txt first.', 9000); return done(); }
+			let truncated = false;
+			if (text.length > BIZ_DOC_MAX) { text = text.slice(0, BIZ_DOC_MAX); truncated = true; }
+			const list = store.bizDocs;
+			list.push({ id: uid(), name: file.name, text, at: Date.now() });
+			if (!trySave(() => { store.bizDocs = list; })) return done();
+			if (truncated) toast('Imported, trimmed', file.name + ' was shortened to the first ' + Math.round(BIZ_DOC_MAX / 1000) + 'k characters.', 8000);
+			done();
+		};
+		reader.onerror = () => { toast('Could not read that file', file.name); done(); };
+		reader.readAsText(file);
+	});
+}
+
 function updateCalStatus() {
 	const el = document.getElementById('calStatus');
 	if (!store.calendarIcs) { el.textContent = 'No calendar connected.'; return; }
@@ -1515,6 +1737,37 @@ function updateCalStatus() {
 	try { n = parseIcsEvents(store.calendarIcs).length; } catch {}
 	el.textContent = 'Connected — ' + n + ' event' + (n === 1 ? '' : 's') + ' in the feed, last synced ' + (store.calendarSyncedAt ? new Date(store.calendarSyncedAt).toLocaleString() : 'just now') + '.';
 }
+document.getElementById('bizLogoBtn').addEventListener('click', () => document.getElementById('bizLogoFile').click());
+document.getElementById('bizLogoFile').addEventListener('change', (e) => {
+	const file = e.target.files[0];
+	e.target.value = '';
+	if (file) importBizLogo(file);
+});
+document.getElementById('bizLogoClear').addEventListener('click', () => {
+	store.bizLogo = '';
+	paintBizLogo(document.getElementById('bizLogoPreview'));
+	renderBizCard();
+});
+document.getElementById('bizColorInput').addEventListener('input', (e) => {
+	store.bizColor = e.target.value; // live so the monogram updates as you pick
+	paintBizLogo(document.getElementById('bizLogoPreview'));
+	renderBizCard();
+});
+// keep the monogram in step while you're still typing the name
+document.getElementById('bizNameInput').addEventListener('input', (e) => {
+	if (store.bizLogo) return;
+	const el = document.getElementById('bizLogoPreview');
+	const words = e.target.value.trim().split(/\s+/).filter(Boolean);
+	el.style.background = store.bizColor;
+	el.textContent = !words.length ? '?' : words.length === 1 ? words[0].slice(0, 2).toUpperCase() : (words[0][0] + words[words.length - 1][0]).toUpperCase();
+});
+document.getElementById('bizDocBtn').addEventListener('click', () => document.getElementById('bizDocFile').click());
+document.getElementById('bizDocFile').addEventListener('change', (e) => {
+	const files = e.target.files;
+	if (files && files.length) importBizDocs(files);
+	e.target.value = '';
+});
+
 document.getElementById('calImportBtn').addEventListener('click', () => document.getElementById('calImportFile').click());
 document.getElementById('calImportFile').addEventListener('change', (e) => {
 	const file = e.target.files[0];
@@ -1592,6 +1845,10 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	store.voiceName = selectedVoiceName;
 	store.mode = document.querySelector('#modeSeg button.on')?.dataset.mode || 'push';
 	store.units = document.querySelector('#unitsSeg button.on')?.dataset.units || store.units;
+	store.bizName = document.getElementById('bizNameInput').value.trim();
+	store.bizWhat = document.getElementById('bizWhatInput').value.trim();
+	store.bizNotes = document.getElementById('bizNotesInput').value.trim();
+	store.bizColor = document.getElementById('bizColorInput').value;
 	store.haEnabled = document.getElementById('haEnabledInput').checked;
 	store.haUrl = document.getElementById('haUrlInput').value.trim();
 	store.haToken = document.getElementById('haTokenInput').value.trim();
@@ -1604,6 +1861,7 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	applyListenMode();
 	renderHome();
 	updateDashStatus();
+	renderBizCard();
 	scheduleBriefing();
 	settingsDlg.close();
 	if (!anyKey()) toast('Setup needed', 'Add an API key above to start talking to ' + store.assistantName + '.');
@@ -2403,6 +2661,20 @@ function getUpcomingCalendarEvents(limit) {
 	withNext.sort((a, b) => a.start - b.start);
 	return withNext.slice(0, limit || 10);
 }
+function toolGetBusinessDoc(args) {
+	const docs = store.bizDocs;
+	if (!docs.length) return { ok: false, message: 'No business documents have been imported. Add them in Settings > Business.' };
+	const q = (args.query || '').toLowerCase().trim();
+	if (!q) return { ok: true, message: 'Available business documents: ' + docs.map((d) => d.name).join(', ') };
+	const hit = docs.find((d) => d.name.toLowerCase() === q) ||
+		docs.find((d) => d.name.toLowerCase().includes(q)) ||
+		docs.find((d) => d.text.toLowerCase().includes(q));
+	if (!hit) return { ok: false, message: 'No business document matched "' + args.query + '". Available: ' + docs.map((d) => d.name).join(', ') };
+	// Cap what goes back into the conversation so one large document can't blow the context window.
+	const body = hit.text.length > 6000 ? hit.text.slice(0, 6000) + '\n…(truncated)' : hit.text;
+	return { ok: true, message: 'Document "' + hit.name + '":\n' + body };
+}
+
 function toolListCalendarEvents() {
 	if (!store.calendarIcs) return { ok: false, message: 'No calendar connected. Add one in Settings > Calendar.' };
 	const events = getUpcomingCalendarEvents(8);
@@ -2443,6 +2715,7 @@ async function runTool(action) {
 			case 'list_transcripts': return toolListTranscripts();
 			case 'get_transcript': return toolGetTranscript(args);
 			case 'list_calendar_events': return toolListCalendarEvents();
+			case 'get_business_doc': return toolGetBusinessDoc(args);
 			default: return { ok: false, message: 'Unknown tool "' + name + '".' };
 		}
 	} catch (err) {
@@ -2601,6 +2874,7 @@ const TOOL_DOCS = [
 	'generate_image {"prompt": string, "aspect_ratio": string optional (e.g. "16:9", "1:1", "4:3"), "resolution": string optional ("720p" or "1080p")} — generate an image with Higgsfield AI; takes up to about a minute.',
 	'generate_video {"prompt": string, "aspect_ratio": string optional} — generate a short video with Higgsfield AI; takes a few minutes. Only works if a video model is configured in Settings.',
 	'list_calendar_events {} — list upcoming events from the user\'s connected read-only calendar, if any.',
+	'get_business_doc {"query": string} — read one of the business reference documents listed above; match on its filename. Leave query empty to get a list of what is available.',
 ].join('\n- ');
 
 function buildSystemPrompt() {
@@ -2618,16 +2892,36 @@ function buildSystemPrompt() {
 		'You may include more than one such block to call multiple tools in one turn.',
 		'',
 		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
-		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video, list_calendar_events) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
+		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video, list_calendar_events, get_business_doc) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
 		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
 		'',
 		'Facts remembered about ' + who + ':',
 		memText,
+		bizPromptBlock(who),
 		'',
 		'Current date/time: ' + new Date().toString(),
 	].join('\n');
+}
+
+/* The business context Jarvis carries into every turn. Kept deliberately
+   compact — name, one-liner, background, and just the *titles* of imported
+   documents. Pasting whole documents into every request would balloon the
+   token cost of asking the time; get_business_doc pulls the full text only
+   when a question actually calls for it. Returns '' when no business is set,
+   so nothing changes for people not using this. */
+function bizPromptBlock(who) {
+	if (!store.bizName) return '';
+	const lines = ['', 'The business ' + who + ' runs, which you help operate:', '- Name: ' + store.bizName];
+	if (store.bizWhat) lines.push('- What it does: ' + store.bizWhat);
+	if (store.bizNotes) lines.push('- Background: ' + store.bizNotes.slice(0, 2000));
+	const docs = store.bizDocs;
+	if (docs.length) {
+		lines.push('- Reference documents you can open with get_business_doc: ' + docs.map((d) => d.name).join(', '));
+	}
+	lines.push('Weigh this business in your answers — advice, drafting, reminders and priorities should fit it. Do not invent facts about it beyond what is written here or in those documents.');
+	return lines.join('\n');
 }
 
 function shortModelName(id) {
@@ -3187,6 +3481,7 @@ function renderConnectedApps() {
 
 function renderDashboard() {
 	updateDashStatus();
+	renderBizCard();
 	buildQuickAccess();
 	renderRecentActivity();
 	renderSystemOverview();
@@ -3200,6 +3495,7 @@ const STORE_FIELDS = [
 	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity',
+	'bizName', 'bizWhat', 'bizNotes', 'bizLogo', 'bizColor', 'bizDocs',
 ];
 const SENSITIVE_FIELDS = ['key', 'oaiKey', 'anthKey', 'geminiKey', 'haToken', 'higgsKeyId', 'higgsKeySecret'];
 
@@ -3254,6 +3550,7 @@ function collectSearchIndex() {
 	store.reminders.forEach((r) => items.push({ view: 'tasks', title: r.text, sub: 'Reminder · ' + new Date(r.at).toLocaleString(), text: r.text }));
 	store.transcripts.forEach((t) => items.push({ view: 'systems', title: t.title, sub: 'Recording', text: [t.title, t.text, t.analysis || ''].join(' ') }));
 	getUpcomingCalendarEvents(50).forEach((e) => items.push({ view: 'dashboard', title: e.summary, sub: 'Calendar · ' + e.start.toLocaleString(), text: e.summary + ' ' + (e.location || '') }));
+	store.bizDocs.forEach((d) => items.push({ view: 'dashboard', title: d.name, sub: 'Business document', text: d.name + ' ' + d.text }));
 	store.history.forEach((m) => {
 		if (m.role !== 'user' && m.role !== 'assistant') return;
 		items.push({ view: 'chat', title: m.content.slice(0, 90), sub: 'Chat · ' + m.role, text: m.content });

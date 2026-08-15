@@ -70,6 +70,11 @@ the button next to "Henry OS" in the sidebar, or go straight to
   everything, from Settings → Data.
 - Unlocking a door by voice always pops an in-app confirmation first —
   enforced in code, not just prompted to the model.
+- **Give it a business to focus on.** Set up your business in Settings →
+  Business (name, what it does, background) and Jarvis factors it into every
+  answer. Upload a logo or let it generate a monogram, and import plain-text
+  documents — briefs, price lists, notes — that it reads when a question calls
+  for them.
 - **Works offline.** Everything Jarvis knows lives on your device, so with the
   app installed (Add to Home Screen) your memory, reminders, notes and
   recordings all still open with no connection — only the AI, weather and
