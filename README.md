@@ -87,6 +87,9 @@ the button next to "Henry OS" in the sidebar, or go straight to
   app installed (Add to Home Screen) your memory, reminders, notes and
   recordings all still open with no connection — only the AI, weather and
   smart-home calls need the network.
+- **Mobile navigation** is a menu button top-left that opens full-screen —
+  no bottom tab bar. The composer stays pinned at the bottom with the mic
+  beside Send. Desktop keeps its permanent sidebar.
 - **Keyboard shortcuts:** `⌘/Ctrl+K` search, `⌘/Ctrl+J` activity,
   `⌘/Ctrl+,` settings, `/` jump to the composer, `M` toggle the mic.
 - If your lead model fails (rate limit, outage, bad key), Jarvis automatically
