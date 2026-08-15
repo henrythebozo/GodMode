@@ -43,6 +43,7 @@
 	   so there's no light flash on load. Settings > Persona > Appearance flips it. */
 	:root {
 		color-scheme: light;
+		--app-h: 100dvh;     /* replaced at runtime with the visual viewport height */
 		--glass-blur: 0px;   /* both tuned live by the Appearance slider; 0 blur + */
 		--glass-alpha: 1;    /* full alpha == flat opaque surfaces, the default   */
 		--bg: #faf9f7;
@@ -129,7 +130,8 @@
 		--intro-halo-awake: 0 0 10px 1px #fff, 0 0 42px 8px rgba(255, 255, 255, 0.4), 0 0 90px 26px rgba(255, 255, 255, 0.15), inset 0 0 34px rgba(0, 0, 0, 0.65);
 	}
 	* { box-sizing: border-box; margin: 0; }
-	html, body { height: 100dvh; }
+	html, body { height: var(--app-h, 100dvh); }
+	body { transition: height 0.2s ease; }
 	body {
 		background: var(--bg);
 		color: var(--text);
@@ -283,10 +285,10 @@
 	/* The home screen is the assistant and nothing else — orb, greeting,
 	   composer — centred on its own. Everything that used to crowd it (quick
 	   access, gauges, upcoming, connected, business) lives in Overview. */
-	#view-dashboard.on { display: block; min-height: calc(100% - var(--vp-pad-y)); }
+	#view-dashboard.on { display: flex; flex-direction: column; min-height: calc(100% - var(--vp-pad-y)); }
 	.heroscreen {
 		width: 100%; max-width: 620px; margin: 0 auto;
-		min-height: calc(100% - var(--vp-pad-y));
+		flex: 1;
 		display: flex; flex-direction: column; gap: 18px;
 	}
 	/* the orb owns the empty middle, so the greeting stays at the top and the
@@ -3804,6 +3806,30 @@ if ('serviceWorker' in navigator && !nativeShell && (location.protocol === 'http
 		navigator.serviceWorker.register('jarvis-sw.js').catch((err) => console.warn('Offline support unavailable:', err));
 	});
 }
+
+/* --------------------- keyboard-aware composer --------------------------- */
+/* The app shell is a fixed 100dvh box, so on a phone the on-screen keyboard
+ * would simply cover the bottom of it — composer included. visualViewport
+ * reports the area actually visible above the keyboard, so matching the shell
+ * to it lifts the composer into view while typing and drops it back on blur.
+ * Purely additive: without visualViewport (or on desktop, where it always
+ * equals the window) --app-h stays unset and the CSS falls back to 100dvh. */
+(function keyboardAwareShell() {
+	const vv = window.visualViewport;
+	if (!vv) return;
+	let frame = null;
+	const sync = () => {
+		frame = null;
+		// offsetTop matters when the page itself gets shifted up under the keyboard
+		const h = Math.round(vv.height + vv.offsetTop);
+		document.documentElement.style.setProperty('--app-h', h + 'px');
+	};
+	// resize/scroll can fire many times per frame while the keyboard animates
+	const schedule = () => { if (frame === null) frame = requestAnimationFrame(sync); };
+	vv.addEventListener('resize', schedule);
+	vv.addEventListener('scroll', schedule);
+	sync();
+})();
 
 /* ================================ boot ================================ */
 applyListenMode();
