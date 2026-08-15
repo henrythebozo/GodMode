@@ -79,8 +79,10 @@ the button next to "Henry OS" in the sidebar, or go straight to
   answer. Upload a logo or let it generate a monogram, and import plain-text
   documents — briefs, price lists, notes — that it reads when a question calls
   for them.
-- **Dark by default, light if you want it.** Settings → Persona → Appearance
-  switches the whole app, boot intro included, and remembers your choice.
+- **Calm, flat interface** — warm neutral surfaces, a single clay accent, no
+  uppercase shouting. Dark by default; Settings → Persona → Appearance
+  switches to light (boot intro included) and can dial frosted glass back in
+  if you want depth.
 - **Works offline.** Everything Jarvis knows lives on your device, so with the
   app installed (Add to Home Screen) your memory, reminders, notes and
   recordings all still open with no connection — only the AI, weather and

@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Jarvis — voice assistant</title>
-<meta name="theme-color" content="#eef1f8" />
+<meta name="theme-color" content="#262624" />
 <link rel="manifest" href="jarvis-manifest.webmanifest" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -35,27 +35,33 @@
 	   - Motion: every state change gets a transition (color, background,
 	     transform) — nothing snaps. Views fade+lift in on entry, dialogs
 	     fade+scale (or slide up as a sheet on mobile), never pop instantly.
-	   ---- Liquid Glass: translucent frosted panels over a soft gradient backdrop ---- */
+	   ---- Surfaces: flat, warm and opaque by default. The Appearance slider in
+	   Settings can dial translucency + blur back in (Liquid Glass), but it now
+	   starts at zero, so the default is a calm flat interface. ---- */
 	/* Light is written as the base and dark as an override, but DARK IS THE
 	   DEFAULT — an inline script in <head> stamps data-theme before first paint
 	   so there's no light flash on load. Settings > Persona > Appearance flips it. */
 	:root {
 		color-scheme: light;
-		--glass-blur: 24px;   /* tuned live by the Appearance slider in Settings */
-		--glass-alpha: 0.55;  /* ditto */
-		--bg: #f7f6f4;
-		--wash-1: rgba(180, 170, 205, 0.16);
-		--wash-2: rgba(205, 180, 165, 0.14);
-		--panel: rgba(255, 255, 255, var(--glass-alpha));
-		--panel-2: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.62));
-		--panel-3: rgba(255, 255, 255, calc(var(--glass-alpha) * 1.3));
-		--line: rgba(255, 255, 255, 0.75);
-		--line-soft: rgba(20, 20, 40, 0.08);
-		--text: #1c1c1e;
-		--dim: rgba(60, 60, 67, 0.68);
-		--dim-2: rgba(60, 60, 67, 0.38);
-		--ring: #007aff;
-		--ring-soft: rgba(0, 122, 255, 0.14);
+		--glass-blur: 0px;   /* both tuned live by the Appearance slider; 0 blur + */
+		--glass-alpha: 1;    /* full alpha == flat opaque surfaces, the default   */
+		--bg: #faf9f7;
+		/* Surfaces are kept as raw RGB triplets so one --glass-alpha can fade all
+		   of them together without needing a different colour per theme. */
+		--surface-rgb: 255, 255, 255;
+		--surface-2-rgb: 243, 241, 236;
+		--surface-3-rgb: 234, 231, 225;
+		--panel: rgba(var(--surface-rgb), var(--glass-alpha));
+		--panel-2: rgba(var(--surface-2-rgb), var(--glass-alpha));
+		--panel-3: rgba(var(--surface-3-rgb), var(--glass-alpha));
+		--line: rgba(24, 20, 16, 0.1);
+		--line-soft: rgba(24, 20, 16, 0.06);
+		--text: #1f1e1d;
+		--dim: rgba(63, 60, 56, 0.72);
+		--dim-2: rgba(63, 60, 56, 0.44);
+		--ring: #c15f3c;
+		--on-accent: #fff;
+		--ring-soft: rgba(193, 95, 60, 0.12);
 		/* accessible, deepened tones — for text/icons read against light glass */
 		--ok: #1f8a4c;
 		--ok-soft: rgba(52, 199, 89, 0.16);
@@ -67,40 +73,39 @@
 		--glow-ok: #34c759;
 		--glow-warn: #ff9500;
 		--glow-err: #ff3b30;
-		--shadow: 0 16px 44px rgba(40, 36, 32, 0.1);
-		--glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.5);
-		--backdrop: rgba(20, 20, 35, 0.32);
+		--shadow: 0 10px 34px rgba(40, 36, 32, 0.09);
+		/* a real no-op shadow, not `none` — it sits in a comma-separated list */
+		--glass-sheen: 0 0 0 0 transparent;
+		--backdrop: rgba(40, 36, 32, 0.35);
 		/* The orb is a dark sphere in both themes, so in daylight it casts a
 		   shadow rather than emitting a halo — a white glow would be invisible. */
 		--orb-halo: 0 12px 34px rgba(31, 41, 71, 0.3), 0 0 40px 6px rgba(31, 41, 71, 0.08), inset 0 0 34px rgba(0, 0, 0, 0.6);
 		--orb-pool: rgba(31, 41, 71, 0.18);
 		/* boot intro */
-		--intro-bg: #f4f6fb;
-		--intro-text: rgba(28, 28, 30, 0.7);
-		--intro-text-strong: #1c1c1e;
-		--intro-line: rgba(28, 28, 30, 0.22);
+		--intro-bg: #faf9f7;
+		--intro-text: rgba(31, 30, 29, 0.7);
+		--intro-text-strong: #1f1e1d;
+		--intro-line: rgba(31, 30, 29, 0.22);
 		--intro-rim: rgba(31, 41, 71, 0.25);
 		--intro-halo-dormant: inset 0 0 34px rgba(0, 0, 0, 0.55);
 		--intro-halo-gather: 0 10px 30px rgba(31, 41, 71, 0.22), inset 0 0 34px rgba(0, 0, 0, 0.55);
-		--intro-halo-awake: 0 0 14px 2px rgba(0, 122, 255, 0.5), 0 14px 44px rgba(31, 41, 71, 0.28), 0 0 70px 20px rgba(0, 122, 255, 0.12), inset 0 0 34px rgba(0, 0, 0, 0.55);
+		--intro-halo-awake: 0 0 14px 2px rgba(193, 95, 60, 0.5), 0 14px 44px rgba(40, 36, 32, 0.26), 0 0 70px 20px rgba(193, 95, 60, 0.12), inset 0 0 34px rgba(0, 0, 0, 0.55);
 	}
 	:root[data-theme="dark"] {
 		color-scheme: dark;
-		--bg: #1c1b1a;
-		--wash-1: rgba(120, 130, 190, 0.1);
-		--wash-2: rgba(180, 140, 120, 0.08);
-		/* Dark glass is a *little* white over a dark ground, so the same slider
-		   value has to translate to a much lower alpha than it does in light. */
-		--panel: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.2));
-		--panel-2: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.12));
-		--panel-3: rgba(255, 255, 255, calc(var(--glass-alpha) * 0.32));
-		--line: rgba(255, 255, 255, 0.14);
-		--line-soft: rgba(255, 255, 255, 0.07);
-		--text: #f2f2f7;
-		--dim: rgba(235, 235, 245, 0.62);
-		--dim-2: rgba(235, 235, 245, 0.34);
-		--ring: #0a84ff;
-		--ring-soft: rgba(10, 132, 255, 0.24);
+		--bg: #262624;
+		--surface-rgb: 48, 48, 46;
+		--surface-2-rgb: 38, 38, 36;
+		--surface-3-rgb: 61, 60, 57;
+		--line: rgba(255, 255, 255, 0.1);
+		--line-soft: rgba(255, 255, 255, 0.06);
+		--text: #f5f4ef;
+		--dim: rgba(233, 230, 222, 0.66);
+		--dim-2: rgba(233, 230, 222, 0.4);
+		--ring: #d97757;
+		/* white on this terracotta is only ~2.9:1 — dark ink on it is ~7:1 */
+		--on-accent: #1f1e1d;
+		--ring-soft: rgba(217, 119, 87, 0.18);
 		/* on dark, the vivid system tones are already legible as text — no need
 		   for the deepened variants the light theme requires */
 		--ok: #30d158;
@@ -109,12 +114,12 @@
 		--warn-soft: rgba(255, 159, 10, 0.18);
 		--err: #ff453a;
 		--err-soft: rgba(255, 69, 58, 0.18);
-		--shadow: 0 16px 44px rgba(0, 0, 0, 0.45);
-		--glass-sheen: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		--shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+		--glass-sheen: 0 0 0 0 transparent;
 		--backdrop: rgba(0, 0, 0, 0.5);
 		--orb-halo: 0 0 10px 1px rgba(255, 255, 255, 0.85), 0 0 42px 8px rgba(255, 255, 255, 0.28), 0 0 90px 22px rgba(255, 255, 255, 0.1), inset 0 0 34px rgba(0, 0, 0, 0.65);
 		--orb-pool: rgba(255, 255, 255, 0.22);
-		--intro-bg: #050506;
+		--intro-bg: #1f1e1d;
 		--intro-text: rgba(255, 255, 255, 0.75);
 		--intro-text-strong: #fff;
 		--intro-line: rgba(255, 255, 255, 0.25);
@@ -126,11 +131,7 @@
 	* { box-sizing: border-box; margin: 0; }
 	html, body { height: 100dvh; }
 	body {
-		background:
-			radial-gradient(circle at 15% -10%, var(--wash-1), transparent 52%),
-			radial-gradient(circle at 90% 105%, var(--wash-2), transparent 50%),
-			var(--bg);
-		background-attachment: fixed;
+		background: var(--bg);
 		color: var(--text);
 		font: 14.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 		overscroll-behavior: none;
@@ -151,16 +152,16 @@
 	.card, .glasspanel {
 		background: var(--panel);
 		border: 1px solid var(--line);
-		border-radius: 18px;
+		border-radius: 12px;
 		padding: 20px;
 		backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		box-shadow: var(--glass-sheen), 0 4px 18px rgba(40, 36, 32, 0.05);
 	}
 	.iconbtn {
-		width: 36px;
-		height: 36px;
-		border-radius: 10px;
+		width: 34px;
+		height: 34px;
+		border-radius: 8px;
 		background: var(--panel-2);
 		border: 1px solid var(--line);
 		color: var(--text);
@@ -178,10 +179,10 @@
 	.dot.ok { background: var(--glow-ok); box-shadow: 0 0 8px var(--glow-ok); }
 	.dot.warn { background: var(--glow-warn); box-shadow: 0 0 8px var(--glow-warn); }
 	.dot.err { background: var(--glow-err); box-shadow: 0 0 8px var(--glow-err); }
-	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 11px 20px; font-weight: 600; cursor: pointer; transition: background 0.15s ease; }
+	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 10px 18px; font-weight: 500; cursor: pointer; transition: background 0.15s ease; }
 	.ghost:hover { background: var(--panel-3); }
-	.ghost.small { padding: 6px 14px; font-size: 12px; border-radius: 999px; }
-	.primary { background: var(--ring); color: #fff; border: none; border-radius: 999px; padding: 11px 20px; font-weight: 700; cursor: pointer; transition: filter 0.15s ease; }
+	.ghost.small { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
+	.primary { background: var(--ring); color: var(--on-accent); border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease; }
 	.primary:hover { filter: brightness(0.92); }
 	.linkbtn { background: none; border: none; color: var(--dim); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
@@ -195,11 +196,10 @@
 		flex-direction: column;
 		padding: 22px 16px calc(16px + env(safe-area-inset-bottom));
 		gap: 22px;
-		background: var(--panel-2);
+		background: var(--bg);
 		border-right: 1px solid var(--line);
 		backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-		box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.4);
 	}
 	.brand {
 		font-size: 17px;
@@ -215,8 +215,8 @@
 		background: none;
 		border: none;
 		color: var(--dim);
-		border-radius: 12px;
-		padding: 11px 12px;
+		border-radius: 8px;
+		padding: 9px 11px;
 		font-size: 14px;
 		font-weight: 500;
 		cursor: pointer;
@@ -248,7 +248,7 @@
 	#micBtn {
 		width: 100%;
 		background: var(--ring);
-		color: #fff;
+		color: var(--on-accent);
 		border: none;
 		border-radius: 999px;
 		padding: 12px;
@@ -441,14 +441,14 @@
 	.composer input:focus { outline: none; }
 	.composer input::placeholder { color: var(--dim); }
 	.composer button {
-		background: var(--ring); color: #fff; border: none; border-radius: 50%; width: 38px; height: 38px;
+		background: var(--ring); color: var(--on-accent); border: none; border-radius: 50%; width: 38px; height: 38px;
 		flex: none; cursor: pointer; display: grid; place-items: center;
 	}
 
 	.qagrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 	.qabtn {
 		display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line);
-		border-radius: 14px; padding: 14px 8px; cursor: pointer; color: var(--text);
+		border-radius: 10px; padding: 14px 8px; cursor: pointer; color: var(--text);
 		transition: background 0.15s ease, transform 0.15s ease;
 	}
 	.qabtn:hover { background: var(--panel-3); }
@@ -478,7 +478,7 @@
 		background: var(--panel-3); color: var(--dim-2); border: 1px solid var(--line);
 		transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 	}
-	.appbadge.on { color: #fff; background: var(--ring); border-color: transparent; }
+	.appbadge.on { color: var(--on-accent); background: var(--ring); border-color: transparent; }
 
 	.quote {
 		flex: none; text-align: center; padding: 16px 30px calc(16px + env(safe-area-inset-bottom));
@@ -486,7 +486,7 @@
 	}
 
 	/* generic list rows reused across views */
-	.row-item { display: flex; align-items: flex-start; gap: 10px; background: var(--panel-2); border-radius: 12px; padding: 11px 13px; }
+	.row-item { display: flex; align-items: flex-start; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 11px 13px; }
 	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
 	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
 	.row-item .txt b { font-size: 13.5px; }
@@ -552,8 +552,8 @@
 
 	/* -------------------------------- dialog ------------------------------ */
 	dialog {
-		background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 20px; padding: 24px;
-		max-width: 460px; width: calc(100vw - 36px); box-shadow: var(--glass-sheen), var(--shadow); margin: auto; max-height: 88dvh; overflow-y: auto;
+		background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+		max-width: 460px; width: calc(100vw - 36px); box-shadow: var(--shadow); margin: auto; max-height: 88dvh; overflow-y: auto;
 		backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		opacity: 0; transform: translateY(14px) scale(0.98);
@@ -599,7 +599,7 @@
 	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
 	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 	dialog input[type="text"], dialog input[type="password"], dialog input[type="time"], dialog select, dialog textarea {
-		width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 12px;
+		width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px;
 		padding: 11px 13px; font: inherit; font-size: 13.5px;
 	}
 	dialog textarea { resize: vertical; min-height: 88px; line-height: 1.5; }
@@ -635,8 +635,8 @@
 	/* -------------------------------- toasts ------------------------------ */
 	#toasts { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 80; display: flex; flex-direction: column; gap: 8px; max-width: min(320px, 88vw); }
 	.toast {
-		background: var(--panel-3); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 13px;
-		box-shadow: var(--glass-sheen), var(--shadow); animation: toastIn 0.25s ease-out; display: flex; gap: 10px; align-items: flex-start;
+		background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px;
+		box-shadow: var(--shadow); animation: toastIn 0.25s ease-out; display: flex; gap: 10px; align-items: flex-start;
 		backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 	}
@@ -676,7 +676,7 @@
 		}
 		.tabbtn.on { color: var(--text); font-weight: 700; }
 		#tabMicBtn {
-			flex: none; width: 54px; height: 54px; margin: -22px 6px 0; border-radius: 50%; background: var(--ring); color: #fff;
+			flex: none; width: 54px; height: 54px; margin: -22px 6px 0; border-radius: 50%; background: var(--ring); color: var(--on-accent);
 			border: 4px solid var(--bg); display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 18px rgba(31, 41, 71, 0.25);
 		}
 		#tabMicBtn.live { background: var(--glow-warn); animation: micPulse 1.4s ease-in-out infinite; }
@@ -987,8 +987,8 @@
 			<button type="button" data-theme-opt="light">Light</button>
 		</div>
 		<p class="hint">Applies everywhere, including the boot intro.</p>
-		<label>Glass intensity<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
-		<p class="hint">How much blur and translucency the Liquid Glass panels use — lower is more solid/readable, higher is more see-through.</p>
+		<label>Frosted glass<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
+		<p class="hint">Surfaces are flat by default. Raise this to blur and see through them.</p>
 
 		<h3>Units</h3>
 		<div class="seg2" id="unitsSeg">
@@ -1298,7 +1298,7 @@ const store = {
 	set calendarSyncedAt(v) { localStorage.setItem('jarvis.calendarSyncedAt', String(v)); },
 	get theme() { return localStorage.getItem('jarvis.theme') === 'light' ? 'light' : 'dark'; }, // dark unless explicitly set to light
 	set theme(v) { localStorage.setItem('jarvis.theme', v === 'light' ? 'light' : 'dark'); },
-	get glassIntensity() { const v = parseInt(localStorage.getItem('jarvis.glassIntensity'), 10); return Number.isFinite(v) ? v : 50; },
+	get glassIntensity() { const v = parseInt(localStorage.getItem('jarvis.glassIntensity'), 10); return Number.isFinite(v) ? v : 0; }, // flat by default
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
@@ -1436,15 +1436,16 @@ function applyTheme(theme) {
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 	// keep the browser/OS chrome (iOS status bar, Android address bar) in step
 	const meta = document.querySelector('meta[name="theme-color"]');
-	if (meta) meta.setAttribute('content', dark ? '#08080c' : '#eef1f8');
+	if (meta) meta.setAttribute('content', dark ? '#262624' : '#faf9f7');
 }
 applyTheme(store.theme);
 
 /* the Appearance slider in Settings drives these two custom properties live, no reload needed */
 function applyGlassIntensity(v) {
 	v = Math.max(0, Math.min(100, Number(v)));
-	const blur = 6 + (v / 100) * 30; // 6px (barely frosted) .. 36px (heavily blurred)
-	const alpha = 0.35 + (v / 100) * 0.4; // 0.35 (near-solid) .. 0.75 (very translucent)
+	// 0 = flat opaque surfaces (the default look); 100 = heavily frosted glass.
+	const blur = (v / 100) * 28;
+	const alpha = 1 - (v / 100) * 0.5;
 	document.documentElement.style.setProperty('--glass-blur', blur.toFixed(1) + 'px');
 	document.documentElement.style.setProperty('--glass-alpha', alpha.toFixed(2));
 }
