@@ -58,15 +58,25 @@
 		--line: rgba(24, 20, 16, 0.1);
 		--line-soft: rgba(24, 20, 16, 0.06);
 		--text: #1f1e1d;
-		--dim: rgba(63, 60, 56, 0.72);
+		/* 0.72 cleared AA against --bg but only reached 4.45:1 on the slightly
+		   darker --panel-2 rows, which is where most dim text actually sits. */
+		--dim: rgba(63, 60, 56, 0.76);
+		/* Disabled-only. There is no room for a readable third text tier: --dim
+		   already sits near 4.9:1 here, so anything visibly fainter fails AA by
+		   construction (this measured 2.31:1 in light, 3.19:1 in dark). Content
+		   that was using it — empty states, timestamps, the footer quote — now
+		   uses --dim; what's left is genuinely disabled, which is exempt. */
 		--dim-2: rgba(63, 60, 56, 0.44);
-		--ring: #c15f3c;
+		/* Deepened from #c15f3c, which cleared neither AA bar in daylight: white
+		   on it measured 4.23:1 as a button fill, and the same colour used as
+		   accent *text* on --bg came out 4.02:1. Both need 4.5. */
+		--ring: #b65334;
 		--on-accent: #fff;
-		--ring-soft: rgba(193, 95, 60, 0.12);
+		--ring-soft: rgba(182, 83, 52, 0.12);
 		/* accessible, deepened tones — for text/icons read against light glass */
 		--ok: #1f8a4c;
 		--ok-soft: rgba(52, 199, 89, 0.16);
-		--warn: #b25900;
+		--warn: #a85400;   /* deepened: #b25900 read 4.3:1 on --panel-2 */
 		--warn-soft: rgba(255, 149, 0, 0.16);
 		--err: #d70015;
 		--err-soft: rgba(255, 59, 48, 0.16);
@@ -103,10 +113,13 @@
 		--text: #f5f4ef;
 		--dim: rgba(233, 230, 222, 0.66);
 		--dim-2: rgba(233, 230, 222, 0.4);
-		--ring: #d97757;
-		/* white on this terracotta is only ~2.9:1 — dark ink on it is ~7:1 */
+		/* Lightened from #d97757: as an accent *text* colour (the active settings
+		   tab, links) it measured 4.24:1 against the dialog surface, under the
+		   4.5 AA bar. Used as a fill it still needs dark ink — white on this
+		   terracotta is ~2.8:1, dark ink on it ~5.9:1. */
+		--ring: #dd8163;
 		--on-accent: #1f1e1d;
-		--ring-soft: rgba(217, 119, 87, 0.18);
+		--ring-soft: rgba(221, 129, 99, 0.18);
 		/* on dark, the vivid system tones are already legible as text — no need
 		   for the deepened variants the light theme requires */
 		--ok: #30d158;
@@ -173,6 +186,12 @@
 		flex: none;
 		transition: background 0.15s, color 0.15s, border-color 0.15s;
 	}
+	/* The visible chip stays 34px — 44px of painted surface would swamp a
+	   compact toolbar — while the touch target is padded out to the 44px
+	   minimum with a transparent overlay. Gaps between neighbours are wide
+	   enough that the expanded areas meet rather than overlap. */
+	.iconbtn { position: relative; }
+	.iconbtn::after { content: ''; position: absolute; inset: -5px; border-radius: 12px; }
 	.iconbtn:hover { background: var(--panel-3); }
 	.iconbtn.on { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 	.iconbtn.recording { background: var(--err-soft); color: var(--err); border-color: transparent; animation: recPulse 1.2s ease-in-out infinite; }
@@ -188,7 +207,7 @@
 	.primary:hover { filter: brightness(0.92); }
 	.linkbtn { background: none; border: none; color: var(--dim); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
-	.empty { color: var(--dim-2); font-size: 13px; text-align: center; padding: 26px 10px; }
+	.empty { color: var(--dim); font-size: 13px; text-align: center; padding: 26px 10px; }
 
 	/* ================================ sidebar =============================== */
 	#sidebar {
@@ -306,7 +325,9 @@
 	.herotop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 	.statusbig { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin-top: 6px; }
 	.statussub { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--dim); font-size: 12.5px; }
-	.herotools { display: flex; gap: 8px; flex: none; }
+	/* 10px, not 8px: both children are .iconbtn, whose hit areas each extend
+	   5px past the painted chip — an 8px gap left them overlapping by 2px. */
+	.herotools { display: flex; gap: 10px; flex: none; }
 	.orbstage { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0 6px; text-align: center; }
 	#orbWrap { position: relative; width: 180px; height: 180px; flex: none; }
 
@@ -444,8 +465,9 @@
 	.composer input::placeholder { color: var(--dim); }
 	.composer button {
 		background: var(--ring); color: var(--on-accent); border: none; border-radius: 50%; width: 38px; height: 38px;
-		flex: none; cursor: pointer; display: grid; place-items: center;
+		flex: none; cursor: pointer; display: grid; place-items: center; position: relative;
 	}
+	.composer button::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
 
 	.qagrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 	.qabtn {
@@ -460,7 +482,7 @@
 	.actrow { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; padding: 7px 0; border-top: 1px solid var(--line-soft); }
 	.actrow:first-of-type { border-top: none; }
 	.actrow .atext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.actrow .atime { color: var(--dim-2); font-size: 10.5px; flex: none; }
+	.actrow .atime { color: var(--dim); font-size: 10.5px; flex: none; }
 
 	.gauges { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0 4px; }
 	.gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
@@ -477,14 +499,14 @@
 	.appsgrid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 	.appbadge {
 		width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 700;
-		background: var(--panel-3); color: var(--dim-2); border: 1px solid var(--line);
+		background: var(--panel-3); color: var(--dim); border: 1px solid var(--line);
 		transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 	}
 	.appbadge.on { color: var(--on-accent); background: var(--ring); border-color: transparent; }
 
 	.quote {
 		flex: none; text-align: center; padding: 16px 30px calc(16px + env(safe-area-inset-bottom));
-		font-size: 12px; color: var(--dim-2); border-top: 1px solid var(--line-soft);
+		font-size: 12px; color: var(--dim); border-top: 1px solid var(--line-soft);
 	}
 
 	/* generic list rows reused across views */
@@ -503,7 +525,10 @@
 	.morerow .txt { font-size: 14.5px; font-weight: 600; }
 
 	/* chat view */
-	.logmsg { font-size: 13.5px; padding: 4px 0; max-width: 640px; }
+	/* overflow-wrap is load-bearing: a pasted URL or a long id is one unbreakable
+	   token, and without it the row rendered 522px wide inside a 316px column on
+	   a phone. Desktop only looked fine because 640px happened to exceed it. */
+	.logmsg { font-size: 13.5px; padding: 4px 0; max-width: 640px; overflow-wrap: anywhere; }
 	.logmsg .role { font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 2px; }
 	.logmsg.assistant .role { color: var(--text); }
 
@@ -586,14 +611,31 @@
 
 	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
 	dialog h3 { font-size: 13px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
-	.settabs { display: flex; gap: 2px; margin: 14px 0 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+	/* Settings navigation. Eight tabs never fit one horizontal strip: at 390px
+	   three of them (Business, Calendar, Data) sat entirely off-screen behind a
+	   scroll with no affordance, and selecting a tab didn't scroll it into view
+	   either — so a third of Settings was effectively undiscoverable. Replaced
+	   with two layouts, neither of which scrolls: a wrapping grid on narrow
+	   screens, and a vertical rail once there's width for one. */
+	.settabs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 14px 0 12px; }
 	.settabs button {
-		flex: none; background: none; border: none; color: var(--dim); padding: 9px 12px; margin-bottom: -1px;
-		font-size: 13px; font-weight: 500; cursor: pointer;
-		border-bottom: 2px solid transparent; white-space: nowrap;
+		background: none; border: none; color: var(--dim); padding: 9px 11px; border-radius: 8px;
+		font-size: 13px; font-weight: 500; cursor: pointer; text-align: left;
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+		transition: background 0.15s ease, color 0.15s ease;
 	}
-	.settabs button:hover { color: var(--text); }
-	.settabs button.on { color: var(--ring); border-bottom-color: var(--ring); }
+	.settabs button:hover { color: var(--text); background: var(--panel-2); }
+	.settabs button.on { color: var(--ring); background: var(--ring-soft); font-weight: 600; }
+	@media (min-width: 680px) {
+		#settings { max-width: 700px; grid-template-columns: 158px minmax(0, 1fr); column-gap: 24px; align-items: start; }
+		/* `display` has to stay scoped to [open]: setting it unconditionally
+		   would override the UA's `display: none` for the closed state and
+		   leave the dialog permanently on screen. */
+		#settings[open] { display: grid; }
+		#settings > h2 { grid-column: 1 / -1; }
+		#settings .settabs { grid-template-columns: 1fr; margin: 10px 0 0; }
+		#settings .setbody { min-width: 0; }
+	}
 	.settab { display: none; }
 	.settab.on { display: block; animation: rise 0.16s ease-out; }
 	@keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
@@ -655,7 +697,9 @@
 	.composer .micinline {
 		background: none; border: none; color: var(--dim); width: 34px; height: 34px; border-radius: 50%;
 		flex: none; cursor: pointer; display: grid; place-items: center; transition: background 0.15s ease, color 0.15s ease;
+		position: relative;
 	}
+	.composer .micinline::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; }
 	.composer .micinline:hover { background: var(--panel-3); color: var(--text); }
 	.composer .micinline.live { background: var(--glow-warn); color: #fff; animation: micPulse 1.4s ease-in-out infinite; }
 	.composer .micinline:disabled { color: var(--dim-2); cursor: not-allowed; background: none; }
@@ -933,6 +977,7 @@
 		<button type="button" data-settab="data">Data</button>
 	</div>
 
+	<div class="setbody">
 	<div class="settab on" id="settab-account">
 		<p>
 			Bring your own API key — either an
@@ -1133,6 +1178,7 @@
 	<div class="row">
 		<button class="ghost" id="settingsCancel" type="button">Close</button>
 		<button class="primary" id="settingsSave" type="button">Save</button>
+	</div>
 	</div>
 </dialog>
 
