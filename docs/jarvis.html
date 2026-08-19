@@ -600,37 +600,79 @@
 		background: radial-gradient(circle at 36% 32%, #f0a077, var(--ring) 70%);
 		box-shadow: 0 0 8px rgba(221, 129, 99, 0.55);
 	}
+	/* Pulled on only for the hoops scene — he changes to play. Sits below the
+	   eyes so the face stays readable, and inside the sphere's silhouette at
+	   that height so it reads as worn rather than pasted on top. Purple and
+	   gold with a 23; no team marks. */
+	.sc-jersey {
+		position: absolute; left: 50%; top: 63%;
+		width: 66px; height: 38px; margin-left: -33px;
+		background: linear-gradient(#5f2d8c, #4a2170);
+		border: 1.5px solid #f2c14e;
+		border-radius: 9px 9px 20px 20px / 7px 7px 22px 22px;
+		display: grid; place-items: center;
+		transform-origin: 50% 0;
+	}
+	/* the neck: a notch of the sphere's own darkness bitten out of the top */
+	.sc-jersey::before {
+		content: ''; position: absolute; left: 50%; top: -1px;
+		width: 17px; height: 9px; margin-left: -8.5px;
+		background: #0a0a0c;
+		border: 1.5px solid #f2c14e; border-top: none;
+		border-radius: 0 0 10px 10px;
+	}
+	.jnum {
+		font: 800 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+		color: #f2c14e; letter-spacing: 0.5px; margin-top: 6px;
+		text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+	}
+	.sc-jersey { transform: translateY(-9px) scale(0.9); }
+	#orbWrap.idle[data-scene="hoops"] .sc-jersey { opacity: 1; transform: none; }
+
 	#orbWrap.idle[data-scene="hoops"] .sc-hoop { opacity: 1; }
 	#orbWrap.idle[data-scene="hoops"] .sc-ballpath { opacity: 1; animation: ballX 2.6s linear infinite; }
-	#orbWrap.idle[data-scene="hoops"] .sc-ball { animation: ballY 2.6s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="hoops"] .sc-ball { animation: ballY 2.6s linear infinite; }
 	#orbWrap.idle[data-scene="hoops"] .hoop-rim { animation: rimShake 2.6s ease-out infinite; }
 	#orbWrap.idle[data-scene="hoops"] .handarm { opacity: 1; transform: none; }
 	#orbWrap.idle[data-scene="hoops"] .arm-l { margin-left: -34px; top: 76%; }
 	#orbWrap.idle[data-scene="hoops"] .arm-r { margin-left: 20px; top: 76%; }
 	#orbWrap.idle[data-scene="hoops"] .hand { animation: handShoot 2.6s ease-in-out infinite; }
+	/* Solved against the rim rather than eyeballed. The rim centre sits at
+	   (152, 53) in wrap coordinates and the ball starts centred at (90.5,
+	   134.5), so the ball has to be at exactly +61.5, -81.5 when it reaches
+	   the rim plane at 68%, then keep falling. The previous arc peaked to the
+	   LEFT of the rim and bottomed out 46px below it — it never went in.
+	   Y is shaped by keyframe spacing rather than easing: decelerating up,
+	   accelerating down, which no single timing function can do. */
 	@keyframes ballX {
-		0%, 10%   { transform: translateX(0); opacity: 1; }
-		62%       { transform: translateX(56px); opacity: 1; }
-		78%       { transform: translateX(59px); opacity: 1; }
-		86%, 100% { transform: translateX(59px); opacity: 0; }
+		0%, 8%    { transform: translateX(0); opacity: 1; }
+		45%       { transform: translateX(45px); opacity: 1; }
+		68%       { transform: translateX(61.5px); opacity: 1; }
+		80%       { transform: translateX(65px); opacity: 1; }
+		87%       { transform: translateX(66px); opacity: 0; }
+		100%      { transform: translateX(66px); opacity: 0; }
 	}
 	@keyframes ballY {
-		0%, 10% { transform: translateY(0); }
-		40%     { transform: translateY(-96px); }
-		62%     { transform: translateY(-72px); }
-		82%     { transform: translateY(-36px); }
-		100%    { transform: translateY(-36px); }
+		0%, 8%    { transform: translateY(0); }
+		18%       { transform: translateY(-58px); }
+		28%       { transform: translateY(-92px); }
+		45%       { transform: translateY(-112px); }
+		58%       { transform: translateY(-100px); }
+		68%       { transform: translateY(-81.5px); }
+		74%       { transform: translateY(-68px); }
+		80%       { transform: translateY(-52px); }
+		100%      { transform: translateY(-52px); }
 	}
 	@keyframes handShoot {
-		0%, 6%   { transform: translateY(0) rotate(0deg); }
-		16%      { transform: translateY(-14px) rotate(calc(var(--dir) * 10deg)); }
-		34%      { transform: translateY(-4px) rotate(0deg); }
+		0%, 4%   { transform: translateY(0) rotate(0deg); }
+		13%      { transform: translateY(-17px) rotate(calc(var(--dir) * 12deg)); }
+		30%      { transform: translateY(-5px) rotate(0deg); }
 		100%     { transform: translateY(0) rotate(0deg); }
 	}
 	@keyframes rimShake {
-		0%, 60%, 100% { transform: scaleY(1); }
-		66%           { transform: scaleY(1.5); }
-		74%           { transform: scaleY(0.85); }
+		0%, 64%, 100% { transform: scaleY(1); }
+		71%           { transform: scaleY(1.55); }
+		79%           { transform: scaleY(0.85); }
 	}
 
 	/* -- scene: sleep --------------------------------------------------------- */
@@ -1177,6 +1219,7 @@
 										<div class="sc-ballpath"><span class="sc-ball"></span></div>
 										<span class="sc-z z1">z</span><span class="sc-z z2">z</span><span class="sc-z z3">z</span>
 										<span class="sc-bowl"></span>
+										<div class="sc-jersey"><span class="jnum">23</span></div>
 									</div>
 								</div>
 								<div id="orbShadow" aria-hidden="true"></div>
