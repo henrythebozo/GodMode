@@ -394,6 +394,63 @@
 	@keyframes talk { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.55); } }
 
 	#orbWrap.error #core, #orbWrap.recording #core { border-color: var(--glow-err); box-shadow: 0 0 10px 1px var(--glow-err), 0 0 42px 8px var(--err-soft), 0 0 90px 22px rgba(255, 59, 48, 0.12), inset 0 0 34px rgba(0, 0, 0, 0.65); animation: pulseFast 0.9s ease-in-out infinite; }
+
+	/* ---- idle: quietly occupied, not asleep --------------------------------
+	   Standby used to be breathing plus an occasional blink, which reads as
+	   dormant. These two layers make it look like it is thinking something
+	   over while it waits. setState() sets orbWrap.className to the state
+	   name, so `.idle` is exactly and only standby — every other state keeps
+	   its own choreography untouched.
+
+	   1. Gaze. The eye PAIR drifts, not each eye separately, so it reads as
+	      looking around rather than going cross-eyed. The keyframes hold
+	      still and then move quickly, which is how real saccades behave;
+	      an even ease would just look like it was swimming. Applied to the
+	      #eyes container so it never fights .eye's own blink transform. */
+	#orbWrap.idle #eyes { animation: gaze 13s ease-in-out infinite; }
+	@keyframes gaze {
+		0%, 17%   { transform: translate(0, 0); }
+		21%, 37%  { transform: translate(3.4%, -1.2%); }
+		41%, 55%  { transform: translate(-3%, 0.6%); }
+		59%, 71%  { transform: translate(1.6%, -2%); }
+		75%, 92%  { transform: translate(-2%, 1.2%); }
+		96%, 100% { transform: translate(0, 0); }
+	}
+
+	/*   2. A scan that passes around the rim every so often. Deliberately NOT
+	      a continuous spinner — something always turning reads as "stuck
+	      loading". It fades in, sweeps roughly half a turn, and fades back
+	      out, so most of the time the orb is simply still. Gated on mask
+	      support: without it the conic gradient would paint as a full disc
+	      over the sphere, which is worse than no effect at all. */
+	@supports ((mask: radial-gradient(#000, #000)) or (-webkit-mask: radial-gradient(#000, #000))) {
+		#orbWrap.idle #core::after {
+			content: '';
+			position: absolute;
+			inset: -1px;
+			border-radius: 50%;
+			pointer-events: none;
+			/* Clay, not white. The rim is already rgba(255,255,255,0.92), so a
+			   white pass has almost nothing to brighten and reads as nothing;
+			   the accent hue is visible against it as colour instead. */
+			background: conic-gradient(
+				rgba(221, 129, 99, 0) 0turn,
+				rgba(221, 129, 99, 0) 0.60turn,
+				rgba(221, 129, 99, 0.95) 0.74turn,
+				rgba(221, 129, 99, 0) 0.84turn,
+				rgba(221, 129, 99, 0) 1turn);
+			filter: blur(1.2px);
+			/* closest-side is load-bearing: an unsized `circle` defaults to
+			   farthest-corner, so the stop resolves against the half-DIAGONAL
+			   and the hole comes out far too small — the sweep then smears
+			   across the sphere's face instead of riding its rim. */
+			-webkit-mask: radial-gradient(circle closest-side, transparent 0 94%, #000 95.5%);
+			mask: radial-gradient(circle closest-side, transparent 0 94%, #000 95.5%);
+			animation: scanSpin 3.4s linear infinite, scanFade 9s ease-in-out infinite;
+		}
+	}
+	@keyframes scanSpin { to { transform: rotate(1turn); } }
+	@keyframes scanFade { 0%, 62%, 100% { opacity: 0; } 72%, 88% { opacity: 1; } }
 	#orbWrap.error .eye, #orbWrap.recording .eye { background: var(--glow-err); box-shadow: 0 0 12px 3px var(--glow-err); }
 
 	#bars { display: flex; align-items: flex-end; justify-content: center; gap: 4px; height: 22px; }
