@@ -600,35 +600,6 @@
 		background: radial-gradient(circle at 36% 32%, #f0a077, var(--ring) 70%);
 		box-shadow: 0 0 8px rgba(221, 129, 99, 0.55);
 	}
-	/* Pulled on only for the hoops scene — he changes to play. Sits below the
-	   eyes so the face stays readable, and inside the sphere's silhouette at
-	   that height so it reads as worn rather than pasted on top. Purple and
-	   gold with a 23; no team marks. */
-	.sc-jersey {
-		position: absolute; left: 50%; top: 63%;
-		width: 66px; height: 38px; margin-left: -33px;
-		background: linear-gradient(#5f2d8c, #4a2170);
-		border: 1.5px solid #f2c14e;
-		border-radius: 9px 9px 20px 20px / 7px 7px 22px 22px;
-		display: grid; place-items: center;
-		transform-origin: 50% 0;
-	}
-	/* the neck: a notch of the sphere's own darkness bitten out of the top */
-	.sc-jersey::before {
-		content: ''; position: absolute; left: 50%; top: -1px;
-		width: 17px; height: 9px; margin-left: -8.5px;
-		background: #0a0a0c;
-		border: 1.5px solid #f2c14e; border-top: none;
-		border-radius: 0 0 10px 10px;
-	}
-	.jnum {
-		font: 800 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-		color: #f2c14e; letter-spacing: 0.5px; margin-top: 6px;
-		text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
-	}
-	.sc-jersey { transform: translateY(-9px) scale(0.9); }
-	#orbWrap.idle[data-scene="hoops"] .sc-jersey { opacity: 1; transform: none; }
-
 	#orbWrap.idle[data-scene="hoops"] .sc-hoop { opacity: 1; }
 	#orbWrap.idle[data-scene="hoops"] .sc-ballpath { opacity: 1; animation: ballX 2.6s linear infinite; }
 	#orbWrap.idle[data-scene="hoops"] .sc-ball { animation: ballY 2.6s linear infinite; }
@@ -765,6 +736,36 @@
 	#stateLabel.error, #stateLabel.recording { color: var(--err); }
 	#caption { max-width: 560px; min-height: 1.6em; font-size: 15px; line-height: 1.5; color: var(--text); transition: opacity 0.2s ease; }
 	#caption.dim { color: var(--dim); font-size: 13.5px; }
+
+	/* ---- what it is doing right now ---------------------------------------
+	   Tool calls used to happen entirely behind the answer: Jarvis would go
+	   quiet, then a reply appeared. This says which tool is running while it
+	   runs. It measures its own content width via a scaleX-free grid trick —
+	   animating width would reflow the column under it on every call. */
+	#toolcap {
+		display: inline-flex; align-items: center; gap: 7px;
+		max-width: 100%; margin: 2px auto 0; padding: 0 12px;
+		height: 0; opacity: 0; overflow: hidden;
+		background: var(--ring-soft); border-radius: 999px;
+		/* border-width, not just border-color: under border-box a 1px border
+		   cannot shrink below itself, so `height: 0` still computes to 2px and
+		   leaves a permanent sliver under the orb. */
+		border: 0 solid var(--ring-soft);
+		font-size: 12px; font-weight: 500; color: var(--ring);
+		transition: height 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease,
+		            margin 0.24s ease, border-width 0.24s ease, border-color 0.24s ease;
+	}
+	#toolcap.on { height: 26px; opacity: 1; margin-top: 8px; border-width: 1px; }
+	#toolcap .tcdot {
+		width: 5px; height: 5px; border-radius: 50%; background: var(--ring); flex: none;
+		animation: tcPulse 1.1s ease-in-out infinite;
+	}
+	#toolcap .tctext { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+	#toolcap.done .tcdot { animation: none; background: var(--ok); }
+	#toolcap.done { color: var(--ok); background: var(--ok-soft); border-color: var(--ok-soft); }
+	#toolcap.failed .tcdot { animation: none; background: var(--err); }
+	#toolcap.failed { color: var(--err); background: var(--err-soft); border-color: var(--err-soft); }
+	@keyframes tcPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.45; } }
 
 	/* ============================ boot intro film ============================ */
 	/* A short, skippable "quiet awakening" plays once per browser before the
@@ -903,6 +904,9 @@
 	.viewlist { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
 	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); transition: background 0.15s ease; }
 	button.row-item:hover { background: var(--panel-3); }
+	/* keyboard highlight in search — distinct from :hover so the two can
+	   coexist without the mouse position overriding the arrow keys */
+	button.row-item.sel { background: var(--ring-soft); box-shadow: inset 2px 0 0 var(--ring); }
 	.morerow { align-items: center; }
 	.morerow .txt { font-size: 14.5px; font-weight: 600; }
 
@@ -1219,12 +1223,12 @@
 										<div class="sc-ballpath"><span class="sc-ball"></span></div>
 										<span class="sc-z z1">z</span><span class="sc-z z2">z</span><span class="sc-z z3">z</span>
 										<span class="sc-bowl"></span>
-										<div class="sc-jersey"><span class="jnum">23</span></div>
 									</div>
 								</div>
 								<div id="orbShadow" aria-hidden="true"></div>
 								<div id="bars" aria-hidden="true"></div>
 								<div id="stateLabel" role="status" aria-live="polite">Standby</div>
+								<div id="toolcap" aria-hidden="true"><span class="tcdot"></span><span class="tctext"></span></div>
 								<div id="caption" class="dim" role="status" aria-live="polite" aria-atomic="true">Tap the mic, or type below, to talk to Jarvis.</div>
 							</div>
 							<div class="composer">
@@ -1594,6 +1598,8 @@
 	<h2>Activity</h2>
 	<div class="eyebrow" style="margin: 14px 0 8px">Ongoing</div>
 	<div class="viewlist" id="activityOngoing"></div>
+	<div class="eyebrow" style="margin: 20px 0 8px" hidden>Undo</div>
+	<div class="viewlist" id="activityUndo" hidden></div>
 	<div class="eyebrow" style="margin: 20px 0 8px">Recent Chats</div>
 	<div class="viewlist" id="activityChats"></div>
 	<button class="linkbtn" data-view="chat">Open Full Chat</button>
@@ -2019,6 +2025,30 @@ document.getElementById('navSearch').addEventListener('click', () => openSearch(
 document.getElementById('mobileSearchBtn').addEventListener('click', () => openSearch());
 document.getElementById('searchDlg').addEventListener('click', (e) => { if (e.target.id === 'searchDlg') e.target.close(); });
 document.getElementById('searchInput').addEventListener('input', (e) => runSearch(e.target.value));
+/* Keyboard navigation for search. There was none at all: results could only be
+ * reached with a mouse, which makes Ctrl+K a dead end for the very people most
+ * likely to press it. Arrow keys move a highlight, Enter opens it, and Home/End
+ * jump to the ends; Escape still closes the dialog through the usual handler. */
+let searchIx = -1;
+function searchRows() { return [...document.querySelectorAll('#searchResults .row-item')]; }
+function highlightSearch(ix) {
+	const rows = searchRows();
+	if (!rows.length) { searchIx = -1; return; }
+	searchIx = Math.max(0, Math.min(ix, rows.length - 1));
+	rows.forEach((r, i) => r.classList.toggle('sel', i === searchIx));
+	rows[searchIx].scrollIntoView({ block: 'nearest' });
+}
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+	const rows = searchRows();
+	if (e.key === 'ArrowDown') { e.preventDefault(); highlightSearch(searchIx + 1); }
+	else if (e.key === 'ArrowUp') { e.preventDefault(); highlightSearch(searchIx - 1); }
+	else if (e.key === 'Home' && rows.length) { e.preventDefault(); highlightSearch(0); }
+	else if (e.key === 'End' && rows.length) { e.preventDefault(); highlightSearch(rows.length - 1); }
+	else if (e.key === 'Enter' && rows.length) {
+		e.preventDefault();
+		(rows[searchIx] || rows[0]).click();   // Enter with nothing chosen opens the top hit
+	}
+});
 document.getElementById('navActivity').addEventListener('click', () => openActivity());
 document.getElementById('activityDlg').addEventListener('click', (e) => { if (e.target.id === 'activityDlg') e.target.close(); });
 document.getElementById('activitySettingsBtn').addEventListener('click', () => { document.getElementById('activityDlg').close(); openSettings(); });
@@ -2904,11 +2934,47 @@ function toolRemember(args) {
 	renderMemory();
 	return { ok: true, message: 'Remembered: ' + fact };
 }
+/* ------------------------------ undo buffer ------------------------------
+ * A missing argument can no longer wipe anything, but an explicit "forget all"
+ * still detonates, and there was no way back from it. One level is enough:
+ * these are the only operations in the app that destroy a whole collection in
+ * a single step, and the realistic mistake is doing it once and immediately
+ * regretting it. The snapshot is deliberately in memory only — persisting it
+ * would mean writing a second copy of everything the user just asked to be
+ * gone, which is the opposite of what they asked for.
+ */
+let lastWipe = null;
+function snapshotWipe(label, key, value) {
+	lastWipe = { label, key, value, at: Date.now() };
+	toast('Undo available', label + ' — say "undo that" or use Undo in Activity.');
+	renderActivityPanel();
+}
+function undoWipe() {
+	if (!lastWipe) return { ok: false, message: 'Nothing to undo.' };
+	const { label, key, value } = lastWipe;
+	store[key] = value;
+	lastWipe = null;
+	if (key === 'memory') renderMemory();
+	else if (key === 'notes') renderNotes();
+	/* the fork must re-arm the OS-level notifications too, not just the in-page
+	   timers — restoring a reminder that never fires natively is a false undo */
+	else if (key === 'reminders') {
+		store.reminders.forEach((r) => { scheduleReminderTimer(r); if (isNative) scheduleNativeReminder(r); });
+		renderReminders();
+	}
+	renderActivityPanel();
+	return { ok: true, message: 'Restored ' + value.length + ' item(s) — undid: ' + label };
+}
+
 function toolForget(args) {
 	const q = (args.query || '').toLowerCase().trim();
 	let mem = store.memory;
 	if (!q) return { ok: false, message: 'Say what to forget — or "all" to clear everything.' };
-	if (q === 'all' || q === 'everything') { store.memory = []; renderMemory(); return { ok: true, message: 'Cleared everything from memory.' }; }
+	if (q === 'all' || q === 'everything') {
+		snapshotWipe('cleared all memory', 'memory', store.memory);
+		store.memory = []; renderMemory();
+		return { ok: true, message: 'Cleared everything from memory. Say "undo that" to put it back.' };
+	}
 	const before = mem.length;
 	mem = mem.filter((f) => !f.toLowerCase().includes(q));
 	store.memory = mem;
@@ -2984,11 +3050,12 @@ function toolCancelReminder(args) {
 	const list = store.reminders;
 	if (!q) return { ok: false, message: 'Say which reminder to cancel — or "all" to cancel every one.' };
 	if (q === 'all') {
+		snapshotWipe('cancelled all reminders', 'reminders', list);
 		list.forEach((r) => { clearTimeout(reminderTimers[r.id]); if (isNative) cancelNativeReminder(r.id); });
 		reminderTimers = {};
 		store.reminders = [];
 		renderReminders();
-		return { ok: true, message: 'Cancelled all reminders.' };
+		return { ok: true, message: 'Cancelled all reminders. Say "undo that" to put them back.' };
 	}
 	const match = list.find((r) => r.text.toLowerCase().includes(q));
 	if (!match) return { ok: false, message: 'No reminder matched "' + args.query + '".' };
@@ -3017,7 +3084,11 @@ function toolDeleteNote(args) {
 	const q = (args.query || '').toLowerCase().trim();
 	let list = store.notes;
 	if (!q) return { ok: false, message: 'Say which note to delete — or "all" to delete every one.' };
-	if (q === 'all') { store.notes = []; renderNotes(); return { ok: true, message: 'Deleted all notes.' }; }
+	if (q === 'all') {
+		snapshotWipe('deleted all notes', 'notes', store.notes);
+		store.notes = []; renderNotes();
+		return { ok: true, message: 'Deleted all notes. Say "undo that" to put them back.' };
+	}
 	const before = list.length;
 	list = list.filter((n) => !n.text.toLowerCase().includes(q));
 	store.notes = list;
@@ -3425,6 +3496,7 @@ async function runTool(action) {
 	const args = (action && action.args) || {};
 	try {
 		switch (name) {
+			case 'undo': return undoWipe();
 			case 'get_time': return toolGetTime();
 			case 'get_weather': return await toolGetWeather(args);
 			case 'get_status': return await toolGetStatus();
@@ -3594,6 +3666,7 @@ const TOOL_DOCS = [
 	'remember {"fact": string} — permanently remember a fact about the user.',
 	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
 	'recall_memory {} — list everything currently remembered about the user.',
+	'undo {} — reverse the last "clear everything" (all memory, all notes, or all reminders). Only the most recent one, and only within this session. Use it when the user says undo, put it back, or that was a mistake.',
 	'set_reminder {"text": string, "minutes": number} — remind the user in N minutes.',
 	'list_reminders {} — list active reminders.',
 	'cancel_reminder {"query": string} — cancel a reminder matching this text, or "all".',
@@ -3760,7 +3833,9 @@ async function submitCommand(text, depth) {
 	if (actions.length) {
 		const results = [];
 		for (const action of actions) {
+			showToolCap(action.tool);
 			const result = await runTool(action);
+			settleToolCap(result.ok);
 			results.push({ action, result });
 			if (result.ok) {
 				const phrase = friendlyActivity(action.tool, action.args || {});
@@ -4057,6 +4132,45 @@ async function analyzeTranscript(id) {
 	renderTranscripts();
 }
 
+/* --------------------------- running-tool capsule -------------------------
+ * A short label under the orb naming the tool that is running, then a beat of
+ * green or red as it lands. Deliberately a capsule and not a log: the point is
+ * to show that something is happening, not to narrate reasoning onto the
+ * screen. Verbs are written for a reader, not copied from the tool ids.
+ */
+const TOOL_VERBS = {
+	get_weather: 'Checking the weather', web_search: 'Searching the web',
+	open_link: 'Opening a link', get_time: 'Checking the time',
+	remember: 'Saving that', forget: 'Updating memory', recall_memory: 'Reading memory',
+	undo: 'Putting it back',
+	add_note: 'Writing a note', list_notes: 'Reading your notes', delete_note: 'Removing a note',
+	set_reminder: 'Setting a reminder', list_reminders: 'Checking reminders',
+	cancel_reminder: 'Cancelling a reminder', list_calendar_events: 'Checking your calendar',
+	list_devices: 'Checking your devices', get_device: 'Checking a device',
+	set_device: 'Adjusting the lights', run_scene: 'Running a scene',
+	generate_image: 'Making an image', generate_video: 'Making a video',
+	get_status: 'Checking system status', get_transcript: 'Reading a recording',
+	list_transcripts: 'Checking recordings', get_business_doc: 'Reading your documents',
+};
+let toolCapTimer = null;
+function showToolCap(tool) {
+	const cap = document.getElementById('toolcap');
+	if (!cap) return;
+	clearTimeout(toolCapTimer);
+	cap.querySelector('.tctext').textContent = (TOOL_VERBS[tool] || 'Working') + '…';
+	cap.classList.remove('done', 'failed');
+	cap.classList.add('on');
+}
+function settleToolCap(ok) {
+	const cap = document.getElementById('toolcap');
+	if (!cap || !cap.classList.contains('on')) return;
+	cap.classList.add(ok ? 'done' : 'failed');
+	const t = cap.querySelector('.tctext');
+	t.textContent = t.textContent.replace(/…$/, ok ? ' — done' : ' — failed');
+	clearTimeout(toolCapTimer);
+	toolCapTimer = setTimeout(() => cap.classList.remove('on', 'done', 'failed'), 1400);
+}
+
 /* -------------------------------- chat view ------------------------------ */
 function renderChatLog() {
 	const box = document.getElementById('chatLog');
@@ -4302,10 +4416,11 @@ function collectSearchIndex() {
 function runSearch(q) {
 	const box = document.getElementById('searchResults');
 	q = (q || '').trim().toLowerCase();
-	if (!q) { box.innerHTML = ''; return; }
+	if (!q) { box.innerHTML = ''; searchIx = -1; return; }
 	const hits = collectSearchIndex().filter((it) => it.text.toLowerCase().includes(q)).slice(0, 40);
-	if (!hits.length) { box.innerHTML = '<div class="empty">No matches.</div>'; return; }
+	if (!hits.length) { box.innerHTML = '<div class="empty">No matches.</div>'; searchIx = -1; return; }
 	box.innerHTML = '';
+	searchIx = -1;
 	hits.forEach((it) => {
 		const row = document.createElement('button');
 		row.type = 'button';
@@ -4318,6 +4433,7 @@ function runSearch(q) {
 function openSearch() {
 	document.getElementById('searchInput').value = '';
 	document.getElementById('searchResults').innerHTML = '';
+	searchIx = -1;
 	document.getElementById('searchDlg').showModal();
 	setTimeout(() => document.getElementById('searchInput').focus(), 50);
 }
@@ -4346,6 +4462,29 @@ function renderActivityPanel() {
 	ongoingBox.innerHTML = ongoing.length
 		? ongoing.map((label) => '<div class="row-item"><div class="txt">' + esc(label) + '</div></div>').join('')
 		: '<div class="empty">Nothing in progress.</div>';
+
+	/* The undo offer belongs somewhere you can actually click, not only in a
+	   toast that has already faded by the time you regret it. */
+	const undoBox = document.getElementById('activityUndo');
+	if (lastWipe) {
+		undoBox.innerHTML = '';
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(lastWipe.label) + '</b><small>this session only</small></div>';
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = 'Undo';
+		btn.addEventListener('click', () => { const r = undoWipe(); toast(r.ok ? 'Undone' : 'Nothing to undo', r.message); });
+		row.appendChild(btn);
+		undoBox.appendChild(row);
+		undoBox.previousElementSibling.hidden = false;
+		undoBox.hidden = false;
+	} else {
+		undoBox.innerHTML = '';
+		undoBox.previousElementSibling.hidden = true;
+		undoBox.hidden = true;
+	}
 
 	const chatsBox = document.getElementById('activityChats');
 	const recent = store.history.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-6).reverse();
