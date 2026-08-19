@@ -355,8 +355,8 @@
 		position: absolute;
 		inset: 16px;
 		border-radius: 50%;
-		background: radial-gradient(circle at 50% 42%, #16161a 0%, #060607 68%, #000 100%);
-		border: 2px solid rgba(255, 255, 255, 0.92);
+		background: radial-gradient(circle at 50% 42%, var(--skin-body-a, #16161a) 0%, var(--skin-body-b, #060607) 68%, #000 100%);
+		border: 2px solid var(--skin-rim, rgba(255, 255, 255, 0.92));
 		box-shadow: var(--orb-halo);
 		transition: border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
 		animation: breathe 4.5s ease-in-out infinite;
@@ -366,12 +366,183 @@
 	/* the "face" — two soft eyes, expressive per state */
 	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; }
 	.eye {
-		width: 11%; height: 28%; border-radius: 999px; background: #fff;
+		width: 11%; height: 28%; border-radius: 999px; background: var(--skin-eye, #fff);
 		box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
 		transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 		animation: blink 5.5s ease-in-out infinite;
 	}
 	@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.08); } }
+
+	/* ============================== the wardrobe ============================
+	   Every accessory is drawn in CSS on one element per slot plus its two
+	   pseudo-elements — no images, nothing to load. Slots are driven by data
+	   attributes on #orbWrap rather than classes: setState() assigns
+	   orbWrap.className outright, so a class here would vanish the moment
+	   Jarvis started listening.
+	   Geometry note: #orbWrap is 180px and the sphere is inset 16px, so the
+	   sphere is 148px centred at (90,90) with radius 74. Everything below is
+	   positioned against that. */
+	#orbKit { position: absolute; inset: 0; pointer-events: none; }
+	.ac { position: absolute; display: none; }
+	.ac::before, .ac::after { content: ''; position: absolute; }
+
+	/* ---- head ---- */
+	#orbWrap[data-hat]:not([data-hat="none"]) .ac-hat { display: block; }
+	.ac-hat { left: 50%; }
+	/* beanie: dome, turn-up band, bobble */
+	#orbWrap[data-hat="beanie"] .ac-hat {
+		top: 10px; width: 76px; height: 40px; margin-left: -38px;
+		background: var(--skin-rim, #dd8163); border-radius: 38px 38px 6px 6px;
+	}
+	#orbWrap[data-hat="beanie"] .ac-hat::after {
+		left: -4px; right: -4px; bottom: -5px; height: 12px;
+		background: #2b2a27; border-radius: 6px;
+	}
+	#orbWrap[data-hat="beanie"] .ac-hat::before {
+		left: 50%; top: -9px; width: 15px; height: 15px; margin-left: -7.5px;
+		background: #2b2a27; border-radius: 50%;
+	}
+	/* cap: crown plus a brim off to one side */
+	#orbWrap[data-hat="cap"] .ac-hat {
+		top: 14px; width: 72px; height: 34px; margin-left: -36px;
+		background: var(--skin-rim, #dd8163); border-radius: 36px 36px 4px 4px;
+	}
+	#orbWrap[data-hat="cap"] .ac-hat::after {
+		left: 46px; bottom: 0; width: 40px; height: 9px;
+		background: #2b2a27; border-radius: 0 8px 8px 0;
+	}
+	/* top hat: tall crown, band, wide brim */
+	#orbWrap[data-hat="tophat"] .ac-hat {
+		top: -6px; width: 52px; height: 42px; margin-left: -26px;
+		background: #22211f; border-radius: 5px 5px 0 0; border: 1px solid rgba(255, 255, 255, 0.25);
+	}
+	#orbWrap[data-hat="tophat"] .ac-hat::before {
+		left: -1px; right: -1px; bottom: 6px; height: 9px; background: var(--skin-rim, #dd8163);
+	}
+	#orbWrap[data-hat="tophat"] .ac-hat::after {
+		left: -21px; right: -21px; bottom: -6px; height: 8px;
+		background: #22211f; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25);
+	}
+	/* crown: five points cut out of a block */
+	#orbWrap[data-hat="crown"] .ac-hat {
+		top: 12px; width: 62px; height: 30px; margin-left: -31px;
+		background: linear-gradient(#f5d383, #d9a53f);
+		clip-path: polygon(0 100%, 0 34%, 12% 62%, 25% 8%, 38% 55%, 50% 0, 62% 55%, 75% 8%, 88% 62%, 100% 34%, 100% 100%);
+	}
+	#orbWrap[data-hat="crown"] .ac-hat::after {
+		left: 0; right: 0; bottom: 0; height: 8px; background: #c08f2c;
+	}
+	/* halo: a ring floating clear of the sphere */
+	#orbWrap[data-hat="halo"] .ac-hat {
+		top: 4px; width: 56px; height: 14px; margin-left: -28px;
+		border: 3px solid #f5d383; border-radius: 50%;
+		box-shadow: 0 0 12px rgba(245, 211, 131, 0.8);
+		animation: haloBob 3.4s ease-in-out infinite;
+	}
+	@keyframes haloBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+	/* party hat: a cone with a bobble */
+	#orbWrap[data-hat="party"] .ac-hat {
+		top: 2px; width: 46px; height: 46px; margin-left: -23px;
+		background: repeating-linear-gradient(135deg, var(--skin-rim, #dd8163) 0 7px, #2b2a27 7px 14px);
+		clip-path: polygon(50% 0, 100% 100%, 0 100%);
+	}
+	#orbWrap[data-hat="party"] .ac-hat::before {
+		left: 50%; top: -7px; width: 12px; height: 12px; margin-left: -6px;
+		background: #f5d383; border-radius: 50%;
+	}
+	/* headphones: a band over the top and a cup each side */
+	#orbWrap[data-hat="cans"] .ac-hat {
+		top: 8px; width: 104px; height: 52px; margin-left: -52px;
+		border: 7px solid #35342f; border-bottom: none; border-radius: 52px 52px 0 0;
+	}
+	#orbWrap[data-hat="cans"] .ac-hat::before,
+	#orbWrap[data-hat="cans"] .ac-hat::after {
+		bottom: -16px; width: 20px; height: 30px; border-radius: 7px; background: #35342f;
+		border: 2px solid var(--skin-rim, #dd8163);
+	}
+	#orbWrap[data-hat="cans"] .ac-hat::before { left: -14px; }
+	#orbWrap[data-hat="cans"] .ac-hat::after { right: -14px; }
+
+	/* ---- face ---- */
+	#orbWrap[data-face]:not([data-face="none"]) .ac-face { display: block; }
+	.ac-face { left: 50%; top: 78px; }
+	/* glasses and shades share a frame; only the fill differs */
+	#orbWrap[data-face="specs"] .ac-face,
+	#orbWrap[data-face="shades"] .ac-face {
+		width: 66px; height: 2px; margin-left: -33px;
+		background: linear-gradient(90deg, transparent 42%, #d8d4c8 42% 58%, transparent 58%);
+	}
+	#orbWrap[data-face="specs"] .ac-face::before,
+	#orbWrap[data-face="specs"] .ac-face::after,
+	#orbWrap[data-face="shades"] .ac-face::before,
+	#orbWrap[data-face="shades"] .ac-face::after {
+		top: -11px; width: 26px; height: 24px; border: 2px solid #d8d4c8; border-radius: 8px;
+	}
+	#orbWrap[data-face="specs"] .ac-face::before, #orbWrap[data-face="shades"] .ac-face::before { left: -33px; }
+	#orbWrap[data-face="specs"] .ac-face::after,  #orbWrap[data-face="shades"] .ac-face::after  { right: -33px; }
+	#orbWrap[data-face="shades"] .ac-face::before,
+	#orbWrap[data-face="shades"] .ac-face::after { background: rgba(12, 12, 14, 0.88); border-color: #43413b; }
+	/* visor: one band across the face */
+	#orbWrap[data-face="visor"] .ac-face {
+		width: 88px; height: 34px; margin-left: -44px; top: 72px;
+		background: linear-gradient(160deg, rgba(124, 199, 232, 0.55), rgba(124, 199, 232, 0.2));
+		border: 1.5px solid rgba(190, 232, 248, 0.75); border-radius: 17px;
+		box-shadow: 0 0 12px rgba(124, 199, 232, 0.35);
+	}
+	/* eyepatch: one covered eye and a strap across */
+	#orbWrap[data-face="patch"] .ac-face {
+		width: 92px; height: 2px; margin-left: -46px; top: 74px;
+		background: #22211f; transform: rotate(-7deg);
+	}
+	#orbWrap[data-face="patch"] .ac-face::before {
+		left: 14px; top: -12px; width: 26px; height: 22px;
+		background: #2b2a27; border: 1.5px solid rgba(245, 244, 239, 0.55);
+		border-radius: 6px 6px 10px 10px;
+	}
+
+	/* ---- neck ---- */
+	#orbWrap[data-neck]:not([data-neck="none"]) .ac-neck { display: block; }
+	.ac-neck { left: 50%; }
+	/* bow tie: two wedges and a knot */
+	#orbWrap[data-neck="bowtie"] .ac-neck {
+		top: 141px; width: 14px; height: 14px; margin-left: -7px;
+		background: var(--skin-rim, #dd8163); border-radius: 4px;
+	}
+	#orbWrap[data-neck="bowtie"] .ac-neck::before,
+	#orbWrap[data-neck="bowtie"] .ac-neck::after {
+		top: -3px; width: 20px; height: 20px; background: var(--skin-rim, #dd8163);
+	}
+	#orbWrap[data-neck="bowtie"] .ac-neck::before { left: -20px; clip-path: polygon(100% 0, 100% 100%, 0 78%, 0 22%); }
+	#orbWrap[data-neck="bowtie"] .ac-neck::after  { right: -20px; clip-path: polygon(0 0, 0 100%, 100% 78%, 100% 22%); }
+	/* scarf: a wrap and one hanging tail */
+	#orbWrap[data-neck="scarf"] .ac-neck {
+		top: 138px; width: 74px; height: 15px; margin-left: -37px;
+		background: repeating-linear-gradient(90deg, var(--skin-rim, #dd8163) 0 9px, #2b2a27 9px 18px);
+		border-radius: 8px;
+	}
+	#orbWrap[data-neck="scarf"] .ac-neck::after {
+		left: 46px; top: 10px; width: 15px; height: 24px; border-radius: 0 0 7px 7px;
+		background: repeating-linear-gradient(180deg, var(--skin-rim, #dd8163) 0 8px, #2b2a27 8px 16px);
+	}
+	/* chain: a thin loop with a pendant */
+	#orbWrap[data-neck="chain"] .ac-neck {
+		top: 142px; width: 54px; height: 22px; margin-left: -27px;
+		border: 2px solid #e8bd5c; border-top: none; border-radius: 0 0 27px 27px;
+	}
+	#orbWrap[data-neck="chain"] .ac-neck::after {
+		left: 50%; bottom: -7px; width: 10px; height: 10px; margin-left: -5px;
+		background: #e8bd5c; border-radius: 50%; box-shadow: 0 0 8px rgba(232, 189, 92, 0.7);
+	}
+
+	/* ---- eye shapes ---- */
+	#orbWrap[data-eyes="round"]  .eye { width: 15%; height: 15%; border-radius: 50%; }
+	#orbWrap[data-eyes="wide"]   .eye { width: 18%; height: 12%; }
+	#orbWrap[data-eyes="tall"]   .eye { width: 9%;  height: 36%; }
+	#orbWrap[data-eyes="sleepy"] .eye { width: 17%; height: 5%; }
+	#orbWrap[data-eyes="spark"]  .eye {
+		width: 17%; height: 17%; border-radius: 0;
+		clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+	}
 
 	/* a soft pool of light beneath, so it reads as floating */
 	#orbShadow {
@@ -1058,6 +1229,39 @@
 		#settings .settabs { grid-template-columns: 1fr; margin: 10px 0 0; }
 		#settings .setbody { min-width: 0; }
 	}
+	/* ---- customizer ---- */
+	/* The live orb is MOVED into this stage rather than mirrored by a copy —
+	   a second orb would have to re-implement every state and scene rule and
+	   would drift from the real one the first time either changed. */
+	.skinstage {
+		display: grid; place-items: center; height: 200px; margin: 14px 0 4px;
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px;
+	}
+	.skinstage #orbWrap { transform: scale(0.86); }
+	.skinpresets { display: flex; flex-wrap: wrap; gap: 6px; }
+	.skinpresets button {
+		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+		border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 500; cursor: pointer;
+		transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
+	}
+	.skinpresets button:hover { background: var(--panel-3); }
+	.skinpresets button:active { transform: scale(0.96); }
+	.skingroup { margin-top: 18px; }
+	.skingrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
+	.skinopt {
+		display: flex; flex-direction: column; align-items: center; gap: 5px;
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+		padding: 8px 4px 6px; cursor: pointer; color: var(--dim); font-size: 10.5px; font-weight: 500;
+		transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.14s ease;
+	}
+	.skinopt:hover { background: var(--panel-3); color: var(--text); }
+	.skinopt:active { transform: scale(0.96); }
+	.skinopt.on { border-color: var(--ring); background: var(--ring-soft); color: var(--ring); }
+	.skinopt .sw { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); }
+	.skinopt .sw.rimsw { background: var(--panel-3); }
+	.skinopt .nm { text-align: center; line-height: 1.25; }
+	@media (max-width: 480px) { .skingrid { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); } }
+
 	.settab { display: none; }
 	.settab.on { display: block; animation: rise 0.16s ease-out; }
 	@keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
@@ -1246,11 +1450,13 @@
 								<div class="herotools">
 									<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg></button>
 									<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg></button>
+									<button class="iconbtn" id="skinBtn" title="Customize Jarvis" aria-label="Customize Jarvis"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><circle cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="15.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><path d="M4 8a9 9 0 0 1 16 0" /></svg></button>
 								</div>
 							</div>
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
+									<div id="orbKit"><span class="ac ac-hat"></span><span class="ac ac-face"></span><span class="ac ac-neck"></span></div>
 									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
 									<div class="handarm arm-l"><span class="hand"></span></div>
 									<div class="handarm arm-r"><span class="hand"><i class="sc-food"></i></span></div>
@@ -1624,6 +1830,20 @@
 	</div>
 </dialog>
 
+<dialog id="skinDlg">
+	<h2>Customize Jarvis</h2>
+	<p>Everything here is drawn in CSS and saved on this device. Status colours still win while Jarvis is listening or speaking.</p>
+	<div class="skinstage"><div id="skinPreviewMount"></div></div>
+	<div class="eyebrow" style="margin: 18px 0 8px">Presets</div>
+	<div class="skinpresets" id="skinPresets"></div>
+	<div id="skinGroups"></div>
+	<div class="row">
+		<button class="ghost small" id="skinRandom" type="button">Surprise me</button>
+		<button class="ghost small" id="skinReset" type="button">Reset</button>
+		<button class="primary" id="skinDone" type="button" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
 <dialog id="searchDlg">
 	<h2>Search</h2>
 	<input type="text" id="searchInput" placeholder="Search memory, notes, reminders, recordings, chat…" autocomplete="off" />
@@ -1664,6 +1884,84 @@
 'use strict';
 
 /* ================================ store ================================ */
+/* ============================== the wardrobe ==============================
+ * Everything the orb can be dressed in. Kept as data rather than a pile of
+ * one-off handlers so the dialog is generated from it and nothing can drift
+ * between the catalogue and what actually renders.
+ *
+ * Colour lands as inline custom properties and everything else as data
+ * attributes on #orbWrap, because setState() assigns orbWrap.className
+ * outright — anything stored as a class there is wiped on the next state
+ * change. Inline style and data attributes both survive it.
+ */
+const SKIN_DEFAULT = { body: 'obsidian', rim: 'white', eye: 'white', eyes: 'capsule', hat: 'none', face: 'none', neck: 'none' };
+const SKIN_CATALOGUE = [
+	{ slot: 'body', label: 'Body', kind: 'swatch', items: [
+		{ id: 'obsidian', label: 'Obsidian', a: '#16161a', b: '#060607' },
+		{ id: 'slate',    label: 'Slate',    a: '#2b3138', b: '#141920' },
+		{ id: 'clay',     label: 'Clay',     a: '#5d3327', b: '#2a1410' },
+		{ id: 'moss',     label: 'Moss',     a: '#24382c', b: '#0d1712' },
+		{ id: 'plum',     label: 'Plum',     a: '#3a2440', b: '#170e1b' },
+		{ id: 'ink',      label: 'Ink',      a: '#1c2749', b: '#080d1c' },
+		{ id: 'ember',    label: 'Ember',    a: '#4a1f1f', b: '#1d0a0a' },
+		{ id: 'pearl',    label: 'Pearl',    a: '#e8e4da', b: '#b6b0a4' },
+	] },
+	{ slot: 'rim', label: 'Rim', kind: 'swatch', items: [
+		{ id: 'white',  label: 'White',  a: 'rgba(255,255,255,0.92)' },
+		{ id: 'clay',   label: 'Clay',   a: '#dd8163' },
+		{ id: 'mint',   label: 'Mint',   a: '#5fd6a4' },
+		{ id: 'ice',    label: 'Ice',    a: '#7cc7e8' },
+		{ id: 'gold',   label: 'Gold',   a: '#e8bd5c' },
+		{ id: 'rose',   label: 'Rose',   a: '#e88fa8' },
+		{ id: 'violet', label: 'Violet', a: '#a98ce0' },
+		{ id: 'lime',   label: 'Lime',   a: '#b6da5e' },
+	] },
+	{ slot: 'eye', label: 'Eye colour', kind: 'swatch', items: [
+		{ id: 'white',  label: 'White',  a: '#ffffff' },
+		{ id: 'clay',   label: 'Clay',   a: '#f0a077' },
+		{ id: 'mint',   label: 'Mint',   a: '#7ce8bc' },
+		{ id: 'ice',    label: 'Ice',    a: '#9adcf5' },
+		{ id: 'gold',   label: 'Gold',   a: '#f5d383' },
+		{ id: 'rose',   label: 'Rose',   a: '#f7aac0' },
+		{ id: 'violet', label: 'Violet', a: '#c4aef0' },
+		{ id: 'lime',   label: 'Lime',   a: '#d2ec87' },
+	] },
+	{ slot: 'eyes', label: 'Eye shape', kind: 'shape', items: [
+		{ id: 'capsule', label: 'Capsule' }, { id: 'round', label: 'Round' },
+		{ id: 'wide',    label: 'Wide' },    { id: 'tall',  label: 'Tall' },
+		{ id: 'sleepy',  label: 'Sleepy' },  { id: 'spark', label: 'Spark' },
+	] },
+	{ slot: 'hat', label: 'Head', kind: 'shape', items: [
+		{ id: 'none',   label: 'None' },   { id: 'beanie', label: 'Beanie' },
+		{ id: 'cap',    label: 'Cap' },    { id: 'tophat', label: 'Top hat' },
+		{ id: 'crown',  label: 'Crown' },  { id: 'halo',   label: 'Halo' },
+		{ id: 'party',  label: 'Party' },  { id: 'cans',   label: 'Headphones' },
+	] },
+	{ slot: 'face', label: 'Face', kind: 'shape', items: [
+		{ id: 'none',   label: 'None' },   { id: 'specs',  label: 'Glasses' },
+		{ id: 'shades', label: 'Shades' }, { id: 'visor',  label: 'Visor' },
+		{ id: 'patch',  label: 'Eyepatch' },
+	] },
+	{ slot: 'neck', label: 'Neck', kind: 'shape', items: [
+		{ id: 'none',  label: 'None' },  { id: 'bowtie', label: 'Bow tie' },
+		{ id: 'scarf', label: 'Scarf' }, { id: 'chain',  label: 'Chain' },
+	] },
+];
+const SKIN_PRESETS = [
+	{ label: 'Classic',  skin: { body: 'obsidian', rim: 'white',  eye: 'white',  eyes: 'capsule', hat: 'none',   face: 'none',   neck: 'none' } },
+	{ label: 'Midnight', skin: { body: 'ink',      rim: 'ice',    eye: 'ice',    eyes: 'round',   hat: 'none',   face: 'none',   neck: 'none' } },
+	{ label: 'Sunset',   skin: { body: 'clay',     rim: 'gold',   eye: 'gold',   eyes: 'capsule', hat: 'none',   face: 'shades', neck: 'none' } },
+	{ label: 'Formal',   skin: { body: 'obsidian', rim: 'white',  eye: 'white',  eyes: 'capsule', hat: 'tophat', face: 'specs',  neck: 'bowtie' } },
+	{ label: 'Party',    skin: { body: 'plum',     rim: 'rose',   eye: 'rose',   eyes: 'wide',    hat: 'party',  face: 'none',   neck: 'none' } },
+	{ label: 'Studio',   skin: { body: 'slate',    rim: 'mint',   eye: 'mint',   eyes: 'capsule', hat: 'cans',   face: 'none',   neck: 'none' } },
+	{ label: 'Regal',    skin: { body: 'plum',     rim: 'gold',   eye: 'gold',   eyes: 'tall',    hat: 'crown',  face: 'none',   neck: 'chain' } },
+	{ label: 'Snowday',  skin: { body: 'pearl',    rim: 'ice',    eye: 'ink',    eyes: 'round',   hat: 'beanie', face: 'none',   neck: 'scarf' } },
+];
+function skinItem(slot, id) {
+	const g = SKIN_CATALOGUE.find((c) => c.slot === slot);
+	return g && (g.items.find((i) => i.id === id) || g.items[0]);
+}
+
 const store = {
 	get key() { return localStorage.getItem('jarvis.key') || ''; },
 	set key(v) { localStorage.setItem('jarvis.key', v); },
@@ -1775,6 +2073,8 @@ const store = {
 	set bizLogo(v) { localStorage.setItem('jarvis.bizLogo', v); },
 	get bizColor() { return localStorage.getItem('jarvis.bizColor') || '#007aff'; }, // drives the generated monogram mark
 	set bizColor(v) { localStorage.setItem('jarvis.bizColor', v); },
+	get skin() { try { return { ...SKIN_DEFAULT, ...(JSON.parse(localStorage.getItem('jarvis.skin')) || {}) }; } catch { return { ...SKIN_DEFAULT }; } },
+	set skin(v) { localStorage.setItem('jarvis.skin', JSON.stringify(v)); },
 	get bizDocs() { try { return JSON.parse(localStorage.getItem('jarvis.bizDocs')) || []; } catch { return []; } },
 	set bizDocs(v) { localStorage.setItem('jarvis.bizDocs', JSON.stringify(v)); },
 };
@@ -1985,6 +2285,109 @@ function updateBrand() {
 }
 updateBrand();
 
+/* ============================ the customizer ==============================
+ * applySkin writes colour as inline custom properties and everything else as
+ * data attributes on #orbWrap — both survive setState()'s className assignment,
+ * which a class would not.
+ */
+function applySkin(skin) {
+	const sk = skin || store.skin;
+	const body = skinItem('body', sk.body), rim = skinItem('rim', sk.rim), eye = skinItem('eye', sk.eye);
+	orbWrap.style.setProperty('--skin-body-a', body.a);
+	orbWrap.style.setProperty('--skin-body-b', body.b);
+	orbWrap.style.setProperty('--skin-rim', rim.a);
+	orbWrap.style.setProperty('--skin-eye', eye.a);
+	orbWrap.dataset.eyes = sk.eyes;
+	orbWrap.dataset.hat = sk.hat;
+	orbWrap.dataset.face = sk.face;
+	orbWrap.dataset.neck = sk.neck;
+}
+function setSkin(patch) {
+	const next = { ...store.skin, ...patch };
+	store.skin = next;
+	applySkin(next);
+	renderSkinDialog();
+}
+/* The real orb is borrowed for the preview and put back on close. Cloning it
+ * would mean a second copy of every state and scene rule to keep in step. */
+let skinHome = null;
+function openSkin() {
+	const stage = document.getElementById('skinPreviewMount');
+	if (!skinHome) skinHome = { parent: orbWrap.parentNode, next: orbWrap.nextSibling };
+	stage.appendChild(orbWrap);
+	renderSkinDialog();
+	document.getElementById('skinDlg').showModal();
+}
+function closeSkin() {
+	if (skinHome) skinHome.parent.insertBefore(orbWrap, skinHome.next);
+	document.getElementById('skinDlg').close();
+}
+function renderSkinDialog() {
+	const sk = store.skin;
+	const presets = document.getElementById('skinPresets');
+	presets.innerHTML = '';
+	SKIN_PRESETS.forEach((p) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.textContent = p.label;
+		b.addEventListener('click', () => setSkin(p.skin));
+		presets.appendChild(b);
+	});
+
+	const box = document.getElementById('skinGroups');
+	box.innerHTML = '';
+	SKIN_CATALOGUE.forEach((group) => {
+		const wrap = document.createElement('div');
+		wrap.className = 'skingroup';
+		const head = document.createElement('div');
+		head.className = 'eyebrow';
+		head.style.margin = '0 0 8px';
+		head.textContent = group.label;
+		const grid = document.createElement('div');
+		grid.className = 'skingrid';
+		group.items.forEach((item) => {
+			const opt = document.createElement('button');
+			opt.type = 'button';
+			opt.className = 'skinopt' + (sk[group.slot] === item.id ? ' on' : '');
+			opt.setAttribute('aria-pressed', sk[group.slot] === item.id ? 'true' : 'false');
+			const sw = document.createElement('span');
+			sw.className = 'sw';
+			if (group.kind === 'swatch') {
+				sw.style.background = item.b ? 'radial-gradient(circle at 40% 34%, ' + item.a + ', ' + item.b + ')' : item.a;
+				if (group.slot === 'rim') { sw.classList.add('rimsw'); sw.style.background = 'var(--panel-3)'; sw.style.borderColor = item.a; sw.style.borderWidth = '3px'; }
+			} else {
+				sw.style.background = 'var(--panel-3)';
+				sw.style.display = 'grid';
+				sw.style.placeItems = 'center';
+				sw.style.fontSize = '11px';
+				sw.style.color = 'var(--text)';
+				sw.textContent = item.id === 'none' ? '—' : item.label.slice(0, 2);
+			}
+			const nm = document.createElement('span');
+			nm.className = 'nm';
+			nm.textContent = item.label;
+			opt.append(sw, nm);
+			opt.addEventListener('click', () => setSkin({ [group.slot]: item.id }));
+			grid.appendChild(opt);
+		});
+		wrap.append(head, grid);
+		box.appendChild(wrap);
+	});
+}
+document.getElementById('skinBtn').addEventListener('click', openSkin);
+document.getElementById('skinDone').addEventListener('click', closeSkin);
+/* Escape and backdrop dismissal bypass the Done button, so the orb has to be
+ * put back on the dialog's own close event or it stays stranded in the stage. */
+document.getElementById('skinDlg').addEventListener('close', () => {
+	if (skinHome && orbWrap.parentNode !== skinHome.parent) skinHome.parent.insertBefore(orbWrap, skinHome.next);
+});
+document.getElementById('skinReset').addEventListener('click', () => setSkin({ ...SKIN_DEFAULT }));
+document.getElementById('skinRandom').addEventListener('click', () => {
+	const pick = {};
+	SKIN_CATALOGUE.forEach((g) => { pick[g.slot] = g.items[Math.floor(Math.random() * g.items.length)].id; });
+	setSkin(pick);
+});
+
 function applyTheme(theme) {
 	const dark = theme !== 'light';
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -1993,6 +2396,7 @@ function applyTheme(theme) {
 	if (meta) meta.setAttribute('content', dark ? '#262624' : '#faf9f7');
 }
 applyTheme(store.theme);
+applySkin();
 
 /* the Appearance slider in Settings drives these two custom properties live, no reload needed */
 function applyGlassIntensity(v) {
@@ -4425,7 +4829,7 @@ function renderOverview() {
 
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
-	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch',
+	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch', 'skin',
 	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity', 'theme',
