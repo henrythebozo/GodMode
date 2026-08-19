@@ -450,6 +450,78 @@
 		}
 	}
 	@keyframes scanSpin { to { transform: rotate(1turn); } }
+
+	/* ---- idle flourish: hands out, something conjured and worked on --------
+	   Every so often while it waits, two small mitts push out from behind the
+	   sphere, a little solid materialises between them, and it turns the thing
+	   over as if shaping it. A beat, not a loop: the cycle is 26s and the whole
+	   performance occupies about 11s of it, so most of standby is still.
+
+	   The solid is real 3D — six faces under transform-style: preserve-3d, so
+	   the browser does the perspective itself. CLAUDE.md rules out 3D engines
+	   for this file and none is needed; this costs six empty spans.
+
+	   Envelope and gesture are split across two elements on purpose. Both want
+	   to drive `transform`, and one animation would simply overwrite the other,
+	   so .handarm carries the push-out/retract and .hand carries the shaping
+	   motion inside it. Same reason .craftbox spins inside #orbCraft's pop. */
+	#orbCraft {
+		position: absolute; left: 50%; top: 80%;
+		width: 30px; height: 30px; margin: -15px 0 0 -15px;
+		perspective: 200px; opacity: 0; pointer-events: none;
+	}
+	.craftbox { position: absolute; inset: 0; transform-style: preserve-3d; }
+	.cf {
+		position: absolute; inset: 0;
+		border: 1px solid rgba(221, 129, 99, 0.85);
+		background: rgba(221, 129, 99, 0.09);
+		box-shadow: 0 0 10px rgba(221, 129, 99, 0.3), inset 0 0 12px rgba(221, 129, 99, 0.16);
+	}
+	.cf1 { transform: translateZ(15px); }
+	.cf2 { transform: rotateY(180deg) translateZ(15px); }
+	.cf3 { transform: rotateY(90deg) translateZ(15px); }
+	.cf4 { transform: rotateY(-90deg) translateZ(15px); }
+	.cf5 { transform: rotateX(90deg) translateZ(15px); }
+	.cf6 { transform: rotateX(-90deg) translateZ(15px); }
+
+	/* --dir lets one keyframe set serve both sides: the mitts push outward
+	   from behind the sphere rather than both sliding the same way. */
+	.handarm { position: absolute; left: 50%; top: 80%; width: 14px; height: 12px; margin-top: -6px; opacity: 0; pointer-events: none; }
+	.arm-l { --dir: 1; margin-left: -37px; }
+	.arm-r { --dir: -1; margin-left: 23px; }
+	.hand {
+		display: block; width: 100%; height: 100%; border-radius: 50%;
+		background: #efeee9; box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.32);
+	}
+
+	#orbWrap.idle #orbCraft { animation: craftPop 26s ease-in-out infinite; }
+	#orbWrap.idle .craftbox { animation: craftSpin 6s linear infinite; }
+	#orbWrap.idle .handarm { animation: handOut 26s ease-in-out infinite; }
+	#orbWrap.idle .hand { animation: mold 1.3s ease-in-out infinite; }
+
+	@keyframes handOut {
+		0%, 19%   { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
+		24%, 56%  { opacity: 1; transform: translateX(0) scale(1); }
+		62%, 100% { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
+	}
+	/* --dir is +1 on the left mitt, so a POSITIVE x presses inward, toward the
+	   solid. Negative would have both hands shrinking away from the thing they
+	   are supposed to be shaping. */
+	@keyframes mold {
+		0%, 100% { transform: translate(0, 0) rotate(0deg); }
+		25%      { transform: translate(calc(var(--dir) * 2.5px), -3px) rotate(calc(var(--dir) * -9deg)); }
+		50%      { transform: translate(calc(var(--dir) * 0.5px), 1.5px) rotate(calc(var(--dir) * 4deg)); }
+		75%      { transform: translate(calc(var(--dir) * 1.5px), -2px) rotate(calc(var(--dir) * -5deg)); }
+	}
+	@keyframes craftPop {
+		0%, 22%   { opacity: 0; transform: scale(0.1) translateY(6px); }
+		27%, 55%  { opacity: 1; transform: scale(1) translateY(0); }
+		60%, 100% { opacity: 0; transform: scale(0.1) translateY(6px); }
+	}
+	@keyframes craftSpin {
+		from { transform: rotateX(-20deg) rotateY(0turn); }
+		to   { transform: rotateX(-20deg) rotateY(1turn); }
+	}
 	@keyframes scanFade { 0%, 62%, 100% { opacity: 0; } 72%, 88% { opacity: 1; } }
 	#orbWrap.error .eye, #orbWrap.recording .eye { background: var(--glow-err); box-shadow: 0 0 12px 3px var(--glow-err); }
 
@@ -910,6 +982,9 @@
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
+									<div id="orbCraft"><div class="craftbox"><span class="cf cf1"></span><span class="cf cf2"></span><span class="cf cf3"></span><span class="cf cf4"></span><span class="cf cf5"></span><span class="cf cf6"></span></div></div>
+									<div class="handarm arm-l"><span class="hand"></span></div>
+									<div class="handarm arm-r"><span class="hand"></span></div>
 								</div>
 								<div id="orbShadow" aria-hidden="true"></div>
 								<div id="bars" aria-hidden="true"></div>
