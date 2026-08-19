@@ -13,12 +13,12 @@
  * Bump CACHE when shipping a change you want to force-evict. Old caches are
  * deleted on activate.
  */
-const CACHE = 'jarvis-v1';
+const CACHE = 'jarvis-v2';
 const SHELL = [
 	'jarvis.html',
 	'jarvis-manifest.webmanifest',
-	'icon-180.png',
-	'icon-512.png',
+	'jarvis-icon-180.png',
+	'jarvis-icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

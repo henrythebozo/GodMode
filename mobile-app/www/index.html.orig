@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Jarvis" />
-<link rel="apple-touch-icon" href="jarvis-icon-180.png" />
-<link rel="icon" type="image/png" href="jarvis-icon-512.png" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
 <script>
 	/* Runs before any CSS paints so switching themes never flashes the wrong one
 	   on load. Deliberately duplicates the storage key rather than waiting for
@@ -184,7 +184,7 @@
 		place-items: center;
 		cursor: pointer;
 		flex: none;
-		transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.14s ease;
+		transition: background 0.15s, color 0.15s, border-color 0.15s;
 	}
 	/* The visible chip stays 34px — 44px of painted surface would swamp a
 	   compact toolbar — while the touch target is padded out to the 44px
@@ -193,7 +193,6 @@
 	.iconbtn { position: relative; }
 	.iconbtn::after { content: ''; position: absolute; inset: -5px; border-radius: 12px; }
 	.iconbtn:hover { background: var(--panel-3); }
-	.iconbtn:active { transform: scale(0.93); }
 	.iconbtn.on { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
 	.iconbtn.recording { background: var(--err-soft); color: var(--err); border-color: transparent; animation: recPulse 1.2s ease-in-out infinite; }
 	@keyframes recPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -201,13 +200,11 @@
 	.dot.ok { background: var(--glow-ok); box-shadow: 0 0 8px var(--glow-ok); }
 	.dot.warn { background: var(--glow-warn); box-shadow: 0 0 8px var(--glow-warn); }
 	.dot.err { background: var(--glow-err); box-shadow: 0 0 8px var(--glow-err); }
-	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 10px 18px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.14s ease; }
+	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 10px 18px; font-weight: 500; cursor: pointer; transition: background 0.15s ease; }
 	.ghost:hover { background: var(--panel-3); }
-	.ghost:active { transform: scale(0.975); }
 	.ghost.small { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
-	.primary { background: var(--ring); color: var(--on-accent); border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease, transform 0.14s ease; }
+	.primary { background: var(--ring); color: var(--on-accent); border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease; }
 	.primary:hover { filter: brightness(0.92); }
-	.primary:active { transform: scale(0.975); }
 	.linkbtn { background: none; border: none; color: var(--dim); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
 	.empty { color: var(--dim); font-size: 13px; text-align: center; padding: 26px 10px; }
@@ -283,10 +280,9 @@
 		font-size: 13px;
 		font-weight: 600;
 		cursor: pointer;
-		transition: background 0.2s ease, color 0.2s ease, filter 0.15s ease, transform 0.14s ease;
+		transition: background 0.2s ease, color 0.2s ease, filter 0.15s ease;
 	}
 	#micBtn:hover { filter: brightness(0.92); }
-	#micBtn:active { transform: scale(0.985); }
 	#micBtn.live { background: var(--glow-warn); animation: micPulse 1.4s ease-in-out infinite; }
 	@keyframes micPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.4); } 50% { box-shadow: 0 0 0 10px rgba(255, 149, 0, 0); } }
 	#micBtn:disabled { background: var(--panel-3); color: var(--dim-2); cursor: not-allowed; }
@@ -303,21 +299,6 @@
 	.viewport { --vp-pad-y: 34px; flex: 1; min-height: 0; overflow-y: auto; padding: 26px 30px 8px; }
 	.view { display: none; }
 	.view.on { display: block; animation: viewIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
-	/* Rows rise in when you ENTER a view. Gated on [data-entering], which
-	   showView() sets only for the length of that entry: 21 call sites rebuild
-	   innerHTML, so an ungated stagger would replay every time you toggled a
-	   light or deleted a note — motion as noise rather than orientation. */
-	@keyframes rowIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
-	.view[data-entering] .viewlist > *,
-	.view[data-entering] .appsgrid > * { animation: rowIn 0.34s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
-	.view[data-entering] .viewlist > *:nth-child(2), .view[data-entering] .appsgrid > *:nth-child(2) { animation-delay: 34ms; }
-	.view[data-entering] .viewlist > *:nth-child(3), .view[data-entering] .appsgrid > *:nth-child(3) { animation-delay: 68ms; }
-	.view[data-entering] .viewlist > *:nth-child(4), .view[data-entering] .appsgrid > *:nth-child(4) { animation-delay: 102ms; }
-	.view[data-entering] .viewlist > *:nth-child(5), .view[data-entering] .appsgrid > *:nth-child(5) { animation-delay: 136ms; }
-	.view[data-entering] .viewlist > *:nth-child(6), .view[data-entering] .appsgrid > *:nth-child(6) { animation-delay: 170ms; }
-	.view[data-entering] .viewlist > *:nth-child(7), .view[data-entering] .appsgrid > *:nth-child(7) { animation-delay: 204ms; }
-	.view[data-entering] .viewlist > *:nth-child(8), .view[data-entering] .appsgrid > *:nth-child(8) { animation-delay: 238ms; }
-
 	@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 	/* The home screen is the assistant and nothing else — orb, greeting,
@@ -477,9 +458,7 @@
 		display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line);
 		border-radius: 999px; padding: 6px 13px; font-size: 12px; color: var(--text); margin: 4px 4px 0; cursor: pointer;
 	}
-	.chip { transition: background 0.16s ease, transform 0.16s ease; }
 	.chip:hover { background: var(--panel-3); }
-	.chip:active { transform: scale(0.97); }
 	.composer { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 18px; }
 	.composer input { flex: 1; background: none; border: none; color: var(--text); font: inherit; padding: 8px 0; }
 	.composer input:focus { outline: none; }
@@ -487,10 +466,7 @@
 	.composer button {
 		background: var(--ring); color: var(--on-accent); border: none; border-radius: 50%; width: 38px; height: 38px;
 		flex: none; cursor: pointer; display: grid; place-items: center; position: relative;
-		transition: filter 0.15s ease, transform 0.14s ease;
 	}
-	.composer button:hover { filter: brightness(0.92); }
-	.composer button:active { transform: scale(0.92); }
 	.composer button::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
 
 	.qagrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -534,11 +510,11 @@
 	}
 
 	/* generic list rows reused across views */
-	.row-item { display: flex; align-items: flex-start; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 11px 13px; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.row-item { display: flex; align-items: flex-start; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 11px 13px; }
 	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
 	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
 	.row-item .txt b { font-size: 13.5px; }
-	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; }
 	.row-item button:hover { color: var(--err); }
 	.viewhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 	.viewhead h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
@@ -565,10 +541,10 @@
 	}
 	.toggle.on { background: var(--glow-ok); }
 	.toggle.on::after { transform: translateX(17px); }
-	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; }
 	.stepbtn:hover { background: var(--line); }
 	.addrow { display: flex; gap: 8px; margin-top: 4px; max-width: 640px; }
-	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; }
 	.addrow select { flex: 0 0 108px; }
 	.addrow button { flex: none; }
 
@@ -588,7 +564,7 @@
 	.provcard .ptext { flex: 1; min-width: 0; }
 	.provcard .ptitle { font-size: 14px; font-weight: 650; }
 	.provcard .psub { font-size: 12px; color: var(--dim); margin-top: 2px; }
-	.provcard .pstate { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.provcard .pstate { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; flex: none; }
 	.provcard .pstate.on { background: var(--ok-soft); color: var(--ok); }
 	.provcard .pstate.off { background: var(--panel-3); color: var(--dim); }
 
@@ -596,7 +572,7 @@
 	.modelrow { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
 	.modelrow.lead { outline: 1px solid var(--line); }
 	.modelrow .mname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.modelrow button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px 6px; border-radius: 6px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.modelrow button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px 6px; border-radius: 6px; flex: none; }
 	.modelrow button:hover { color: var(--text); }
 	.modelrow button.leadbtn.on { color: var(--warn); }
 	.modelrow button.rmbtn:hover { color: var(--err); }
@@ -693,7 +669,7 @@
 	dialog .rangerow { display: flex; align-items: center; gap: 10px; }
 	dialog .rangerow span { flex: none; width: 34px; font-size: 12px; color: var(--dim); text-align: right; }
 	.seg2 { display: flex; background: var(--panel-2); border-radius: 999px; padding: 3px; margin: 8px 0; }
-	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
 	.seg2 button.on { background: var(--panel-3); color: var(--text); }
 	.row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
 	.row label.inline { flex-direction: row; align-items: center; margin: 0 auto 0 0; }
@@ -720,12 +696,11 @@
 	/* the mic sits inside the composer now, on every screen size */
 	.composer .micinline {
 		background: none; border: none; color: var(--dim); width: 34px; height: 34px; border-radius: 50%;
-		flex: none; cursor: pointer; display: grid; place-items: center; transition: background 0.15s ease, color 0.15s ease, transform 0.14s ease;
+		flex: none; cursor: pointer; display: grid; place-items: center; transition: background 0.15s ease, color 0.15s ease;
 		position: relative;
 	}
 	.composer .micinline::after { content: ''; position: absolute; inset: -5px; border-radius: 50%; }
 	.composer .micinline:hover { background: var(--panel-3); color: var(--text); }
-	.composer .micinline:active { transform: scale(0.92); }
 	.composer .micinline.live { background: var(--glow-warn); color: #fff; animation: micPulse 1.4s ease-in-out infinite; }
 	.composer .micinline:disabled { color: var(--dim-2); cursor: not-allowed; background: none; }
 
@@ -1558,20 +1533,6 @@ function showView(name) {
 	renderView(name);
 	document.getElementById('main').scrollTop = 0;
 	document.querySelector('.viewport').scrollTop = 0;
-	markEntering(document.getElementById('view-' + name));
-}
-/* Flags a view as freshly entered so its rows run the rowIn stagger, then
- * clears the flag so later re-renders inside the same view stay still. The
- * reflow between remove and add is what lets the animation restart when you
- * return to a view you were already on. */
-let enterTimer = null;
-function markEntering(view) {
-	if (!view) return;
-	view.removeAttribute('data-entering');
-	void view.offsetWidth;
-	view.setAttribute('data-entering', '');
-	clearTimeout(enterTimer);
-	enterTimer = setTimeout(() => view.removeAttribute('data-entering'), 700);
 }
 function renderView(name) {
 	if (name === 'dashboard') renderDashboard();
@@ -1723,7 +1684,7 @@ function openSettings(tab) {
 	document.getElementById('dataIOResult').textContent = '';
 	populateVoices();
 	const hint = document.getElementById('speechSupportHint');
-	hint.textContent = SR ? 'Voice recognition is supported in this browser.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).';
+	hint.textContent = SR ? (isNative ? 'On-device voice recognition is available.' : 'Voice recognition is supported in this browser.') : (isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition — voice input will fall back to text only (try Chrome, Edge or Safari).');
 	settingsDlg.showModal();
 }
 document.getElementById('settingsCancel').addEventListener('click', () => { applyGlassIntensity(store.glassIntensity); applyTheme(store.theme); settingsDlg.close(); });
@@ -2082,13 +2043,29 @@ muteBtn.addEventListener('click', () => {
 });
 
 /* ============================ speech recognition ========================= */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+/* WKWebView (the native iOS shell) never implemented the Web Speech API, so
+ * voice input in the shipped app runs through Capacitor's on-device speech
+ * recognizer instead. Everything downstream of `SR` (a plain "is voice
+ * available" boolean) and `startListening`/`stopListening` is unchanged
+ * whichever engine is behind it — running this same file as a plain web
+ * page still uses the browser's own SpeechRecognition. */
+const WebSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const CAP = window.Capacitor;
+const isNative = !!(CAP && CAP.isNativePlatform && CAP.isNativePlatform());
+const NativeSpeech = isNative && CAP.Plugins && CAP.Plugins.SpeechRecognition;
+const NativeNotify = isNative && CAP.Plugins && CAP.Plugins.LocalNotifications;
+const SR = isNative ? !!NativeSpeech : !!WebSR;
+
 let recog = null;
 let listening = false;
 let armTimer = null;
+let nativeSpeechReady = false;
+let nativeSilenceTimer = null;
+let nativePartialHandle = null;
+let nativeStateHandle = null;
 
 function makeRecognizer() {
-	const r = new SR();
+	const r = new WebSR();
 	r.lang = navigator.language || 'en-US';
 	r.interimResults = true;
 	r.continuous = false;
@@ -2096,8 +2073,34 @@ function makeRecognizer() {
 	return r;
 }
 
-function startListening(opts) {
-	if (!SR) { toast('No voice input', 'This browser has no speech recognition. Use the keyboard instead.'); return; }
+async function ensureNativeSpeech() {
+	if (!NativeSpeech) return false;
+	if (nativeSpeechReady) return true;
+	try {
+		const avail = await NativeSpeech.available();
+		if (!avail.available) return false;
+		const perm = await NativeSpeech.requestPermissions();
+		nativeSpeechReady = perm.speechRecognition === 'granted';
+	} catch { nativeSpeechReady = false; }
+	return nativeSpeechReady;
+}
+function detachNativeListeners() {
+	clearTimeout(nativeSilenceTimer);
+	if (nativePartialHandle) { nativePartialHandle.remove(); nativePartialHandle = null; }
+	if (nativeStateHandle) { nativeStateHandle.remove(); nativeStateHandle = null; }
+}
+
+async function startListening(opts) {
+	if (!SR) {
+		let detail = 'This browser has no speech recognition. Use the keyboard instead.';
+		if (isNative) {
+			detail = !CAP ? 'The native app bridge did not load — try relaunching the app.'
+				: !NativeSpeech ? 'The speech recognition plugin did not load with this build — reinstalling the app after a fresh pod install may fix it.'
+				: 'Speech recognition is unavailable on this device.';
+		}
+		toast('No voice input', detail, 9000);
+		return;
+	}
 	if (recording) return;
 	if (speaking) speechSynthesis.cancel();
 	if (listening) return;
@@ -2105,6 +2108,41 @@ function startListening(opts) {
 	setMicLive(true);
 	setState('listening', opts && opts.wake ? 'Listening for “' + store.wakeWord + '”' : 'Listening');
 	setCaption(opts && opts.wake ? 'Say “' + store.wakeWord + '”…' : 'Listening…', true);
+
+	if (isNative) {
+		const ok = await ensureNativeSpeech();
+		if (!ok) {
+			listening = false;
+			setMicLive(false);
+			setState('error', 'Mic error');
+			setCaption('Speech recognition permission was denied — enable it in iOS Settings → Jarvis.', true);
+			setTimeout(() => setState('idle', 'Standby'), 2600);
+			return;
+		}
+		let finished = false;
+		const finishOnce = (text) => { if (!finished) { finished = true; handleFinalTranscript((text || '').trim(), opts); } };
+		let lastText = '';
+		try {
+			nativePartialHandle = await NativeSpeech.addListener('partialResults', (data) => {
+				const text = (data.matches && data.matches[0]) || '';
+				if (!text) return;
+				lastText = text;
+				setCaption(text, true);
+				clearTimeout(nativeSilenceTimer);
+				nativeSilenceTimer = setTimeout(() => finishOnce(lastText), 1400); // ~1.4s of silence ends the command, same feel as the web engine's one-shot result
+			});
+			nativeStateHandle = await NativeSpeech.addListener('listeningState', (data) => { if (data.status === 'stopped') finishOnce(lastText); });
+			await NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 });
+		} catch (err) {
+			listening = false;
+			setMicLive(false);
+			setState('error', 'Mic error');
+			setCaption('Voice error: ' + (err && err.message ? err.message : err), true);
+			setTimeout(() => setState('idle', 'Standby'), 2200);
+		}
+		return;
+	}
+
 	recog = makeRecognizer();
 	recog.onresult = (e) => {
 		let interim = '', final = '';
@@ -2132,7 +2170,12 @@ function startListening(opts) {
 }
 
 function stopListening() {
-	if (recog) { try { recog.stop(); } catch {} }
+	if (isNative) {
+		detachNativeListeners();
+		if (NativeSpeech) NativeSpeech.stop().catch(() => {});
+	} else if (recog) {
+		try { recog.stop(); } catch {}
+	}
 	listening = false;
 	setMicLive(false);
 }
@@ -2177,7 +2220,11 @@ function armWake() {
 function applyListenMode() {
 	stopListening();
 	clearTimeout(armTimer);
-	setMicDisabled(!SR);
+	// Natively, never hard-disable the mic button on a boot-time SR snapshot — if the speech
+	// plugin loaded a moment late, or availability only resolves once tapped, a disabled button
+	// gives zero feedback ("nothing happens"). Tapping it now always reaches startListening(),
+	// which reports a specific reason if voice really is unavailable, instead of just sitting dead.
+	setMicDisabled(isNative ? false : !SR);
 	if (store.mode === 'wake' && SR) armWake();
 }
 
@@ -2193,9 +2240,12 @@ let recordRecog = null;
 let recordText = '';
 let recordStartedAt = 0;
 let recordTimer = null;
+let nativeRecordPartialHandle = null;
+let nativeRecordStateHandle = null;
+let nativeRecordLast = '';
 
-function startRecording() {
-	if (!SR) { toast('No voice input', 'This browser has no speech recognition, so recording is unavailable.'); return; }
+async function startRecording() {
+	if (!SR) { toast('No voice input', isNative ? 'Speech recognition is unavailable on this device.' : 'This browser has no speech recognition, so recording is unavailable.'); return; }
 	if (recording) return;
 	stopListening();
 	clearTimeout(armTimer);
@@ -2209,7 +2259,7 @@ function startRecording() {
 	recordTimer = setInterval(() => {
 		if (orbWrap.classList.contains('recording')) stateLabel.textContent = 'Recording — ' + formatDuration(Date.now() - recordStartedAt);
 	}, 1000);
-	armRecordRecognizer();
+	if (isNative) await armNativeRecorder(); else armRecordRecognizer();
 }
 
 function armRecordRecognizer() {
@@ -2232,15 +2282,47 @@ function armRecordRecognizer() {
 	try { recordRecog.start(); } catch {}
 }
 
+function detachNativeRecordListeners() {
+	if (nativeRecordPartialHandle) { nativeRecordPartialHandle.remove(); nativeRecordPartialHandle = null; }
+	if (nativeRecordStateHandle) { nativeRecordStateHandle.remove(); nativeRecordStateHandle = null; }
+}
+async function armNativeRecorder() {
+	const ok = await ensureNativeSpeech();
+	if (!ok) { toast('Microphone blocked', 'Recording needs speech recognition permission — enable it in iOS Settings → Jarvis.'); stopRecording(false); return; }
+	nativeRecordLast = '';
+	try {
+		nativeRecordPartialHandle = await NativeSpeech.addListener('partialResults', (data) => {
+			const text = (data.matches && data.matches[0]) || '';
+			if (text) { nativeRecordLast = text; setCaption((recordText + ' ' + text).trim() || 'Listening for the conversation…', true); }
+		});
+		nativeRecordStateHandle = await NativeSpeech.addListener('listeningState', (data) => {
+			if (data.status !== 'stopped' || !recording) return;
+			// the OS closes an utterance after a long pause — bank it and open a fresh one to keep capturing
+			if (nativeRecordLast) { recordText += (recordText ? ' ' : '') + nativeRecordLast.trim(); nativeRecordLast = ''; }
+			NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 }).catch(() => {});
+		});
+		await NativeSpeech.start({ language: navigator.language || 'en-US', partialResults: true, maxResults: 1 });
+	} catch (err) {
+		toast('Recording failed', String(err && err.message ? err.message : err));
+		stopRecording(false);
+	}
+}
+
 function stopRecording(save) {
 	if (!recording) return;
 	recording = false;
 	clearInterval(recordTimer);
 	recordBtn.classList.remove('recording');
-	setMicDisabled(!SR);
-	const rr = recordRecog;
-	recordRecog = null;
-	if (rr) { rr.onend = null; try { rr.stop(); } catch {} }
+	setMicDisabled(isNative ? false : !SR);
+	if (isNative) {
+		detachNativeRecordListeners();
+		if (nativeRecordLast) { recordText += (recordText ? ' ' : '') + nativeRecordLast.trim(); nativeRecordLast = ''; }
+		if (NativeSpeech) NativeSpeech.stop().catch(() => {});
+	} else {
+		const rr = recordRecog;
+		recordRecog = null;
+		if (rr) { rr.onend = null; try { rr.stop(); } catch {} }
+	}
 	const endedAt = Date.now();
 	if (save !== false && recordText.trim()) {
 		const list = store.transcripts;
@@ -2369,8 +2451,7 @@ function toolRemember(args) {
 function toolForget(args) {
 	const q = (args.query || '').toLowerCase().trim();
 	let mem = store.memory;
-	if (!q) return { ok: false, message: 'Say what to forget — or "all" to clear everything.' };
-	if (q === 'all' || q === 'everything') { store.memory = []; renderMemory(); return { ok: true, message: 'Cleared everything from memory.' }; }
+	if (!q || q === 'all' || q === 'everything') { store.memory = []; renderMemory(); return { ok: true, message: 'Cleared everything from memory.' }; }
 	const before = mem.length;
 	mem = mem.filter((f) => !f.toLowerCase().includes(q));
 	store.memory = mem;
@@ -2382,8 +2463,28 @@ function toolRecallMemory() {
 	return { ok: true, message: mem.length ? 'Remembered facts: ' + mem.join('; ') : 'Nothing remembered yet.' };
 }
 
+/* Reminders also get a real OS-level notification when running natively, so
+ * they still fire while the app is backgrounded or fully closed — a plain
+ * setTimeout (the web fallback) only runs while the page is open. */
+function notifIdFor(reminderId) {
+	let h = 0;
+	for (let i = 0; i < reminderId.length; i++) h = (h * 31 + reminderId.charCodeAt(i)) | 0;
+	return Math.abs(h) % 2147483647 || 1;
+}
+async function scheduleNativeReminder(r) {
+	if (!NativeNotify) return;
+	try {
+		await NativeNotify.schedule({ notifications: [{ id: notifIdFor(r.id), title: store.assistantName + ' reminder', body: r.text, schedule: { at: new Date(r.at) } }] });
+	} catch {}
+}
+async function cancelNativeReminder(id) {
+	if (!NativeNotify) return;
+	try { await NativeNotify.cancel({ notifications: [{ id: notifIdFor(id) }] }); } catch {}
+}
+
 let reminderTimers = {};
 function scheduleReminderTimer(r) {
+	if (isNative) scheduleNativeReminder(r);
 	const delay = r.at - Date.now();
 	if (delay <= 0) { fireReminder(r); return; }
 	if (delay > 2147000000) return; // setTimeout overflow guard (~24.8 days)
@@ -2394,8 +2495,8 @@ function fireReminder(r) {
 	delete reminderTimers[r.id];
 	renderReminders();
 	toast('Reminder', r.text, 12000);
-	if (window.Notification && Notification.permission === 'granted') {
-		try { new Notification(store.assistantName + ' reminder', { body: r.text }); } catch {}
+	if (!isNative && window.Notification && Notification.permission === 'granted') {
+		try { new Notification(store.assistantName + ' reminder', { body: r.text }); } catch {} // native already alerts via scheduleNativeReminder
 	}
 	if (!recording) speak('Reminder: ' + r.text); // don't talk over — or get picked up by — an active recording
 }
@@ -2403,7 +2504,8 @@ function toolSetReminder(args) {
 	const minutes = Number(args.minutes);
 	const text = (args.text || '').trim();
 	if (!text || !Number.isFinite(minutes) || minutes <= 0) return { ok: false, message: 'Need reminder text and a positive number of minutes.' };
-	if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+	if (isNative && NativeNotify) NativeNotify.requestPermissions().catch(() => {});
+	else if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
 	const r = { id: uid(), text, at: Date.now() + minutes * 60000 };
 	const list = store.reminders;
 	list.push(r);
@@ -2416,14 +2518,20 @@ function toolSetReminder(args) {
 function cancelReminder(id) {
 	clearTimeout(reminderTimers[id]);
 	delete reminderTimers[id];
+	if (isNative) cancelNativeReminder(id);
 	store.reminders = store.reminders.filter((r) => r.id !== id);
 	renderReminders();
 }
 function toolCancelReminder(args) {
 	const q = (args.query || '').toLowerCase().trim();
 	const list = store.reminders;
-	if (!q) return { ok: false, message: 'Say which reminder to cancel — or "all" to cancel every one.' };
-	if (q === 'all') { list.forEach((r) => clearTimeout(reminderTimers[r.id])); reminderTimers = {}; store.reminders = []; renderReminders(); return { ok: true, message: 'Cancelled all reminders.' }; }
+	if (!q || q === 'all') {
+		list.forEach((r) => { clearTimeout(reminderTimers[r.id]); if (isNative) cancelNativeReminder(r.id); });
+		reminderTimers = {};
+		store.reminders = [];
+		renderReminders();
+		return { ok: true, message: 'Cancelled all reminders.' };
+	}
 	const match = list.find((r) => r.text.toLowerCase().includes(q));
 	if (!match) return { ok: false, message: 'No reminder matched "' + args.query + '".' };
 	cancelReminder(match.id);
@@ -2450,8 +2558,7 @@ function toolListNotes() {
 function toolDeleteNote(args) {
 	const q = (args.query || '').toLowerCase().trim();
 	let list = store.notes;
-	if (!q) return { ok: false, message: 'Say which note to delete — or "all" to delete every one.' };
-	if (q === 'all') { store.notes = []; renderNotes(); return { ok: true, message: 'Deleted all notes.' }; }
+	if (!q || q === 'all') { store.notes = []; renderNotes(); return { ok: true, message: 'Deleted all notes.' }; }
 	const before = list.length;
 	list = list.filter((n) => !n.text.toLowerCase().includes(q));
 	store.notes = list;
@@ -2904,8 +3011,12 @@ function stripActions(text) {
 (function restoreReminders() {
 	const now = Date.now();
 	store.reminders.forEach((r) => {
-		if (r.at <= now) fireReminder(r);
-		else scheduleReminderTimer(r);
+		if (r.at > now) { scheduleReminderTimer(r); return; }
+		// due while the app wasn't open: if it's been a while, the native OS notification
+		// (scheduled up front — see scheduleNativeReminder) already covered it, so don't repeat
+		// it in-app; only replay recently-missed ones as a fallback for the non-native web build.
+		if (now - r.at < 120000) fireReminder(r);
+		else { store.reminders = store.reminders.filter((x) => x.id !== r.id); renderReminders(); }
 	});
 })();
 
@@ -3620,6 +3731,7 @@ function renderSystemOverview() {
 }
 
 function renderUpcoming() {
+	syncWidgetSnapshot();
 	const box = document.getElementById('upcomingList');
 	const reminders = store.reminders.map((r) => ({ text: r.text, at: r.at, cal: false }));
 	const events = getUpcomingCalendarEvents(5).map((e) => ({ text: e.summary, at: e.start.getTime(), cal: true }));
@@ -3836,6 +3948,42 @@ async function generateBriefing() {
 	if (!recording) speak(text);
 }
 
+/* ============================ Siri Shortcuts (native) ====================== */
+/* Thin hooks the App Intents in ios/App/App/JarvisIntents.swift call into via
+ * evaluateJavaScript, once they've confirmed (via jarvisSiriReady) that boot
+ * below has finished. Both route straight into the same pipeline the on-screen
+ * mic and keyboard use — no separate native logic to keep in sync. No-ops
+ * (present but unused) in the plain web build. */
+window.jarvisSiriReady = () => typeof submitCommand === 'function';
+window.jarvisSiriAsk = (text) => {
+	text = String(text || '').trim();
+	if (!text) return;
+	if (!anyKey()) { speak('I need an API key set up in Jarvis settings before I can answer.'); openSettings(); return; }
+	submitCommand(text);
+};
+window.jarvisSiriRemind = (text, minutes) => {
+	const r = toolSetReminder({ text: String(text || ''), minutes: Number(minutes) || 10 });
+	toast(r.ok ? 'Reminder set' : 'Could not set reminder', r.message);
+	if (!recording) speak(r.message);
+};
+
+/* ========================= Home Screen widget (native) ===================== */
+/* Pushes the next reminder/calendar event to JarvisWidgetBridge.swift, which
+ * mirrors it into a shared App Group container the widget extension reads —
+ * see ios/WidgetSource/README.md. A silent no-op until that App Group is set
+ * up in Xcode, and in the plain web build (no window.webkit there at all). */
+function syncWidgetSnapshot() {
+	if (!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.jarvisWidgetSync)) return;
+	const nextReminder = store.reminders.slice().sort((a, b) => a.at - b.at)[0];
+	const nextEvent = getUpcomingCalendarEvents(1)[0];
+	window.webkit.messageHandlers.jarvisWidgetSync.postMessage({
+		reminderText: nextReminder ? nextReminder.text : null,
+		reminderAt: nextReminder ? nextReminder.at : null,
+		eventText: nextEvent ? nextEvent.summary : null,
+		eventAt: nextEvent ? nextEvent.start.getTime() : null,
+	});
+}
+
 /* ============================ boot intro film ============================ */
 /* "Quiet Awakening" — plays once per browser, before the first key prompt or
    anything else. Genre: elegant, intimate, not a spectacle. Central metaphor:
@@ -3924,6 +4072,7 @@ if ('serviceWorker' in navigator && !nativeShell && (location.protocol === 'http
 applyListenMode();
 showView('dashboard');
 scheduleBriefing();
+syncWidgetSnapshot();
 initIntro();
 </script>
 </body>
