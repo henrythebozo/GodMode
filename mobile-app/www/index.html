@@ -464,64 +464,102 @@
 	   Envelope and gesture are split across two elements on purpose. Both want
 	   to drive `transform`, and one animation would simply overwrite the other,
 	   so .handarm carries the push-out/retract and .hand carries the shaping
-	   motion inside it. Same reason .craftbox spins inside #orbCraft's pop. */
+	   motion inside it. Same reason .holo carries the tilt inside #orbCraft's
+	   pop rather than both living on one element. */
+	/* The panel sits at 80% height so its top edge clears the eyes — the face
+	   is the character and must never be covered by its own workspace. */
 	#orbCraft {
-		position: absolute; left: 50%; top: 80%;
-		width: 30px; height: 30px; margin: -15px 0 0 -15px;
-		perspective: 200px; opacity: 0; pointer-events: none;
+		position: absolute; left: 50%; top: 82%;
+		width: 86px; height: 50px; margin: -25px 0 0 -43px;
+		perspective: 300px; opacity: 0; pointer-events: none;
 	}
-	.craftbox { position: absolute; inset: 0; transform-style: preserve-3d; }
-	.cf {
-		position: absolute; inset: 0;
-		border: 1px solid rgba(221, 129, 99, 0.85);
-		background: rgba(221, 129, 99, 0.09);
-		box-shadow: 0 0 10px rgba(221, 129, 99, 0.3), inset 0 0 12px rgba(221, 129, 99, 0.16);
+	/* preserve-3d is what makes this read as a hologram rather than a picture
+	   of one: the secondary pane really does sit behind the main one in Z, so
+	   the shared tilt parallaxes them against each other. */
+	.holo { position: absolute; inset: 0; transform-style: preserve-3d; }
+	.holoscreen {
+		position: absolute; inset: 0; overflow: hidden; border-radius: 3px;
+		border: 1px solid rgba(221, 129, 99, 0.8);
+		background: linear-gradient(160deg, rgba(221, 129, 99, 0.13), rgba(221, 129, 99, 0.05));
+		box-shadow: 0 0 14px rgba(221, 129, 99, 0.3), inset 0 0 16px rgba(221, 129, 99, 0.12);
 	}
-	.cf1 { transform: translateZ(15px); }
-	.cf2 { transform: rotateY(180deg) translateZ(15px); }
-	.cf3 { transform: rotateY(90deg) translateZ(15px); }
-	.cf4 { transform: rotateY(-90deg) translateZ(15px); }
-	.cf5 { transform: rotateX(90deg) translateZ(15px); }
-	.cf6 { transform: rotateX(-90deg) translateZ(15px); }
+	/* readout rows — widths animate so the panel looks like live data */
+	.hrow { position: absolute; left: 7px; height: 2px; border-radius: 2px; background: rgba(221, 129, 99, 0.6); }
+	.hr0 { top: 7px;  width: 30px; height: 3px; background: rgba(221, 129, 99, 0.95); }
+	.hr1 { top: 15px; width: 54px; animation: hrow1 3.1s ease-in-out infinite; }
+	.hr2 { top: 21px; width: 38px; animation: hrow2 2.6s ease-in-out infinite; }
+	.hr3 { top: 27px; width: 46px; animation: hrow3 3.7s ease-in-out infinite; }
+	.hchart { position: absolute; left: 7px; bottom: 6px; display: flex; align-items: flex-end; gap: 3px; height: 15px; }
+	.hchart i { display: block; width: 6px; background: rgba(221, 129, 99, 0.75); border-radius: 1px; height: 8px; }
+	.hchart i:nth-child(1) { animation: bar 1.9s ease-in-out infinite; }
+	.hchart i:nth-child(2) { animation: bar 1.9s ease-in-out infinite -0.38s; }
+	.hchart i:nth-child(3) { animation: bar 1.9s ease-in-out infinite -0.76s; }
+	.hchart i:nth-child(4) { animation: bar 1.9s ease-in-out infinite -1.14s; }
+	.hchart i:nth-child(5) { animation: bar 1.9s ease-in-out infinite -1.52s; }
+	.hscan { position: absolute; left: 0; right: 0; height: 1px; background: rgba(221, 129, 99, 0.55); box-shadow: 0 0 6px rgba(221, 129, 99, 0.6); animation: hscan 2.8s linear infinite; }
+	/* a second, smaller pane parked behind and to the side */
+	.holoaux {
+		position: absolute; top: -30px; right: -32px; width: 24px; height: 24px;
+		border: 1px solid rgba(221, 129, 99, 0.65); border-radius: 3px;
+		background: rgba(221, 129, 99, 0.07);
+		transform: translateZ(-38px) rotateY(30deg);
+		display: grid; place-items: center;
+	}
+	.hring { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(221, 129, 99, 0.85); border-top-color: transparent; animation: hring 1.6s linear infinite; }
 
 	/* --dir lets one keyframe set serve both sides: the mitts push outward
 	   from behind the sphere rather than both sliding the same way. */
-	.handarm { position: absolute; left: 50%; top: 80%; width: 14px; height: 12px; margin-top: -6px; opacity: 0; pointer-events: none; }
-	.arm-l { --dir: 1; margin-left: -37px; }
-	.arm-r { --dir: -1; margin-left: 23px; }
+	.handarm { position: absolute; left: 50%; top: 82%; width: 14px; height: 12px; margin-top: -6px; opacity: 0; pointer-events: none; }
+	.arm-l { --dir: 1; margin-left: -57px; }
+	.arm-r { --dir: -1; margin-left: 43px; }
 	.hand {
 		display: block; width: 100%; height: 100%; border-radius: 50%;
 		background: #efeee9; box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.32);
 	}
 
 	#orbWrap.idle #orbCraft { animation: craftPop 26s ease-in-out infinite; }
-	#orbWrap.idle .craftbox { animation: craftSpin 6s linear infinite; }
+	#orbWrap.idle .holo { animation: holoTilt 9s ease-in-out infinite; }
 	#orbWrap.idle .handarm { animation: handOut 26s ease-in-out infinite; }
-	#orbWrap.idle .hand { animation: mold 1.3s ease-in-out infinite; }
+	/* two different gestures, not one mirrored: the left hand drags the rows,
+	   the right taps at the panel. A single shared motion made them look like
+	   one object cut in half rather than two hands doing separate jobs. */
+	#orbWrap.idle .arm-l .hand { animation: gestureDrag 2.4s ease-in-out infinite; }
+	#orbWrap.idle .arm-r .hand { animation: gestureTap 1.5s ease-in-out infinite; }
 
 	@keyframes handOut {
 		0%, 19%   { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
 		24%, 56%  { opacity: 1; transform: translateX(0) scale(1); }
 		62%, 100% { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
 	}
-	/* --dir is +1 on the left mitt, so a POSITIVE x presses inward, toward the
-	   solid. Negative would have both hands shrinking away from the thing they
-	   are supposed to be shaping. */
-	@keyframes mold {
-		0%, 100% { transform: translate(0, 0) rotate(0deg); }
-		25%      { transform: translate(calc(var(--dir) * 2.5px), -3px) rotate(calc(var(--dir) * -9deg)); }
-		50%      { transform: translate(calc(var(--dir) * 0.5px), 1.5px) rotate(calc(var(--dir) * 4deg)); }
-		75%      { transform: translate(calc(var(--dir) * 1.5px), -2px) rotate(calc(var(--dir) * -5deg)); }
+	/* --dir is +1 on the left mitt, so a POSITIVE x reaches inward, toward the
+	   panel. Negative would have both hands drifting away from the thing they
+	   are supposed to be working on. */
+	@keyframes gestureDrag {
+		0%, 100% { transform: translate(calc(var(--dir) * 2px), -5px) rotate(-6deg); }
+		50%      { transform: translate(calc(var(--dir) * 4px), 6px) rotate(5deg); }
+	}
+	@keyframes gestureTap {
+		0%, 62%, 100% { transform: translate(calc(var(--dir) * 2px), 0) scale(1); }
+		74%           { transform: translate(calc(var(--dir) * 7px), 0) scale(0.86); }
+		84%           { transform: translate(calc(var(--dir) * 3px), 0) scale(1.04); }
 	}
 	@keyframes craftPop {
 		0%, 22%   { opacity: 0; transform: scale(0.1) translateY(6px); }
 		27%, 55%  { opacity: 1; transform: scale(1) translateY(0); }
 		60%, 100% { opacity: 0; transform: scale(0.1) translateY(6px); }
 	}
-	@keyframes craftSpin {
-		from { transform: rotateX(-20deg) rotateY(0turn); }
-		to   { transform: rotateX(-20deg) rotateY(1turn); }
+	/* The panel turns a little as he works it, but never tumbles — a screen
+	   that spins reads as a loading widget, not something being used. */
+	@keyframes holoTilt {
+		0%, 100% { transform: rotateY(-19deg) rotateX(7deg); }
+		50%      { transform: rotateY(-5deg) rotateX(2deg); }
 	}
+	@keyframes hrow1 { 0%, 100% { width: 54px; } 40% { width: 33px; } 70% { width: 62px; } }
+	@keyframes hrow2 { 0%, 100% { width: 38px; } 35% { width: 58px; } 75% { width: 26px; } }
+	@keyframes hrow3 { 0%, 100% { width: 46px; } 45% { width: 22px; } 80% { width: 53px; } }
+	@keyframes bar   { 0%, 100% { height: 5px; } 50% { height: 14px; } }
+	@keyframes hscan { from { top: -2px; } to { top: 100%; } }
+	@keyframes hring { to { transform: rotate(1turn); } }
 	@keyframes scanFade { 0%, 62%, 100% { opacity: 0; } 72%, 88% { opacity: 1; } }
 	#orbWrap.error .eye, #orbWrap.recording .eye { background: var(--glow-err); box-shadow: 0 0 12px 3px var(--glow-err); }
 
@@ -982,7 +1020,7 @@
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
-									<div id="orbCraft"><div class="craftbox"><span class="cf cf1"></span><span class="cf cf2"></span><span class="cf cf3"></span><span class="cf cf4"></span><span class="cf cf5"></span><span class="cf cf6"></span></div></div>
+									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
 									<div class="handarm arm-l"><span class="hand"></span></div>
 									<div class="handarm arm-r"><span class="hand"></span></div>
 								</div>
