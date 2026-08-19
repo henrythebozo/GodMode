@@ -540,6 +540,15 @@
 	   one object cut in half rather than two hands doing separate jobs. */
 	#orbWrap.idle[data-scene="work"] .arm-l .hand { animation: gestureDrag 2.4s ease-in-out infinite; }
 	#orbWrap.idle[data-scene="work"] .arm-r .hand { animation: gestureTap 1.5s ease-in-out infinite; }
+	/* The tap now lands on something. Same 1.5s period as gestureTap, with the
+	   flash on the beat the mitt presses in — a gesture that nothing responds
+	   to reads as miming at the panel rather than using it. */
+	#orbWrap.idle[data-scene="work"] .hr0 { animation: tapPing 1.5s ease-out infinite; transform-origin: left center; }
+	@keyframes tapPing {
+		0%, 68%, 100% { background: rgba(221, 129, 99, 0.95); transform: scaleX(1); }
+		78%           { background: #fff; transform: scaleX(1.3); }
+		88%           { background: rgba(221, 129, 99, 0.95); transform: scaleX(1); }
+	}
 	/* --dir is +1 on the left mitt, so a POSITIVE x reaches inward, toward the
 	   panel. Negative would have both hands drifting away from the thing they
 	   are supposed to be working on. */
@@ -615,24 +624,34 @@
 	   LEFT of the rim and bottomed out 46px below it — it never went in.
 	   Y is shaped by keyframe spacing rather than easing: decelerating up,
 	   accelerating down, which no single timing function can do. */
+	/* The ball used to fade out under the rim and reappear in the hands, which
+	   is a teleport rather than a loop. It now falls the rest of the way, takes
+	   one bounce off the floor line and travels back to the hands, arriving
+	   exactly as the next shot starts — so the cycle never cuts. It stays
+	   visible the whole way; opacity was only ever hiding the jump. */
 	@keyframes ballX {
-		0%, 8%    { transform: translateX(0); opacity: 1; }
-		45%       { transform: translateX(45px); opacity: 1; }
-		68%       { transform: translateX(61.5px); opacity: 1; }
-		80%       { transform: translateX(65px); opacity: 1; }
-		87%       { transform: translateX(66px); opacity: 0; }
-		100%      { transform: translateX(66px); opacity: 0; }
+		0%, 8% { transform: translateX(0); }
+		45%    { transform: translateX(45px); }
+		68%    { transform: translateX(61.5px); }
+		80%    { transform: translateX(65px); }
+		88%    { transform: translateX(52px); }
+		94%    { transform: translateX(30px); }
+		100%   { transform: translateX(0); }
 	}
 	@keyframes ballY {
-		0%, 8%    { transform: translateY(0); }
-		18%       { transform: translateY(-58px); }
-		28%       { transform: translateY(-92px); }
-		45%       { transform: translateY(-112px); }
-		58%       { transform: translateY(-100px); }
-		68%       { transform: translateY(-81.5px); }
-		74%       { transform: translateY(-68px); }
-		80%       { transform: translateY(-52px); }
-		100%      { transform: translateY(-52px); }
+		0%, 8% { transform: translateY(0); }
+		18%    { transform: translateY(-58px); }
+		28%    { transform: translateY(-92px); }
+		45%    { transform: translateY(-112px); }
+		58%    { transform: translateY(-100px); }
+		68%    { transform: translateY(-81.5px); }
+		74%    { transform: translateY(-64px); }
+		80%    { transform: translateY(-40px); }
+		83%    { transform: translateY(-18px); }
+		86%    { transform: translateY(12px); }
+		90%    { transform: translateY(-14px); }
+		95%    { transform: translateY(4px); }
+		100%   { transform: translateY(0); }
 	}
 	@keyframes handShoot {
 		0%, 4%   { transform: translateY(0) rotate(0deg); }
@@ -683,35 +702,52 @@
 	/* The morsel is a CHILD of the right mitt rather than a sibling animated
 	   along a matching path — two elements keyframed to "the same" route drift
 	   apart the moment either timing is touched. Riding along cannot drift. */
+	/* The bowl holds real morsels and they really run out. Each reach removes
+	   one, so the thing on the mitt is the thing that left the bowl rather than
+	   a shape that fades in near it. When the last one goes the bowl fills in
+	   solid — an outline with nothing in it just reads as a broken shape. */
 	.sc-bowl {
-		position: absolute; left: 38px; top: 138px; width: 28px; height: 14px;
+		position: absolute; left: 34px; top: 138px; width: 32px; height: 15px;
 		border: 1px solid rgba(221, 129, 99, 0.75);
 		border-top-color: transparent;
-		border-radius: 0 0 14px 14px / 0 0 13px 13px;
+		border-radius: 0 0 15px 15px / 0 0 14px 14px;
 		background: linear-gradient(rgba(221, 129, 99, 0.05), rgba(221, 129, 99, 0.18));
+		display: flex; align-items: flex-end; justify-content: center; gap: 2px;
+		padding: 0 3px 3px; overflow: hidden;
+		transition: background 0.45s ease, border-color 0.45s ease;
+	}
+	.sc-bowl i {
+		width: 4px; height: 4px; border-radius: 50%; background: var(--ring); flex: none;
+		transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.4, 0, 1, 1);
+	}
+	.sc-bowl i.gone { opacity: 0; transform: translateY(-9px) scale(0.4); }
+	.sc-bowl.empty {
+		background: rgba(221, 129, 99, 0.5);
+		border-color: rgba(221, 129, 99, 0.5);
 	}
 	.sc-food {
 		position: absolute; left: 50%; top: -7px; width: 7px; height: 7px; margin-left: -3.5px;
 		border-radius: 50%; background: var(--ring);
 		box-shadow: 0 0 6px rgba(221, 129, 99, 0.7);
-		opacity: 0;
+		opacity: 0; transform: scale(0.3);
+		transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.2, 1.3, 0.4, 1);
 	}
+	.sc-food.carry { opacity: 1; transform: none; }
 	#orbWrap.idle[data-scene="eat"] .sc-bowl { opacity: 1; }
 	#orbWrap.idle[data-scene="eat"] .arm-r { opacity: 1; transform: none; margin-left: -49px; top: 79%; animation: feed 2.8s ease-in-out infinite; }
-	#orbWrap.idle[data-scene="eat"] .arm-r .sc-food { animation: feedFood 2.8s ease-in-out infinite; }
 	#orbWrap.idle[data-scene="eat"] #core { animation: chomp 2.8s ease-in-out infinite; }
 	#orbWrap.idle[data-scene="eat"] .eye { animation: chompEyes 2.8s ease-in-out infinite; }
+	/* Once the bowl is out, everything about eating stops — the hand rests and
+	   the orb goes back to breathing instead of chewing air. data-bowl is an
+	   ATTRIBUTE because setState() assigns orbWrap.className outright and would
+	   wipe a class off it. */
+	#orbWrap.idle[data-scene="eat"][data-bowl="empty"] .arm-r { animation: none; }
+	#orbWrap.idle[data-scene="eat"][data-bowl="empty"] #core { animation: breathe 4.5s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="eat"][data-bowl="empty"] .eye { animation: blink 5.5s ease-in-out infinite; }
 	@keyframes feed {
 		0%, 12%   { transform: translate(0, 0); }
 		42%, 56%  { transform: translate(42px, -26px); }
 		88%, 100% { transform: translate(0, 0); }
-	}
-	@keyframes feedFood {
-		0%       { opacity: 0; }
-		12%, 44% { opacity: 1; }
-		50%      { opacity: 0; transform: scale(0.3); }
-		99%      { opacity: 0; transform: scale(0.3); }
-		100%     { opacity: 0; transform: none; }
 	}
 	@keyframes chomp {
 		0%, 44%, 62%, 100% { transform: scale(1); }
@@ -1222,7 +1258,7 @@
 										<div class="sc-hoop"><span class="hoop-board"></span><span class="hoop-rim"></span></div>
 										<div class="sc-ballpath"><span class="sc-ball"></span></div>
 										<span class="sc-z z1">z</span><span class="sc-z z2">z</span><span class="sc-z z3">z</span>
-										<span class="sc-bowl"></span>
+										<span class="sc-bowl"><i></i><i></i><i></i><i></i><i></i></span>
 									</div>
 								</div>
 								<div id="orbShadow" aria-hidden="true"></div>
@@ -1856,10 +1892,51 @@ const SCENE_GAP = 4500;   // plain idle between scenes
 const SCENE_LEAD = 5000;  // quiet beat before the first one after going idle
 let sceneTimer = null;
 let sceneIx = -1;
+
+/* ------------------------------ the snack --------------------------------
+ * The bowl is not decoration: it holds five morsels and each reach takes one.
+ * The bite is driven off the arm's own `animationiteration` rather than a
+ * parallel setInterval — a second timer would start drifting against the CSS
+ * loop within a few cycles and the hand would be reaching while the bowl
+ * emptied on its own schedule. Riding the animation's own boundary cannot
+ * drift. When the last morsel goes the bowl fills in solid and everything
+ * about eating stops.
+ */
+function refillBowl() {
+	const bowl = document.querySelector('.sc-bowl');
+	if (!bowl) return;
+	bowl.classList.remove('empty');
+	bowl.querySelectorAll('i').forEach((m) => m.classList.remove('gone'));
+	document.querySelector('.sc-food')?.classList.remove('carry');
+	orbWrap.removeAttribute('data-bowl');
+}
+let swallowTimer = null;
+function takeFromBowl() {
+	const bowl = document.querySelector('.sc-bowl');
+	const food = document.querySelector('.sc-food');
+	if (!bowl || !food) return;
+	const left = [...bowl.querySelectorAll('i:not(.gone)')];
+	if (!left.length) return;
+	left[left.length - 1].classList.add('gone');   // take from the near end
+	food.classList.add('carry');
+	clearTimeout(swallowTimer);
+	swallowTimer = setTimeout(() => food.classList.remove('carry'), 1450); // eaten at the mouth
+	if (left.length === 1) {
+		bowl.classList.add('empty');
+		// let the last mouthful finish its trip before the hand gives up
+		setTimeout(() => { if (orbWrap.dataset.scene === 'eat') orbWrap.dataset.bowl = 'empty'; }, 2000);
+	}
+}
+document.addEventListener('animationiteration', (e) => {
+	if (e.animationName === 'feed' && orbWrap.dataset.scene === 'eat') takeFromBowl();
+}, true);
 function stopScenes() {
 	clearTimeout(sceneTimer);
+	clearTimeout(swallowTimer);
 	sceneTimer = null;
 	orbWrap.removeAttribute('data-scene');
+	orbWrap.removeAttribute('data-bowl');
+	document.querySelector('.sc-food')?.classList.remove('carry');
 }
 function startScenes() {
 	stopScenes();
@@ -1867,6 +1944,7 @@ function startScenes() {
 	const next = () => {
 		sceneIx = (sceneIx + 1) % IDLE_SCENES.length;
 		orbWrap.dataset.scene = IDLE_SCENES[sceneIx];
+		if (IDLE_SCENES[sceneIx] === 'eat') { refillBowl(); takeFromBowl(); } // first bite lands with the first reach
 		sceneTimer = setTimeout(() => {
 			orbWrap.removeAttribute('data-scene');
 			sceneTimer = setTimeout(next, SCENE_GAP);
