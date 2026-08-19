@@ -517,20 +517,29 @@
 		background: #efeee9; box-shadow: 0 0 8px 1px rgba(255, 255, 255, 0.32);
 	}
 
-	#orbWrap.idle #orbCraft { animation: craftPop 26s ease-in-out infinite; }
-	#orbWrap.idle .holo { animation: holoTilt 9s ease-in-out infinite; }
-	#orbWrap.idle .handarm { animation: handOut 26s ease-in-out infinite; }
+	/* ---- scene system ------------------------------------------------------
+	   Standby cycles through a few vignettes; a scheduler in JS parks a
+	   data-scene on #orbWrap and every prop is scoped to the scene that owns
+	   it. Entry and exit ride TRANSITIONS rather than keyframe envelopes,
+	   which is what makes the cycle possible at all: a scene can be swapped
+	   out at any moment and its props retract gracefully instead of snapping
+	   off mid-keyframe. Looping motion inside a scene is still animation. */
+	#orbCraft, .handarm, #orbScene > * {
+		opacity: 0;
+		transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.2, 1.35, 0.4, 1);
+	}
+	.handarm { transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
+	#orbCraft { transform: scale(0.1) translateY(6px); }
+
+	/* -- scene: work ---------------------------------------------------------- */
+	#orbWrap.idle[data-scene="work"] #orbCraft { opacity: 1; transform: none; }
+	#orbWrap.idle[data-scene="work"] .handarm { opacity: 1; transform: none; }
+	#orbWrap.idle[data-scene="work"] .holo { animation: holoTilt 9s ease-in-out infinite; }
 	/* two different gestures, not one mirrored: the left hand drags the rows,
 	   the right taps at the panel. A single shared motion made them look like
 	   one object cut in half rather than two hands doing separate jobs. */
-	#orbWrap.idle .arm-l .hand { animation: gestureDrag 2.4s ease-in-out infinite; }
-	#orbWrap.idle .arm-r .hand { animation: gestureTap 1.5s ease-in-out infinite; }
-
-	@keyframes handOut {
-		0%, 19%   { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
-		24%, 56%  { opacity: 1; transform: translateX(0) scale(1); }
-		62%, 100% { opacity: 0; transform: translateX(calc(var(--dir) * 16px)) scale(0.3); }
-	}
+	#orbWrap.idle[data-scene="work"] .arm-l .hand { animation: gestureDrag 2.4s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="work"] .arm-r .hand { animation: gestureTap 1.5s ease-in-out infinite; }
 	/* --dir is +1 on the left mitt, so a POSITIVE x reaches inward, toward the
 	   panel. Negative would have both hands drifting away from the thing they
 	   are supposed to be working on. */
@@ -542,11 +551,6 @@
 		0%, 62%, 100% { transform: translate(calc(var(--dir) * 2px), 0) scale(1); }
 		74%           { transform: translate(calc(var(--dir) * 7px), 0) scale(0.86); }
 		84%           { transform: translate(calc(var(--dir) * 3px), 0) scale(1.04); }
-	}
-	@keyframes craftPop {
-		0%, 22%   { opacity: 0; transform: scale(0.1) translateY(6px); }
-		27%, 55%  { opacity: 1; transform: scale(1) translateY(0); }
-		60%, 100% { opacity: 0; transform: scale(0.1) translateY(6px); }
 	}
 	/* The panel turns a little as he works it, but never tumbles — a screen
 	   that spins reads as a loading widget, not something being used. */
@@ -560,6 +564,151 @@
 	@keyframes bar   { 0%, 100% { height: 5px; } 50% { height: 14px; } }
 	@keyframes hscan { from { top: -2px; } to { top: 100%; } }
 	@keyframes hring { to { transform: rotate(1turn); } }
+
+	/* -- scene: hoops --------------------------------------------------------- */
+	/* The arc is split across two elements because CSS cannot ease one
+	   translate on two axes independently: the wrapper carries X at a steady
+	   rate, the ball carries Y up and back down, and the sum is a parabola.
+	   One element doing both would only ever travel in a straight line. */
+	.sc-hoop { position: absolute; left: 126px; top: 30px; width: 44px; height: 40px; }
+	.hoop-board {
+		position: absolute; right: 2px; top: 0; width: 30px; height: 21px;
+		border: 1.5px solid rgba(255, 255, 255, 0.6); border-radius: 2px;
+		background: rgba(255, 255, 255, 0.07);
+		box-shadow: 0 0 10px rgba(255, 255, 255, 0.18);
+	}
+	/* The rim alone read as an orange smudge under a white box. The net is what
+	   makes the shape legible as a hoop — three tapering strands hung off it,
+	   drawn with borders rather than extra elements. */
+	.hoop-rim {
+		position: absolute; right: 8px; top: 20px; width: 20px; height: 6px;
+		border: 2px solid var(--ring); border-radius: 50%;
+		background: transparent;
+		box-shadow: 0 0 8px rgba(221, 129, 99, 0.5);
+	}
+	.hoop-rim::after {
+		content: ''; position: absolute; left: 2px; right: 2px; top: 3px; height: 11px;
+		border-left: 1px solid rgba(255, 255, 255, 0.4);
+		border-right: 1px solid rgba(255, 255, 255, 0.4);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.34);
+		border-radius: 0 0 7px 7px;
+		transform: scaleX(0.72);
+	}
+	.sc-ballpath { position: absolute; left: 84px; top: 128px; width: 13px; height: 13px; }
+	.sc-ball {
+		display: block; width: 100%; height: 100%; border-radius: 50%;
+		background: radial-gradient(circle at 36% 32%, #f0a077, var(--ring) 70%);
+		box-shadow: 0 0 8px rgba(221, 129, 99, 0.55);
+	}
+	#orbWrap.idle[data-scene="hoops"] .sc-hoop { opacity: 1; }
+	#orbWrap.idle[data-scene="hoops"] .sc-ballpath { opacity: 1; animation: ballX 2.6s linear infinite; }
+	#orbWrap.idle[data-scene="hoops"] .sc-ball { animation: ballY 2.6s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="hoops"] .hoop-rim { animation: rimShake 2.6s ease-out infinite; }
+	#orbWrap.idle[data-scene="hoops"] .handarm { opacity: 1; transform: none; }
+	#orbWrap.idle[data-scene="hoops"] .arm-l { margin-left: -34px; top: 76%; }
+	#orbWrap.idle[data-scene="hoops"] .arm-r { margin-left: 20px; top: 76%; }
+	#orbWrap.idle[data-scene="hoops"] .hand { animation: handShoot 2.6s ease-in-out infinite; }
+	@keyframes ballX {
+		0%, 10%   { transform: translateX(0); opacity: 1; }
+		62%       { transform: translateX(56px); opacity: 1; }
+		78%       { transform: translateX(59px); opacity: 1; }
+		86%, 100% { transform: translateX(59px); opacity: 0; }
+	}
+	@keyframes ballY {
+		0%, 10% { transform: translateY(0); }
+		40%     { transform: translateY(-96px); }
+		62%     { transform: translateY(-72px); }
+		82%     { transform: translateY(-36px); }
+		100%    { transform: translateY(-36px); }
+	}
+	@keyframes handShoot {
+		0%, 6%   { transform: translateY(0) rotate(0deg); }
+		16%      { transform: translateY(-14px) rotate(calc(var(--dir) * 10deg)); }
+		34%      { transform: translateY(-4px) rotate(0deg); }
+		100%     { transform: translateY(0) rotate(0deg); }
+	}
+	@keyframes rimShake {
+		0%, 60%, 100% { transform: scaleY(1); }
+		66%           { transform: scaleY(1.5); }
+		74%           { transform: scaleY(0.85); }
+	}
+
+	/* -- scene: sleep --------------------------------------------------------- */
+	/* Everything that reads as attention gets switched off here — the gaze and
+	   the rim scan both stop, because an orb that is asleep should not still
+	   be looking around and scanning. */
+	/* These drift off the sphere and out over the page, which is the whole point
+	   of the gesture — but the orb is dark in BOTH themes while the page behind
+	   it is not, so a plain white glyph disappears the moment it clears the rim
+	   in daylight. A stroked outline (drawn under the fill via paint-order) is
+	   what makes one colour legible against both grounds. Pinning them to the
+	   sphere instead was the first attempt and it just looked cramped. */
+	.sc-z {
+		position: absolute; left: 118px; top: 58px;
+		font: 700 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+		color: rgba(250, 249, 245, 0.95);
+		-webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.6);
+		paint-order: stroke fill;
+		text-shadow: 0 0 9px rgba(255, 255, 255, 0.45);
+	}
+	.z2 { font-size: 13px; }
+	.z3 { font-size: 20px; }
+	#orbWrap.idle[data-scene="sleep"] .sc-z { animation: zfloat 3.2s ease-out infinite; }
+	#orbWrap.idle[data-scene="sleep"] .z2 { animation-delay: 1.05s; }
+	#orbWrap.idle[data-scene="sleep"] .z3 { animation-delay: 2.1s; }
+	#orbWrap.idle[data-scene="sleep"] .eye { animation: none; transform: scaleY(0.09); }
+	#orbWrap.idle[data-scene="sleep"] #eyes { animation: none; }
+	#orbWrap.idle[data-scene="sleep"] #core { animation: breathe 7s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="sleep"] #core::after { animation: none; opacity: 0; }
+	@keyframes zfloat {
+		0%   { opacity: 0; transform: translate(0, 0) scale(0.55) rotate(-8deg); }
+		18%  { opacity: 0.9; }
+		100% { opacity: 0; transform: translate(20px, -36px) scale(1.15) rotate(10deg); }
+	}
+
+	/* -- scene: eat ----------------------------------------------------------- */
+	/* The morsel is a CHILD of the right mitt rather than a sibling animated
+	   along a matching path — two elements keyframed to "the same" route drift
+	   apart the moment either timing is touched. Riding along cannot drift. */
+	.sc-bowl {
+		position: absolute; left: 38px; top: 138px; width: 28px; height: 14px;
+		border: 1px solid rgba(221, 129, 99, 0.75);
+		border-top-color: transparent;
+		border-radius: 0 0 14px 14px / 0 0 13px 13px;
+		background: linear-gradient(rgba(221, 129, 99, 0.05), rgba(221, 129, 99, 0.18));
+	}
+	.sc-food {
+		position: absolute; left: 50%; top: -7px; width: 7px; height: 7px; margin-left: -3.5px;
+		border-radius: 50%; background: var(--ring);
+		box-shadow: 0 0 6px rgba(221, 129, 99, 0.7);
+		opacity: 0;
+	}
+	#orbWrap.idle[data-scene="eat"] .sc-bowl { opacity: 1; }
+	#orbWrap.idle[data-scene="eat"] .arm-r { opacity: 1; transform: none; margin-left: -49px; top: 79%; animation: feed 2.8s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="eat"] .arm-r .sc-food { animation: feedFood 2.8s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="eat"] #core { animation: chomp 2.8s ease-in-out infinite; }
+	#orbWrap.idle[data-scene="eat"] .eye { animation: chompEyes 2.8s ease-in-out infinite; }
+	@keyframes feed {
+		0%, 12%   { transform: translate(0, 0); }
+		42%, 56%  { transform: translate(42px, -26px); }
+		88%, 100% { transform: translate(0, 0); }
+	}
+	@keyframes feedFood {
+		0%       { opacity: 0; }
+		12%, 44% { opacity: 1; }
+		50%      { opacity: 0; transform: scale(0.3); }
+		99%      { opacity: 0; transform: scale(0.3); }
+		100%     { opacity: 0; transform: none; }
+	}
+	@keyframes chomp {
+		0%, 44%, 62%, 100% { transform: scale(1); }
+		50%                { transform: scale(1.045, 0.945); }
+		56%                { transform: scale(0.985, 1.03); }
+	}
+	@keyframes chompEyes {
+		0%, 42%, 64%, 100% { transform: scaleY(1); }
+		51%                { transform: scaleY(0.35); }
+	}
 	@keyframes scanFade { 0%, 62%, 100% { opacity: 0; } 72%, 88% { opacity: 1; } }
 	#orbWrap.error .eye, #orbWrap.recording .eye { background: var(--glow-err); box-shadow: 0 0 12px 3px var(--glow-err); }
 
@@ -1022,7 +1171,13 @@
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
 									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
 									<div class="handarm arm-l"><span class="hand"></span></div>
-									<div class="handarm arm-r"><span class="hand"></span></div>
+									<div class="handarm arm-r"><span class="hand"><i class="sc-food"></i></span></div>
+									<div id="orbScene">
+										<div class="sc-hoop"><span class="hoop-board"></span><span class="hoop-rim"></span></div>
+										<div class="sc-ballpath"><span class="sc-ball"></span></div>
+										<span class="sc-z z1">z</span><span class="sc-z z2">z</span><span class="sc-z z3">z</span>
+										<span class="sc-bowl"></span>
+									</div>
 								</div>
 								<div id="orbShadow" aria-hidden="true"></div>
 								<div id="bars" aria-hidden="true"></div>
@@ -1635,7 +1790,56 @@ function setMicDisabled(on) {
 }
 
 const STATE_LABELS = { idle: 'Standby', listening: 'Listening', thinking: 'Thinking', speaking: 'Speaking', recording: 'Recording', error: 'Error' };
+/* ------------------------- idle scene scheduler --------------------------
+ * Standby rotates through a few vignettes: the workspace, a few shots at a
+ * hoop, a nap, a snack. Each is parked on #orbWrap as a data-scene and the
+ * CSS owns everything from there — this only decides what is on and when.
+ *
+ * Between scenes it clears the attribute for a few seconds, so the orb drops
+ * back to plain breathing rather than running a performance without pause.
+ * Under prefers-reduced-motion nothing is scheduled at all: the CSS would
+ * flatten the motion anyway, and a timer that only swaps invisible props is
+ * pure wakeup cost on a device that asked for stillness.
+ */
+const IDLE_SCENES = ['work', 'hoops', 'sleep', 'eat'];
+const SCENE_HOLD = 19000; // how long a scene stays up
+const SCENE_GAP = 4500;   // plain idle between scenes
+const SCENE_LEAD = 5000;  // quiet beat before the first one after going idle
+let sceneTimer = null;
+let sceneIx = -1;
+function stopScenes() {
+	clearTimeout(sceneTimer);
+	sceneTimer = null;
+	orbWrap.removeAttribute('data-scene');
+}
+function startScenes() {
+	stopScenes();
+	if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+	const next = () => {
+		sceneIx = (sceneIx + 1) % IDLE_SCENES.length;
+		orbWrap.dataset.scene = IDLE_SCENES[sceneIx];
+		sceneTimer = setTimeout(() => {
+			orbWrap.removeAttribute('data-scene');
+			sceneTimer = setTimeout(next, SCENE_GAP);
+		}, SCENE_HOLD);
+	};
+	sceneTimer = setTimeout(next, SCENE_LEAD);
+}
+/* Nothing to perform to an unseen tab, and a scene left mid-flight when the
+ * tab is hidden would resume in a stale pose. */
+document.addEventListener('visibilitychange', () => {
+	if (document.hidden) stopScenes();
+	else if (orbWrap.classList.contains('idle')) startScenes();
+});
+
+let prevStateKind = null;
 function setState(kind, label) {
+	/* Restart the rotation only on the TRANSITION into idle. setState('idle')
+	 * is called repeatedly, and restarting every time would keep resetting the
+	 * lead-in so the first scene never arrived. */
+	if (kind === 'idle' && prevStateKind !== 'idle') startScenes();
+	else if (kind !== 'idle') stopScenes();
+	prevStateKind = kind;
 	orbWrap.className = kind;
 	stateLabel.className = kind === 'idle' ? '' : kind;
 	stateLabel.textContent = label;
