@@ -103,3 +103,7 @@ todo.md
 .vscode/*
 
 tmp.json
+# patch(1) leftovers — the docs/jarvis.html -> mobile-app sync in CLAUDE.md
+# writes these, and one got committed by accident
+*.orig
+*.rej

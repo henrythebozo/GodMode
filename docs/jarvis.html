@@ -90,8 +90,18 @@
 		--backdrop: rgba(40, 36, 32, 0.35);
 		/* The orb is a dark sphere in both themes, so in daylight it casts a
 		   shadow rather than emitting a halo — a white glow would be invisible. */
-		--orb-halo: 0 12px 34px rgba(31, 41, 71, 0.3), 0 0 40px 6px rgba(31, 41, 71, 0.08), inset 0 0 34px rgba(0, 0, 0, 0.6);
-		--orb-pool: rgba(31, 41, 71, 0.18);
+		/* Halo and pool are one glow triplet plus alphas so the customizer can
+		   retint them: a gold-rimmed orb sitting inside a white glow was the
+		   loudest thing wrong with the coloured presets. applySkin() writes
+		   --skin-glow / --skin-eye-glow as inline properties on the ROOT rather
+		   than on #orbWrap, for two reasons — #orbShadow is a SIBLING of
+		   #orbWrap, not a child, and a custom property resolves its own var()s
+		   on the element that declares it, so a value set further down the tree
+		   would never reach these declarations at all. */
+		--skin-glow: 31 41 71;
+		--skin-eye-glow: 255 255 255;
+		--orb-halo: 0 12px 34px rgb(var(--skin-glow) / 0.3), 0 0 40px 6px rgb(var(--skin-glow) / 0.08), inset 0 0 34px rgba(0, 0, 0, 0.6);
+		--orb-pool: rgb(var(--skin-glow) / 0.18);
 		/* boot intro */
 		--intro-bg: #faf9f7;
 		--intro-text: rgba(31, 30, 29, 0.7);
@@ -131,8 +141,9 @@
 		--shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
 		--glass-sheen: 0 0 0 0 transparent;
 		--backdrop: rgba(0, 0, 0, 0.5);
-		--orb-halo: 0 0 10px 1px rgba(255, 255, 255, 0.85), 0 0 42px 8px rgba(255, 255, 255, 0.28), 0 0 90px 22px rgba(255, 255, 255, 0.1), inset 0 0 34px rgba(0, 0, 0, 0.65);
-		--orb-pool: rgba(255, 255, 255, 0.22);
+		--skin-glow: 255 255 255;
+		--orb-halo: 0 0 10px 1px rgb(var(--skin-glow) / 0.85), 0 0 42px 8px rgb(var(--skin-glow) / 0.28), 0 0 90px 22px rgb(var(--skin-glow) / 0.1), inset 0 0 34px rgba(0, 0, 0, 0.65);
+		--orb-pool: rgb(var(--skin-glow) / 0.22);
 		--intro-bg: #1f1e1d;
 		--intro-text: rgba(255, 255, 255, 0.75);
 		--intro-text-strong: #fff;
@@ -348,7 +359,14 @@
 	   5px past the painted chip — an 8px gap left them overlapping by 2px. */
 	.herotools { display: flex; gap: 10px; flex: none; }
 	.orbstage { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0 6px; text-align: center; }
-	#orbWrap { position: relative; width: 180px; height: 180px; flex: none; }
+	/* 180px is a COORDINATE SYSTEM, not just a size. The whole wardrobe and
+	   every scene prop is laid out in absolute pixels against it, so the orb
+	   is only ever resized by scaling --orb-scale — never by changing this
+	   width, which would slide the sphere out from under all of them. */
+	#orbWrap {
+		position: relative; width: 180px; height: 180px; flex: none;
+		transform: scale(var(--orb-scale, 1)); transform-origin: top center;
+	}
 
 	/* a calm dark glass sphere with a glowing rim — the "body" */
 	#core {
@@ -367,7 +385,7 @@
 	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; }
 	.eye {
 		width: 11%; height: 28%; border-radius: 999px; background: var(--skin-eye, #fff);
-		box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.55);
+		box-shadow: 0 0 10px 2px rgb(var(--skin-eye-glow) / 0.55);
 		transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 		animation: blink 5.5s ease-in-out infinite;
 	}
@@ -402,30 +420,39 @@
 		left: 50%; top: -9px; width: 15px; height: 15px; margin-left: -7.5px;
 		background: #2b2a27; border-radius: 50%;
 	}
-	/* cap: crown plus a brim off to one side */
+	/* cap: crown plus a peak off to one side. The peak starts at the crown's
+	   right edge rather than 26px inside it — overlapping, it painted a dark
+	   notch out of the dome instead of reading as a brim — and it is the crown
+	   colour darkened rather than a flat near-black, which vanished the moment
+	   it cleared the sphere's silhouette. */
 	#orbWrap[data-hat="cap"] .ac-hat {
-		top: 14px; width: 72px; height: 34px; margin-left: -36px;
-		background: var(--skin-rim, #dd8163); border-radius: 36px 36px 4px 4px;
+		top: 10px; width: 74px; height: 36px; margin-left: -37px;
+		background: var(--skin-rim, #dd8163); border-radius: 37px 37px 5px 5px;
 	}
 	#orbWrap[data-hat="cap"] .ac-hat::after {
-		left: 46px; bottom: 0; width: 40px; height: 9px;
-		background: #2b2a27; border-radius: 0 8px 8px 0;
+		left: 68px; bottom: 2px; width: 38px; height: 9px;
+		background: var(--skin-rim, #dd8163); filter: brightness(0.62);
+		border-radius: 3px 9px 9px 3px;
 	}
 	/* top hat: tall crown, band, wide brim */
 	#orbWrap[data-hat="tophat"] .ac-hat {
 		top: -6px; width: 52px; height: 42px; margin-left: -26px;
-		background: #22211f; border-radius: 5px 5px 0 0; border: 1px solid rgba(255, 255, 255, 0.25);
+		background: #22211f; border-radius: 5px 5px 0 0; border: 1px solid rgba(255, 255, 255, 0.42);
 	}
 	#orbWrap[data-hat="tophat"] .ac-hat::before {
 		left: -1px; right: -1px; bottom: 6px; height: 9px; background: var(--skin-rim, #dd8163);
 	}
 	#orbWrap[data-hat="tophat"] .ac-hat::after {
 		left: -21px; right: -21px; bottom: -6px; height: 8px;
-		background: #22211f; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25);
+		background: #22211f; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.42);
 	}
 	/* crown: five points cut out of a block */
+	/* Its 30px block ends at y=24 and the sphere's curve passes y=22.8 under
+	   the crown's own left/right edges, so the band lands ON the curve. At the
+	   old top:12px the whole thing sat 19px inside the sphere and the points
+	   read as a stripe painted across the forehead. */
 	#orbWrap[data-hat="crown"] .ac-hat {
-		top: 12px; width: 62px; height: 30px; margin-left: -31px;
+		top: -6px; width: 62px; height: 30px; margin-left: -31px;
 		background: linear-gradient(#f5d383, #d9a53f);
 		clip-path: polygon(0 100%, 0 34%, 12% 62%, 25% 8%, 38% 55%, 50% 0, 62% 55%, 75% 8%, 88% 62%, 100% 34%, 100% 100%);
 	}
@@ -440,46 +467,60 @@
 		animation: haloBob 3.4s ease-in-out infinite;
 	}
 	@keyframes haloBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-	/* party hat: a cone with a bobble */
+	/* party hat: a cone with a bobble. The cone is drawn on ::before rather
+	   than on the element, because clip-path clips an element's pseudo-elements
+	   along with it — the bobble was a child of the cone and the triangle was
+	   cutting it away entirely. Raised too: at top:2px two thirds of the cone
+	   lay over the sphere and it read as a sticker on the forehead. */
 	#orbWrap[data-hat="party"] .ac-hat {
-		top: 2px; width: 46px; height: 46px; margin-left: -23px;
+		top: -16px; width: 46px; height: 54px; margin-left: -23px;
+	}
+	#orbWrap[data-hat="party"] .ac-hat::before {
+		left: 0; right: 0; top: 8px; bottom: 0;
 		background: repeating-linear-gradient(135deg, var(--skin-rim, #dd8163) 0 7px, #2b2a27 7px 14px);
 		clip-path: polygon(50% 0, 100% 100%, 0 100%);
 	}
-	#orbWrap[data-hat="party"] .ac-hat::before {
-		left: 50%; top: -7px; width: 12px; height: 12px; margin-left: -6px;
+	#orbWrap[data-hat="party"] .ac-hat::after {
+		left: 50%; top: 0; width: 12px; height: 12px; margin-left: -6px;
 		background: #f5d383; border-radius: 50%;
 	}
-	/* headphones: a band over the top and a cup each side */
+	/* headphones: a band over the top and a cup each side. The cups are placed
+	   from the TOP rather than hung off the band's bottom edge: hung, they sat
+	   at y=61 — temple height, well above the eyes at y=90 — and read as two
+	   buttons stuck on the forehead. */
 	#orbWrap[data-hat="cans"] .ac-hat {
-		top: 8px; width: 104px; height: 52px; margin-left: -52px;
-		border: 7px solid #35342f; border-bottom: none; border-radius: 52px 52px 0 0;
+		top: 6px; width: 108px; height: 62px; margin-left: -54px;
+		border: 7px solid #35342f; border-bottom: none; border-radius: 54px 54px 0 0;
 	}
 	#orbWrap[data-hat="cans"] .ac-hat::before,
 	#orbWrap[data-hat="cans"] .ac-hat::after {
-		bottom: -16px; width: 20px; height: 30px; border-radius: 7px; background: #35342f;
+		top: 56px; width: 22px; height: 40px; border-radius: 8px; background: #35342f;
 		border: 2px solid var(--skin-rim, #dd8163);
 	}
-	#orbWrap[data-hat="cans"] .ac-hat::before { left: -14px; }
-	#orbWrap[data-hat="cans"] .ac-hat::after { right: -14px; }
+	#orbWrap[data-hat="cans"] .ac-hat::before { left: -15px; }
+	#orbWrap[data-hat="cans"] .ac-hat::after { right: -15px; }
 
 	/* ---- face ---- */
 	#orbWrap[data-face]:not([data-face="none"]) .ac-face { display: block; }
 	.ac-face { left: 50%; top: 78px; }
 	/* glasses and shades share a frame; only the fill differs */
+	/* Solved against the eyes rather than the frame: the eyes sit at x 63-79
+	   and 101-117, centred on y=90. The lenses used to hang a further 33px
+	   OUTSIDE the frame bar, which parked them at x 24-50 and 130-156 — out on
+	   the sphere's rim with both eyes left bare in the gap between them. */
 	#orbWrap[data-face="specs"] .ac-face,
 	#orbWrap[data-face="shades"] .ac-face {
-		width: 66px; height: 2px; margin-left: -33px;
-		background: linear-gradient(90deg, transparent 42%, #d8d4c8 42% 58%, transparent 58%);
+		width: 64px; height: 2px; margin-left: -32px; top: 89px;
+		background: linear-gradient(90deg, transparent 40%, #d8d4c8 40% 60%, transparent 60%);
 	}
 	#orbWrap[data-face="specs"] .ac-face::before,
 	#orbWrap[data-face="specs"] .ac-face::after,
 	#orbWrap[data-face="shades"] .ac-face::before,
 	#orbWrap[data-face="shades"] .ac-face::after {
-		top: -11px; width: 26px; height: 24px; border: 2px solid #d8d4c8; border-radius: 8px;
+		top: -14px; width: 26px; height: 30px; border: 2px solid #d8d4c8; border-radius: 9px;
 	}
-	#orbWrap[data-face="specs"] .ac-face::before, #orbWrap[data-face="shades"] .ac-face::before { left: -33px; }
-	#orbWrap[data-face="specs"] .ac-face::after,  #orbWrap[data-face="shades"] .ac-face::after  { right: -33px; }
+	#orbWrap[data-face="specs"] .ac-face::before, #orbWrap[data-face="shades"] .ac-face::before { left: 0; }
+	#orbWrap[data-face="specs"] .ac-face::after,  #orbWrap[data-face="shades"] .ac-face::after  { right: 0; }
 	#orbWrap[data-face="shades"] .ac-face::before,
 	#orbWrap[data-face="shades"] .ac-face::after { background: rgba(12, 12, 14, 0.88); border-color: #43413b; }
 	/* visor: one band across the face */
@@ -489,15 +530,17 @@
 		border: 1.5px solid rgba(190, 232, 248, 0.75); border-radius: 17px;
 		box-shadow: 0 0 12px rgba(124, 199, 232, 0.35);
 	}
-	/* eyepatch: one covered eye and a strap across */
+	/* eyepatch: one covered eye and a strap across. Both were riding 15px high
+	   — the patch clipped the top of the left eye and left the rest of it lit,
+	   which read as a smudge rather than a cover. */
 	#orbWrap[data-face="patch"] .ac-face {
-		width: 92px; height: 2px; margin-left: -46px; top: 74px;
+		width: 92px; height: 2px; margin-left: -46px; top: 88px;
 		background: #22211f; transform: rotate(-7deg);
 	}
 	#orbWrap[data-face="patch"] .ac-face::before {
-		left: 14px; top: -12px; width: 26px; height: 22px;
+		left: 13px; top: -17px; width: 30px; height: 34px;
 		background: #2b2a27; border: 1.5px solid rgba(245, 244, 239, 0.55);
-		border-radius: 6px 6px 10px 10px;
+		border-radius: 8px 8px 13px 13px;
 	}
 
 	/* ---- neck ---- */
@@ -525,9 +568,12 @@
 		background: repeating-linear-gradient(180deg, var(--skin-rim, #dd8163) 0 8px, #2b2a27 8px 16px);
 	}
 	/* chain: a thin loop with a pendant */
+	/* Raised onto the sphere. At top:142px the loop bottomed out at y=164 —
+	   exactly the sphere's lowest point — so the arc fell off the silhouette
+	   into the shadow pool and read as two detached gold ticks. */
 	#orbWrap[data-neck="chain"] .ac-neck {
-		top: 142px; width: 54px; height: 22px; margin-left: -27px;
-		border: 2px solid #e8bd5c; border-top: none; border-radius: 0 0 27px 27px;
+		top: 130px; width: 72px; height: 26px; margin-left: -36px;
+		border: 2px solid #e8bd5c; border-top: none; border-radius: 0 0 36px 36px;
 	}
 	#orbWrap[data-neck="chain"] .ac-neck::after {
 		left: 50%; bottom: -7px; width: 10px; height: 10px; margin-left: -5px;
@@ -785,8 +831,13 @@
 	#orbWrap.idle[data-scene="hoops"] .sc-ball { animation: ballY 2.6s linear infinite; }
 	#orbWrap.idle[data-scene="hoops"] .hoop-rim { animation: rimShake 2.6s ease-out infinite; }
 	#orbWrap.idle[data-scene="hoops"] .handarm { opacity: 1; transform: none; }
-	#orbWrap.idle[data-scene="hoops"] .arm-l { margin-left: -34px; top: 76%; }
-	#orbWrap.idle[data-scene="hoops"] .arm-r { margin-left: 20px; top: 76%; }
+	/* Down at the ball, not up on the face. At top:76% the two mitts sat at
+	   (63, 137) and (117, 137) — inside the silhouette, symmetric, and the same
+	   size as a feature, so they read as a second pair of eyes below the real
+	   ones. At 88% they straddle the sphere's bottom curve either side of the
+	   ball's start, which is what a pair of hands looks like. */
+	#orbWrap.idle[data-scene="hoops"] .arm-l { margin-left: -27px; top: 88%; }
+	#orbWrap.idle[data-scene="hoops"] .arm-r { margin-left: 14px; top: 88%; }
 	#orbWrap.idle[data-scene="hoops"] .hand { animation: handShoot 2.6s ease-in-out infinite; }
 	/* Solved against the rim rather than eyeballed. The rim centre sits at
 	   (152, 53) in wrap coordinates and the ball starts centred at (90.5,
@@ -824,11 +875,13 @@
 		95%    { transform: translateY(4px); }
 		100%   { transform: translateY(0); }
 	}
+	/* --dir is +1 on the left mitt, so a NEGATIVE x spreads outward. The push
+	   goes up and apart, the way hands part as the ball leaves them. */
 	@keyframes handShoot {
-		0%, 4%   { transform: translateY(0) rotate(0deg); }
-		13%      { transform: translateY(-17px) rotate(calc(var(--dir) * 12deg)); }
-		30%      { transform: translateY(-5px) rotate(0deg); }
-		100%     { transform: translateY(0) rotate(0deg); }
+		0%, 4%   { transform: translate(0, 0) rotate(0deg); }
+		13%      { transform: translate(calc(var(--dir) * -7px), -22px) rotate(calc(var(--dir) * 14deg)); }
+		30%      { transform: translate(calc(var(--dir) * -3px), -7px) rotate(0deg); }
+		100%     { transform: translate(0, 0) rotate(0deg); }
 	}
 	@keyframes rimShake {
 		0%, 64%, 100% { transform: scaleY(1); }
@@ -1237,7 +1290,11 @@
 		display: grid; place-items: center; height: 200px; margin: 14px 0 4px;
 		background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px;
 	}
-	.skinstage #orbWrap { transform: scale(0.86); }
+	/* --orb-scale rather than a transform of its own: the two would overwrite
+	   each other, and the narrow-window rule below already owns the transform.
+	   Origin and margin are reset because in here the orb is centred in a box
+	   rather than sitting in a column above its shadow. */
+	.skinstage #orbWrap { --orb-scale: 0.86; transform-origin: center; margin-bottom: 0; }
 	.skinpresets { display: flex; flex-wrap: wrap; gap: 6px; }
 	.skinpresets button {
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
@@ -1245,6 +1302,7 @@
 		transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
 	}
 	.skinpresets button:hover { background: var(--panel-3); }
+	.skinpresets button.on { border-color: var(--ring); background: var(--ring-soft); color: var(--ring); }
 	.skinpresets button:active { transform: scale(0.96); }
 	.skingroup { margin-top: 18px; }
 	.skingrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; }
@@ -1367,8 +1425,12 @@
 		.heroscreen { gap: 14px; }
 		.dgrid { grid-template-columns: 1fr; }
 		.dcol-side { border-left: none; border-top: 1px solid var(--line-soft); }
-		#orbWrap { width: 140px; height: 140px; }
-		#core { inset: 12px; }
+		/* Scaled, not resized — see the note on #orbWrap. Shrinking the wrap to
+		   140px used to leave every prop at its 180px coordinate: the hoop sat
+		   30px past the right edge, the chain hung clear off the bottom of the
+		   sphere and the crown looked two sizes too big. The negative margin
+		   gives back the layout height a transform does not. */
+		#orbWrap { --orb-scale: 0.78; margin-bottom: -40px; }
 		.statusbig { font-size: 21px; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
@@ -1906,25 +1968,32 @@ const SKIN_CATALOGUE = [
 		{ id: 'ember',    label: 'Ember',    a: '#4a1f1f', b: '#1d0a0a' },
 		{ id: 'pearl',    label: 'Pearl',    a: '#e8e4da', b: '#b6b0a4' },
 	] },
+	/* `g` is the same colour as an unpacked rgb triplet. The halo and the eye
+	   glow are box-shadows built from `rgb(<triplet> / <alpha>)`, and CSS has no
+	   way to take a hex colour apart, so the split has to live here. */
 	{ slot: 'rim', label: 'Rim', kind: 'swatch', items: [
-		{ id: 'white',  label: 'White',  a: 'rgba(255,255,255,0.92)' },
-		{ id: 'clay',   label: 'Clay',   a: '#dd8163' },
-		{ id: 'mint',   label: 'Mint',   a: '#5fd6a4' },
-		{ id: 'ice',    label: 'Ice',    a: '#7cc7e8' },
-		{ id: 'gold',   label: 'Gold',   a: '#e8bd5c' },
-		{ id: 'rose',   label: 'Rose',   a: '#e88fa8' },
-		{ id: 'violet', label: 'Violet', a: '#a98ce0' },
-		{ id: 'lime',   label: 'Lime',   a: '#b6da5e' },
+		{ id: 'white',  label: 'White',  a: 'rgba(255,255,255,0.92)', g: '255 255 255' },
+		{ id: 'clay',   label: 'Clay',   a: '#dd8163', g: '221 129 99' },
+		{ id: 'mint',   label: 'Mint',   a: '#5fd6a4', g: '95 214 164' },
+		{ id: 'ice',    label: 'Ice',    a: '#7cc7e8', g: '124 199 232' },
+		{ id: 'gold',   label: 'Gold',   a: '#e8bd5c', g: '232 189 92' },
+		{ id: 'rose',   label: 'Rose',   a: '#e88fa8', g: '232 143 168' },
+		{ id: 'violet', label: 'Violet', a: '#a98ce0', g: '169 140 224' },
+		{ id: 'lime',   label: 'Lime',   a: '#b6da5e', g: '182 218 94' },
 	] },
 	{ slot: 'eye', label: 'Eye colour', kind: 'swatch', items: [
-		{ id: 'white',  label: 'White',  a: '#ffffff' },
-		{ id: 'clay',   label: 'Clay',   a: '#f0a077' },
-		{ id: 'mint',   label: 'Mint',   a: '#7ce8bc' },
-		{ id: 'ice',    label: 'Ice',    a: '#9adcf5' },
-		{ id: 'gold',   label: 'Gold',   a: '#f5d383' },
-		{ id: 'rose',   label: 'Rose',   a: '#f7aac0' },
-		{ id: 'violet', label: 'Violet', a: '#c4aef0' },
-		{ id: 'lime',   label: 'Lime',   a: '#d2ec87' },
+		{ id: 'white',  label: 'White',  a: '#ffffff', g: '255 255 255' },
+		{ id: 'clay',   label: 'Clay',   a: '#f0a077', g: '240 160 119' },
+		{ id: 'mint',   label: 'Mint',   a: '#7ce8bc', g: '124 232 188' },
+		{ id: 'ice',    label: 'Ice',    a: '#9adcf5', g: '154 220 245' },
+		{ id: 'gold',   label: 'Gold',   a: '#f5d383', g: '245 211 131' },
+		{ id: 'rose',   label: 'Rose',   a: '#f7aac0', g: '247 170 192' },
+		{ id: 'violet', label: 'Violet', a: '#c4aef0', g: '196 174 240' },
+		{ id: 'lime',   label: 'Lime',   a: '#d2ec87', g: '210 236 135' },
+		/* Dark eyes exist for the one pale body: white on Pearl is invisible,
+		   and the Snowday preset was already asking for `ink` before it was a
+		   real entry — skinItem() was quietly handing it White instead. */
+		{ id: 'ink',    label: 'Ink',    a: '#1c2749', g: '28 39 73' },
 	] },
 	{ slot: 'eyes', label: 'Eye shape', kind: 'shape', items: [
 		{ id: 'capsule', label: 'Capsule' }, { id: 'round', label: 'Round' },
@@ -2297,6 +2366,9 @@ function applySkin(skin) {
 	orbWrap.style.setProperty('--skin-body-b', body.b);
 	orbWrap.style.setProperty('--skin-rim', rim.a);
 	orbWrap.style.setProperty('--skin-eye', eye.a);
+	/* On the root, not on orbWrap — see the --skin-glow note in the theme block. */
+	document.documentElement.style.setProperty('--skin-glow', rim.g);
+	document.documentElement.style.setProperty('--skin-eye-glow', eye.g);
 	orbWrap.dataset.eyes = sk.eyes;
 	orbWrap.dataset.hat = sk.hat;
 	orbWrap.dataset.face = sk.face;
@@ -2330,6 +2402,10 @@ function renderSkinDialog() {
 		const b = document.createElement('button');
 		b.type = 'button';
 		b.textContent = p.label;
+		/* Marked active only on an exact match across every slot: the moment one
+		   swatch is changed the orb is no longer that preset, and leaving the
+		   chip lit would say otherwise. */
+		if (Object.keys(p.skin).every((k) => sk[k] === p.skin[k])) b.className = 'on';
 		b.addEventListener('click', () => setSkin(p.skin));
 		presets.appendChild(b);
 	});
