@@ -69,7 +69,40 @@ export ANTHROPIC_API_KEY=sk-ant-...      # or OPENAI_API_KEY, OPENROUTER_API_KEY
 ```
 
 A key that only ever came from the environment is never written back to disk —
-saving it would quietly turn a per-shell secret into a stored one.
+saving it would quietly turn a per-shell secret into a stored one. If you want
+it stored, say so:
+
+```sh
+jarvis key            # what is set, and whether it came from a variable or the file
+jarvis key import     # pick up whatever is already exported in this shell
+```
+
+`jarvis key import` is the one command allowed to break that rule, because
+breaking it is the whole point — afterwards the key works in every shell, not
+only the one that exported it. It shows each key redacted before storing
+anything, and points out a key exported under the wrong variable name (an
+Anthropic key in `OPENAI_API_KEY` is the mistake that actually happens),
+though it will still store it if you say so — a shape is a guess and you know
+what you copied.
+
+To file a key you have just copied, without hunting for which setting it
+belongs to:
+
+```sh
+pbpaste | jarvis key add          # macOS; wl-paste or xclip -o elsewhere
+jarvis key add                    # or just run it and paste at the prompt
+```
+
+It works out which provider the key belongs to from its shape, so there is
+nothing to choose. Reading it from stdin also keeps it out of your shell
+history, which passing it as an argument would not. `jarvis key rm anthropic`
+forgets one — and tells you if the variable is still exported, since otherwise
+it silently reappears on the next command.
+
+Storing a key also repoints the lead model **only if the current one has become
+unreachable**. Import a Gemini key while Claude is already working and nothing
+moves; import one with no key for the model you are pointed at and it moves to
+the vendor you just configured, rather than failing on your first question.
 
 **Keys live in `~/.jarvis/`, never in the vault.** The vault is the thing you
 are meant to sync, share and commit; a credential riding along inside it ends
@@ -157,6 +190,10 @@ format.
 | `jarvis graph --open` | render the whole vault and open it in a browser |
 | `jarvis chain add <name> <step>…` | a step is `note: Title` or `prompt: text` |
 | `jarvis chain list` / `chain run <name>` | |
+| `jarvis key` | which keys are set, and where each came from |
+| `jarvis key import` | store the ones already exported in this shell |
+| `jarvis key add [KEY]` | file a key by its shape; reads stdin if omitted |
+| `jarvis key rm <provider>` | forget one |
 | `jarvis usage` | tokens and cost, measured not estimated |
 | `jarvis config [key [value]]` | show or set; keys print redacted |
 | `jarvis export [file]` / `jarvis import <file>` | the bridge to the web app |

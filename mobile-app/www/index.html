@@ -1243,6 +1243,9 @@
 	.chainkind { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
 	.chainargerr { font-size: 11.5px; color: var(--err); }
 
+	.keylink { color: var(--ring); text-decoration: none; font-size: 11.5px; font-weight: 500; margin-left: 4px; }
+	.keylink:hover { text-decoration: underline; }
+
 	/* ---- signing in ---- */
 	.signinbox {
 		background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
@@ -1903,14 +1906,17 @@
 			your own OpenAI / Anthropic / Gemini key. Everything — keys, memory, reminders, notes — is stored only on
 			this device.
 		</p>
-		<label>OpenRouter key<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" /></label>
-		<label><span>OpenAI key <span class="hint">(optional — enables model id <code>gpt:gpt-5.2</code> etc.)</span></span>
+		<p class="hint">Copy a key from any of these and paste it anywhere in Jarvis — it recognises which provider it belongs to and files it for you. No field-hunting.</p>
+		<label><span>OpenRouter key <a class="keylink" href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">get one ↗</a></span>
+			<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" />
+		</label>
+		<label><span>OpenAI key <a class="keylink" href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">get one ↗</a> <span class="hint">(enables model id <code>gpt:gpt-5.2</code> etc.)</span></span>
 			<input type="password" id="oaiKeyInput" placeholder="sk-…" autocomplete="off" />
 		</label>
-		<label><span>Anthropic key <span class="hint">(optional — enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
+		<label><span>Anthropic key <a class="keylink" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">get one ↗</a> <span class="hint">(enables model id <code>claude:claude-sonnet-5-…</code>)</span></span>
 			<input type="password" id="anthKeyInput" placeholder="sk-ant-…" autocomplete="off" />
 		</label>
-		<label><span>Gemini key <span class="hint">(optional — enables model id <code>gemini:gemini-2.5-flash</code> etc.)</span></span>
+		<label><span>Gemini key <a class="keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">get one ↗</a> <span class="hint">(enables model id <code>gemini:gemini-2.5-flash</code> etc.)</span></span>
 			<input type="password" id="geminiKeyInput" placeholder="AIza…" autocomplete="off" />
 		</label>
 		<h3>Models <span class="hint">— add more than one and Jarvis can consult them together</span></h3>
@@ -2247,6 +2253,10 @@
 	<div class="obstep" data-obstep="2" hidden>
 		<h2 id="obKeyTitle">Add your key</h2>
 		<p id="obKeyHelp"></p>
+		<div class="row" style="margin-bottom: 4px">
+			<button type="button" class="ghost small" id="obGetKey">Open the key page</button>
+			<span class="hint" style="margin:0">then just paste it — anywhere</span>
+		</div>
 		<label for="obKeyInput">API key</label>
 		<input type="password" id="obKeyInput" placeholder="sk-…" autocomplete="off" />
 		<div class="obhint" id="obKeyHint"></div>
@@ -7462,6 +7472,102 @@ function renderSignIn() {
 	});
 }
 
+/* ===================== the closest thing to signing in ===================
+ * Anthropic and Google cannot be signed into from here (see the note above).
+ * The nearest honest thing is to make a key take one tap and no typing:
+ * a button that opens the exact page it lives on, and then — wherever you
+ * paste it — Jarvis recognises what it is and files it.
+ *
+ * Deliberately NOT done: reading the clipboard. navigator.clipboard.readText()
+ * would let the page look at whatever you had copied, unasked, which is not a
+ * trade worth making for saving one keystroke. This only ever reacts to a
+ * paste YOU performed, and asks before saving.
+ *
+ * Also deliberately not done: reusing CLAUDE_CODE_OAUTH_TOKEN. That token is
+ * issued to Anthropic's own client for Claude Code; presenting it from a
+ * different application is outside what it was issued for, and a subscription
+ * is not a licence to route any app through it.
+ */
+const KEY_SHAPES = [
+	/* Order matters: sk-ant- and sk-or- are both also "sk-", so the specific
+	 * ones have to be tried before the generic OpenAI shape. */
+	{ field: 'anthKey', label: 'Anthropic', model: 'claude:claude-sonnet-5', re: /^sk-ant-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'key', label: 'OpenRouter', model: 'anthropic/claude-sonnet-5', re: /^sk-or-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'oaiKey', label: 'OpenAI', model: 'gpt:gpt-4o', re: /^sk-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'geminiKey', label: 'Gemini', model: 'gemini:gemini-2.5-flash', re: /^AIza[A-Za-z0-9\-_]{30,}$/ },
+];
+/* "an Anthropic key" but "a Gemini key" — three of the four labels start with
+ * a vowel, which is exactly how a hardcoded "an" survives review. */
+function keyArticle(label) { return /^[AEIOU]/.test(label) ? 'an' : 'a'; }
+function identifyKey(text) {
+	const t = String(text || '').trim();
+	if (!t || /\s/.test(t) || t.length > 400) return null;   // a key is one token, never a sentence
+	for (const shape of KEY_SHAPES) if (shape.re.test(t)) return { ...shape, value: t };
+	return null;
+}
+const KEY_PAGES = {
+	anthKey: 'https://console.anthropic.com/settings/keys',
+	oaiKey: 'https://platform.openai.com/api-keys',
+	geminiKey: 'https://aistudio.google.com/apikey',
+	key: 'https://openrouter.ai/keys',
+};
+
+function saveDetectedKey(hit) {
+	store[hit.field] = hit.value;
+	if (hit.field === 'key') store.keySource = '';
+	/* Lead with a model the new key can actually reach. Anything already
+	 * configured that it can reach is left alone — this is filing a key, not
+	 * resetting somebody's setup. */
+	const models = store.models;
+	const reachable = models.some((m) => (hit.field === 'key' ? !/^(gpt|claude|gemini):/.test(m) : m.startsWith(hit.model.split(':')[0] + ':')));
+	if (!reachable) store.models = [hit.model].concat(models.filter((m) => m !== hit.model)).slice(0, 4);
+	syncSettingsInputs();
+	renderSignIn();
+	updateDashStatus();
+	logActivity('Added a ' + hit.label + ' key.');
+	toast(hit.label + ' key saved', 'Stored on this device only. ' + (reachable ? '' : 'Leading with ' + shortModelName(hit.model) + ' now.'));
+}
+
+/* Keeps the Settings inputs honest after a key arrives by another route, so
+ * opening Settings never shows a stale empty field next to a working key. */
+function syncSettingsInputs() {
+	const map = { key: 'keyInput', oaiKey: 'oaiKeyInput', anthKey: 'anthKeyInput', geminiKey: 'geminiKeyInput' };
+	Object.entries(map).forEach(([field, id]) => {
+		const el = document.getElementById(id);
+		if (el) el.value = store[field] || '';
+	});
+}
+
+let pasteAsking = false;
+document.addEventListener('paste', async (e) => {
+	if (pasteAsking) return;
+	const text = (e.clipboardData || window.clipboardData)?.getData('text');
+	const hit = identifyKey(text);
+	if (!hit) return;
+	/* A key pasted into its own field in Settings is already going where it
+	 * belongs — intercepting there would fight the person doing the obvious
+	 * thing. Everywhere else, offer to file it. */
+	const target = e.target;
+	if (target && target.id && ['keyInput', 'oaiKeyInput', 'anthKeyInput', 'geminiKeyInput', 'obKeyInput'].includes(target.id)) return;
+	/* This alone is what keeps the key out of the box — the paste event fires
+	 * before insertion. Deliberately NOT clearing the field as well: someone
+	 * with a half-written message who pastes a key should not lose the message
+	 * on top of everything else. */
+	e.preventDefault();
+	pasteAsking = true;
+	const already = store[hit.field] === hit.value;
+	const ok = already
+		? false
+		: await confirmAction('Save this ' + hit.label + ' key?',
+			'That looks like ' + keyArticle(hit.label) + ' ' + hit.label + ' API key (' + hit.value.slice(0, 8) + '…' + hit.value.slice(-4) + '). It will be stored on this device only, and never sent anywhere except ' + hit.label + '.');
+	pasteAsking = false;
+	if (already) { toast('Already saved', 'That ' + hit.label + ' key is the one Jarvis is already using.'); return; }
+	/* A swallowed paste with no explanation is a mystery, so say what happened. */
+	if (!ok) { toast('Not saved', 'The key was not stored, and was not pasted in either — it looked like a credential, so it did not go into a text box.'); return; }
+	saveDetectedKey(hit);
+	if (document.getElementById('onboardDlg').open) finishOnboarding(false);
+});
+
 /* ============================== onboarding ===============================
  * First run used to open Settings — eight tabs, four key fields, no order and
  * no explanation of why a key is being asked for at all. Three questions
@@ -7518,7 +7624,8 @@ function startOnboarding() {
 		row.addEventListener('click', () => {
 			obPick = p;
 			document.getElementById('obKeyTitle').textContent = 'Your ' + p.label + ' key';
-			document.getElementById('obKeyHelp').textContent = p.note + ' Create one at ' + p.where + '.';
+			document.getElementById('obKeyHelp').textContent = p.note + ' Create one at ' + p.where + ' — the button below opens it.';
+			document.getElementById('obGetKey').dataset.page = KEY_PAGES[p.field] || '';
 			const input = document.getElementById('obKeyInput');
 			input.value = store[p.field] || '';
 			const hint = document.getElementById('obKeyHint');
@@ -7576,6 +7683,10 @@ function finishOnboarding(skipped) {
 document.addEventListener('click', (e) => {
 	if (e.target.closest('[data-signin-btn]')) startOpenRouterLogin();
 	else if (e.target.closest('[data-signout-btn]')) signOutOpenRouter();
+});
+document.getElementById('obGetKey').addEventListener('click', (e) => {
+	const page = e.currentTarget.dataset.page;
+	if (page) window.open(page, '_blank', 'noopener');
 });
 document.getElementById('obKeyInput').addEventListener('input', obCheckKey);
 document.getElementById('obBack1').addEventListener('click', () => obShow(1));

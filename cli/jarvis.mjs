@@ -14,7 +14,7 @@ import path from 'node:path';
 import os from 'node:os';
 import readline from 'node:readline';
 import { spawn } from 'node:child_process';
-import { loadConfig, saveConfig, CONFIG_PATH, SECRET_KEYS, redact } from './lib/config.mjs';
+import { loadConfig, saveConfig, CONFIG_PATH, SECRET_KEYS, redact, envKeys, keyOrigins, identifyKey, labelFor, keyArticle } from './lib/config.mjs';
 import * as V from './lib/vault.mjs';
 import * as P from './lib/provider.mjs';
 import * as G from './lib/graph.mjs';
@@ -60,6 +60,11 @@ ${bold('jarvis')} — ${dim('a linked markdown memory vault, and the assistant t
   ${bold('jarvis chain list')}
   ${bold('jarvis chain run')} <name>
   ${bold('jarvis chain add')} <name> <step> [step…]  a step is a note: prompt
+
+  ${bold('jarvis key')}                             which keys are set, and where from
+  ${bold('jarvis key import')}                      store the ones already in your environment
+  ${bold('jarvis key add')} [KEY]                   file a key by its shape; reads stdin if omitted
+  ${bold('jarvis key rm')} <provider>               forget one
 
   ${bold('jarvis usage')}                           tokens and cost so far
   ${bold('jarvis config')} [key [value]]            show or set configuration
@@ -278,6 +283,148 @@ async function cmdInit(cfg) {
 	console.log('\n' + ok('✓') + ' Vault ready at ' + bold(cfg.vault));
 	console.log(ok('✓') + ' Config written to ' + saved + dim(' (0600)'));
 	console.log('\nTry: ' + accent('jarvis "remember that I prefer short answers"') + '\n');
+}
+
+/* ---------------------------------- keys ---------------------------------- */
+
+/* Anthropic and Google cannot be signed into from a third-party client (see
+ * `jarvis login` and the note in CLAUDE.md). The nearest honest thing on a
+ * terminal is to stop asking for a key that is already on the machine: nearly
+ * everybody who has one has it exported in a shell profile already.
+ *
+ * loadConfig() reads those variables for the current process and stops there,
+ * on purpose — an environment key is a per-shell secret and turning it into a
+ * stored one behind somebody's back would be wrong. `jarvis key import` is
+ * where that turns into a decision the person makes out loud. */
+
+function keyProviderFor(field) {
+	return PROVIDERS.find((p) => p.field === field);
+}
+
+/* A `gpt:` / `claude:` / `gemini:` model id goes straight to that vendor with
+ * that vendor's key; anything else goes through OpenRouter, or through baseUrl
+ * if one is set for a local model. */
+function modelReachable(cfg) {
+	const m = String(cfg.model || '');
+	if (m.startsWith('gpt:')) return !!cfg.oaiKey;
+	if (m.startsWith('claude:')) return !!cfg.anthKey;
+	if (m.startsWith('gemini:')) return !!cfg.geminiKey;
+	return !!cfg.key || !!cfg.baseUrl;
+}
+
+/* Filing a key the lead model cannot use is a setup that fails on the first
+ * question. Checked ONCE against every key now stored, not once per key —
+ * doing it per key made importing two of them repoint at whichever happened to
+ * come last, walking away from a lead model the first one already satisfied. */
+function ensureReachableModel(cfg, preferredField) {
+	if (modelReachable(cfg)) return null;
+	const prov = keyProviderFor(preferredField);
+	if (!prov) return null;
+	cfg.model = prov.model;
+	return prov.model;
+}
+
+function printKeyTable(cfg) {
+	console.log('');
+	keyOrigins(cfg).forEach((k) => {
+		const mark = k.value ? ok('●') : dim('○');
+		console.log('  ' + mark + ' ' + bold(labelFor(k.field).padEnd(11)) + redact(k.value).padEnd(14) + dim(k.origin));
+	});
+	console.log('');
+}
+
+async function cmdKey(cfg, sub, rest) {
+	if (!sub || sub === 'list' || sub === 'show') {
+		printKeyTable(cfg);
+		const inEnv = envKeys().filter((e) => !cfg[e.field] || cfg[e.field] === e.value);
+		if (inEnv.length) console.log(dim('  ' + inEnv.length + ' in the environment. `jarvis key import` stores them here so they work outside this shell.\n'));
+		return;
+	}
+
+	if (sub === 'import') {
+		const found = envKeys();
+		if (!found.length) {
+			console.log('\n' + dim('Nothing to import — none of these are set in this shell:'));
+			console.log(dim('  ANTHROPIC_API_KEY  OPENAI_API_KEY  OPENROUTER_API_KEY  GEMINI_API_KEY') + '\n');
+			return;
+		}
+		console.log('\n' + bold('Found on this machine:') + '\n');
+		found.forEach((f, i) => {
+			const shape = identifyKey(f.value);
+			/* The mistake that actually happens is a key exported under the wrong
+			 * variable name. Say so — but import it anyway if they want it, since
+			 * a shape is a guess and the person knows what they copied. */
+			const warn = !shape ? bad('  — does not look like an API key') : shape.field !== f.field ? bad('  — looks like ' + keyArticle(shape.label) + ' ' + shape.label + ' key, not ' + labelFor(f.field)) : '';
+			const already = cfg[f.field] && cfg[f.field] !== f.value ? dim('  (replaces the stored one)') : '';
+			console.log('  ' + (i + 1) + ') ' + bold(labelFor(f.field).padEnd(11)) + redact(f.value).padEnd(14) + dim('$' + f.env) + warn + already);
+		});
+		console.log('');
+
+		const all = hasFlag('all') || hasFlag('yes') || !process.stdin.isTTY;
+		let chosen = found;
+		if (!all) {
+			const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+			const answer = await ask(rl, 'Store which? [all] ', 'all');
+			rl.close();
+			if (/^(n|no|none|q|quit)$/i.test(answer)) { console.log(dim('Nothing stored.')); return; }
+			if (!/^(a|all)$/i.test(answer)) {
+				const want = new Set(answer.split(/[\s,]+/).filter(Boolean).map(Number));
+				chosen = found.filter((_, i) => want.has(i + 1));
+			}
+		}
+		if (!chosen.length) { console.log(dim('Nothing stored.')); return; }
+
+		chosen.forEach((f) => { cfg[f.field] = f.value; });
+		const moved = ensureReachableModel(cfg, chosen[0].field);
+		const saved = saveConfig(cfg, { persistEnvKeys: chosen.map((f) => f.field) });
+		chosen.forEach((f) => console.log(ok('✓') + ' ' + labelFor(f.field) + ' key stored (' + redact(f.value) + ')'));
+		console.log(dim('  Written to ' + saved + ' (0600) — they work in any shell now, not only this one.'));
+		if (moved) console.log(dim('  Lead model is now ' + moved + ', which one of these can reach.'));
+		return;
+	}
+
+	if (sub === 'add' || sub === 'set') {
+		/* The terminal counterpart of the web app's paste-anywhere: the shape
+		 * says which provider it belongs to, so there is no field to pick.
+		 * Reads stdin when given nothing, which is what makes `pbpaste |
+		 * jarvis key add` and `jarvis key add < key.txt` work — and keeps the
+		 * key out of shell history, which an argument would not. */
+		let raw = rest.filter((a) => !a.startsWith('-')).join(' ').trim();
+		if (!raw && !process.stdin.isTTY) raw = fs.readFileSync(0, 'utf8').trim();
+		if (!raw) {
+			const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+			raw = await ask(rl, 'Paste the key: ', '');
+			rl.close();
+		}
+		const hit = identifyKey(raw);
+		if (!hit) die('That does not look like an API key. Expected one starting sk-ant-, sk-or-, sk- or AIza.');
+		cfg[hit.field] = hit.value;
+		if (hit.field === 'key') cfg.keySource = '';
+		const m = ensureReachableModel(cfg, hit.field);
+		const saved = saveConfig(cfg, { persistEnvKeys: [hit.field] });
+		console.log(ok('✓') + ' Recognised ' + keyArticle(hit.label) + ' ' + bold(hit.label) + ' key and stored it (' + redact(hit.value) + ')');
+		console.log(dim('  ' + saved + ' (0600)'));
+		if (m) console.log(dim('  Lead model is now ' + m + ', which it can reach.'));
+		return;
+	}
+
+	if (sub === 'rm' || sub === 'remove' || sub === 'forget') {
+		const which = String(rest[0] || '').toLowerCase();
+		const target = SECRET_KEYS.find((f) => f.toLowerCase() === which || labelFor(f).toLowerCase() === which);
+		if (!target) die('Which one? ' + SECRET_KEYS.map((f) => labelFor(f).toLowerCase()).join(', '));
+		if (!cfg[target]) { console.log(dim('No ' + labelFor(target) + ' key stored.')); return; }
+		cfg[target] = '';
+		if (target === 'key') cfg.keySource = '';
+		saveConfig(cfg);
+		console.log(ok('✓') + ' ' + labelFor(target) + ' key forgotten on this machine.');
+		/* A key still exported in the shell will come straight back on the next
+		 * command, and silently — say so rather than letting it look broken. */
+		const stillEnv = envKeys().find((e) => e.field === target);
+		if (stillEnv) console.log(dim('  Note: $' + stillEnv.env + ' is still set in this shell, so it will be picked up again. Unset it too.'));
+		return;
+	}
+
+	die('Unknown: jarvis key ' + sub + '. Try: list, import, add, rm');
 }
 
 /* -------------------------------- memory --------------------------------- */
@@ -588,6 +735,7 @@ async function main() {
 	if (cmd === 'mem' || cmd === 'memory') { args.shift(); const sub = args.shift(); return cmdMem(cfg, sub, args); }
 	if (cmd === 'graph') { args.shift(); return cmdGraph(cfg, args); }
 	if (cmd === 'chain' || cmd === 'chains') { args.shift(); const sub = args.shift(); return cmdChain(cfg, sub, args); }
+	if (cmd === 'key' || cmd === 'keys') { args.shift(); const sub = args.shift(); return cmdKey(cfg, sub, args); }
 	if (cmd === 'usage') return cmdUsage(cfg);
 	if (cmd === 'config') { args.shift(); return cmdConfig(cfg, args); }
 	if (cmd === 'export') { args.shift(); return cmdExport(cfg, args); }

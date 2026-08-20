@@ -36,6 +36,11 @@ sides have to move together:
   providers, the `stream_options` self-healing retry, and the price table.
 - **The vault** (`cli/lib/vault.mjs` vs the vault section in the page). Note
   shape, `[[wikilink]]` parsing, graph building, and the force layout.
+- **The key shapes** (`KEY_SHAPES` / `identifyKey` / `keyArticle`, in
+  `cli/lib/config.mjs` and in the page's paste-detection block). Four regexes
+  whose *order* is load-bearing: `sk-ant-` and `sk-or-` also match the generic
+  `sk-`, so the specific ones must be tried first. `keys.mjs` in the scratchpad
+  asserts the two copies are byte-identical by extracting them from the HTML.
 
 When you change one, change the other, and say so in the commit. The tests
 that would catch a drift are `cli.mjs` and `vault.js` in the scratchpad.
@@ -69,6 +74,29 @@ third-party client here:
 - **OpenRouter.** PKCE, no client id, no client secret. A single-file page can
   run the whole flow. It brokers Claude, Gemini and GPT, so one sign-in reaches
   all three anyway — which is why it is the only one implemented.
+
+The closest thing for the other two is a key that costs one paste, and two
+things were deliberately **not** done to get there:
+
+- **Never `navigator.clipboard.readText()`.** It would let the page look at
+  whatever you had copied, unasked, to save one keystroke. The paste handler
+  only ever reacts to a paste the person performed, and asks before saving.
+- **Never reuse `CLAUDE_CODE_OAUTH_TOKEN`.** That token is issued to
+  Anthropic's own client for Claude Code; presenting it from a different
+  application is outside what it was issued for, and a subscription is not a
+  licence to route another app through it.
+
+Two smaller rules the paste handler rests on: `preventDefault()` is what keeps
+the key out of the box, so the field is **not** cleared as well (that would
+destroy a half-written message on top of everything else); and a declined save
+says so, because a paste that vanishes with no explanation is a mystery.
+
+On the CLI side, `saveConfig` deliberately refuses to write back a key that
+came from the environment — turning a per-shell secret into a stored one behind
+someone's back is wrong. `jarvis key import` is the *only* caller allowed to
+opt out (via `persistEnvKeys`), because storing it is the entire point of that
+command and the person typed it. Any new command that needs the same exemption
+almost certainly does not.
 
 PKCE fails *silently until the exchange*: a wrong `code_challenge` produces a
 perfectly normal redirect and only dies at a server this environment cannot

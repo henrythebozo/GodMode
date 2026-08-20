@@ -106,6 +106,15 @@ the button next to "Henry OS" in the sidebar, or go straight to
   key, stored only on your device. Out of the box it runs Team mode with Claude Sonnet 5 leading and
   Opus 5 consulting; switch to a single model in Settings → Account to halve
   the per-question cost.
+- **And where a key is the only option, it takes one paste and no typing.**
+  Each provider has a *get one ↗* link straight to the page that key lives on,
+  and once you have copied it you can paste it **anywhere in Jarvis** — the
+  composer, a note, wherever the cursor happens to be. Jarvis recognises which
+  provider it belongs to from its shape, asks once, and files it; nothing lands
+  in the box it would have been sent from, and a half-written message survives
+  the interception. It never reads your clipboard — only a paste you performed.
+  In the terminal the same idea is `pbpaste | jarvis key add`, and
+  `jarvis key import` picks up whatever is already exported in your shell.
 
 ### 🧠 Memory is a graph, not a list
 

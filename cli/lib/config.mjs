@@ -46,17 +46,75 @@ export function loadConfig() {
 	return cfg;
 }
 
-export function saveConfig(cfg) {
+/* `persistEnvKeys` is the deliberate opt-out from the rule below, and the only
+ * caller is `jarvis key import` — where writing an environment key to disk is
+ * the entire point of the command and the person typing it said so out loud. */
+export function saveConfig(cfg, opts) {
+	const keep = new Set((opts && opts.persistEnvKeys) || []);
 	fs.mkdirSync(HOME, { recursive: true, mode: 0o700 });
 	const onDisk = { ...cfg };
 	/* A key that only ever came from the environment is not written back —
 	 * saving it would silently turn a per-shell secret into a stored one. */
 	for (const [env, key] of Object.entries(ENV_KEYS)) {
+		if (keep.has(key)) continue;
 		if (process.env[env] && onDisk[key] === process.env[env]) delete onDisk[key];
 	}
 	fs.writeFileSync(CONFIG_PATH, JSON.stringify(onDisk, null, 2) + '\n', { mode: 0o600 });
 	try { fs.chmodSync(CONFIG_PATH, 0o600); } catch {}
 	return CONFIG_PATH;
+}
+
+/* What is in the environment right now, whether or not the config file already
+ * has something for the same provider. `jarvis key import` needs the raw view:
+ * loadConfig() hides an environment key behind a stored one, and a command
+ * whose job is "show me what this machine already has" must not inherit that. */
+export function envKeys() {
+	const found = [];
+	for (const [env, field] of Object.entries(ENV_KEYS)) {
+		const value = process.env[env];
+		if (value && !found.some((f) => f.field === field)) found.push({ env, field, value });
+	}
+	return found;
+}
+
+/* Where each key actually came from, which is the question anyone debugging
+ * "why is it still using the old key" is really asking. */
+export function keyOrigins(cfg) {
+	let file = {};
+	try { file = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')); } catch {}
+	return SECRET_KEYS.map((field) => {
+		const env = Object.entries(ENV_KEYS).find(([e, f]) => f === field && process.env[e] && process.env[e] === cfg[field]);
+		const value = cfg[field] || '';
+		let origin = 'not set';
+		if (value && env) origin = '$' + env[0];
+		else if (value && file[field] === value) origin = CONFIG_PATH;
+		else if (value) origin = 'set';
+		return { field, value, origin, alsoOnDisk: !!file[field] };
+	});
+}
+
+/* The same four shapes the web app matches a pasted key against — see the
+ * paste-detection block in docs/jarvis.html. Deliberate duplicate: the page
+ * has no imports, so a shared module is not available to it. Change both.
+ * Order matters — sk-ant- and sk-or- are also "sk-". */
+export const KEY_SHAPES = [
+	{ field: 'anthKey', label: 'Anthropic', model: 'claude:claude-sonnet-5', re: /^sk-ant-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'key', label: 'OpenRouter', model: 'anthropic/claude-sonnet-5', re: /^sk-or-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'oaiKey', label: 'OpenAI', model: 'gpt:gpt-4o', re: /^sk-[A-Za-z0-9\-_]{16,}$/ },
+	{ field: 'geminiKey', label: 'Gemini', model: 'gemini:gemini-2.5-flash', re: /^AIza[A-Za-z0-9\-_]{30,}$/ },
+];
+export function identifyKey(text) {
+	const t = String(text || '').trim();
+	if (!t || /\s/.test(t) || t.length > 400) return null;   // a key is one token, never a sentence
+	for (const shape of KEY_SHAPES) if (shape.re.test(t)) return { ...shape, value: t };
+	return null;
+}
+/* "an Anthropic key" but "a Gemini key" — three of the four start with a
+ * vowel, which is exactly how a hardcoded "an" survives review. */
+export function keyArticle(label) { return /^[AEIOU]/.test(label) ? 'an' : 'a'; }
+export function labelFor(field) {
+	const s = KEY_SHAPES.find((k) => k.field === field);
+	return s ? s.label : field;
 }
 
 export const SECRET_KEYS = ['key', 'oaiKey', 'anthKey', 'geminiKey'];
