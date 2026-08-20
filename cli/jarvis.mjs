@@ -895,4 +895,14 @@ async function main() {
 	await turn(cfg, question, { model: model === true ? null : model, noMemory });
 }
 
-main().catch((err) => die(err && err.stack ? err.stack : String(err)));
+/* A wrong URL, an unreachable host, a repository that does not exist: all
+ * ordinary things to get wrong, none of them a crash. A stack trace through
+ * node:internal for one of those buries the single line that matters under
+ * eight that do not, and tells the reader the tool broke rather than that they
+ * made a typo. The message is the whole answer; --debug is there for when it
+ * genuinely is not. */
+main().catch((err) => {
+	const msg = err && err.message ? err.message : String(err);
+	if (hasFlag('debug') && err && err.stack) { console.error(bad('✗ ') + err.stack); process.exit(1); }
+	die(msg + dim('\n\n  (`--debug` for the stack trace)'));
+});

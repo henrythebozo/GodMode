@@ -273,7 +273,7 @@ export function pull(vault) {
 	const fetched = git(vault, ['fetch', 'origin', branch]);
 	if (fetched.code !== 0) {
 		if (/couldn't find remote ref|Couldn't find remote ref/.test(fetched.err)) return { empty: true, changed: [], conflicts: [] };
-		throw new Error(fetched.err || 'could not reach the remote');
+		throw new Error(explainGit(fetched.err || 'could not reach the remote', remoteUrl(vault)));
 	}
 	const before = git(vault, ['rev-parse', 'HEAD']).out;
 	const merged = git(vault, ['merge', '--no-edit', 'origin/' + branch]);
@@ -295,9 +295,46 @@ export function pull(vault) {
 	return { empty: false, changed, conflicts };
 }
 
+/* git's own words, turned into the thing that is actually wrong.
+ *
+ * The one worth spelling out is "Repository not found". GitHub returns that
+ * for a repository that does not exist AND for a private one you are not
+ * signed in to see — deliberately, so that a 404 does not confirm a private
+ * repo exists. Git repeats it verbatim, and the reader is left guessing which
+ * of two very different problems they have. Name both. */
+export function explainGit(message, remote) {
+	const m = String(message || '');
+	const url = remote || 'the remote';
+	if (/Repository not found|repository .* not found/i.test(m)) {
+		return 'GitHub says that repository does not exist:\n  ' + url
+			+ '\n\nThat means one of three things, and GitHub deliberately will not say which:\n'
+			+ '  - the URL has a typo (a placeholder left in, or the wrong username)\n'
+			+ '  - the repository has not been created yet — github.com/new\n'
+			+ '  - it is private and git is not signed in as someone who can see it';
+	}
+	if (/Permission denied \(publickey\)|Could not read from remote repository/i.test(m)) {
+		return 'GitHub refused the SSH key on this machine.\n\n'
+			+ '  Either set one up — docs.github.com/en/authentication/connecting-to-github-with-ssh\n'
+			+ '  or switch to the HTTPS URL, which just asks you to sign in:\n'
+			+ '    jarvis vault init https://github.com/you/jarvis-vault.git';
+	}
+	if (/could not read Username|terminal prompts disabled|Authentication failed/i.test(m)) {
+		return 'GitHub would not accept those credentials.\n\n'
+			+ '  A password will not work — GitHub wants a personal access token, or the\n'
+			+ '  git credential helper. `gh auth login` sets it up in one step if you have it.';
+	}
+	if (/Could not resolve host|unable to access|Connection refused|Network is unreachable|timed out/i.test(m)) {
+		return 'Could not reach ' + url + '. Check the connection and try again — nothing was lost.';
+	}
+	if (/non-fast-forward|fetch first|rejected/i.test(m)) {
+		return 'The remote has commits this machine has not seen.\n\n  Run `jarvis vault pull` first, then push.';
+	}
+	return m;
+}
+
 export function push(vault) {
 	const branch = branchName(vault);
 	const r = git(vault, ['push', '-u', 'origin', branch]);
-	if (r.code !== 0) throw new Error(r.err || r.out || 'git push failed');
+	if (r.code !== 0) throw new Error(explainGit(r.err || r.out || 'git push failed', remoteUrl(vault)));
 	return true;
 }
