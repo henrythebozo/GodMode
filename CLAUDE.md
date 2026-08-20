@@ -161,6 +161,16 @@ that is half dead. This happened for real: a `renderVaultFolder()` call placed
 above the `const FS_OK` it reads hit the temporal dead zone. Assert that
 evaluation reached the end (read a late const) before asserting anything else.
 
+**`hidden` loses to any author rule that sets `display`.** It is `display:none`
+from the UA stylesheet, so `.composer button { display: grid }` beat it and the
+stop button sat in the composer permanently — while `el.hidden` was `true` and
+every test that read the property passed. Three elements were visible this way
+and none of the ~600 assertions caught it; a screenshot did. There is now a
+global `[hidden] { display: none !important }` and `hiddencheck.js`, which
+opens every dialog and asserts that nothing carrying the attribute has a
+computed display other than none. Prefer that check to adding `.hidden`
+assertions one at a time.
+
 Two harness bugs to avoid repeating: setting `animation-delay` does not re-seek
 a running animation in Chromium (`a.pause(); a.currentTime = …` does), and
 `getAnimations()` includes CSS *transitions*, so freezing everything at

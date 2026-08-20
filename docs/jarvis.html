@@ -154,6 +154,12 @@
 		--intro-halo-awake: 0 0 10px 1px #fff, 0 0 42px 8px rgba(255, 255, 255, 0.4), 0 0 90px 26px rgba(255, 255, 255, 0.15), inset 0 0 34px rgba(0, 0, 0, 0.65);
 	}
 	* { box-sizing: border-box; margin: 0; }
+	/* `hidden` is display:none from the UA stylesheet, which loses on
+	   specificity to any author rule that sets display — so a `.composer button
+	   { display: grid }` left the stop button on screen permanently while every
+	   `el.hidden` check in the code, and every test that read one, said it was
+	   gone. Three elements were visible this way. State the rule once, loudly. */
+	[hidden] { display: none !important; }
 	html, body { height: var(--app-h, 100dvh); }
 	body { transition: height 0.2s ease; }
 	body {
@@ -1116,6 +1122,24 @@
 	   glance whether the next click starts something or ends it. */
 	#stopBtn { background: var(--err); color: #fff; }
 
+	/* Follow-ups. The hardest part of talking to a voice assistant is knowing
+	   what to say next, and a blank orb answers that question with nothing.
+	   Same rule as #turnbar: absent most of the time, and reserving no space
+	   when it is — the orb must not jump every time a reply lands. */
+	#nextbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; max-width: 560px; }
+	#nextbar:empty { display: none; }
+	.nextchip {
+		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+		border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 12.5px; font-weight: 500;
+		cursor: pointer; text-align: left; max-width: 100%;
+		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+		animation: rise 0.22s ease-out both;
+		transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+	}
+	.nextchip:hover { background: var(--panel-3); border-color: var(--ring); }
+	.nextchip:active { transform: scale(0.97); }
+	@media (max-width: 640px) { .nextchip { font-size: 12px; padding: 6px 11px; } }
+
 	/* the row under the caption: a retry offer and the running cost, both of
 	   which are absent most of the time and must not reserve space when they are */
 	#turnbar { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
@@ -1688,6 +1712,7 @@
 								<div id="stateLabel" role="status" aria-live="polite">Standby</div>
 								<div id="toolcap" aria-hidden="true"><span class="tcdot"></span><span class="tctext"></span></div>
 								<div id="caption" class="dim" role="status" aria-live="polite" aria-atomic="true">Tap the mic, or type below, to talk to Jarvis.</div>
+								<div id="nextbar" role="group" aria-label="Follow-up suggestions"></div>
 								<div id="turnbar">
 									<button type="button" id="retryBtn" class="ghost small" hidden>Retry</button>
 									<button type="button" id="usageChip" class="usagechip" hidden title="Tokens and cost"></button>
@@ -4142,6 +4167,63 @@ function toolGetTime() {
 	return { ok: true, message: 'It is ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' on ' + now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + '.' };
 }
 
+/* ---------------------------- follow-up chips ----------------------------
+ * Where they come from, in order: the model, which knows what it just said and
+ * volunteers them for a handful of output tokens and no extra request; and
+ * failing that the vault graph, which can answer "what is next to this?"
+ * without asking anybody. The graph fallback is the one nobody else can do —
+ * it is the reason for keeping memory as links in the first place.
+ */
+function clearFollowups() {
+	const bar = document.getElementById('nextbar');
+	if (bar) bar.innerHTML = '';
+}
+function renderFollowups(list) {
+	const bar = document.getElementById('nextbar');
+	if (!bar) return;
+	bar.innerHTML = '';
+	(list || []).slice(0, 3).forEach((text) => {
+		const chip = document.createElement('button');
+		chip.type = 'button';
+		chip.className = 'nextchip';
+		chip.textContent = text;
+		chip.title = text;
+		chip.addEventListener('click', () => {
+			clearFollowups();
+			/* Sent as though it had been typed, so it lands in the thread and
+			 * reads back as something you asked — not as a hidden instruction. */
+			if (busy) return;
+			setBusy(true);
+			turnAbort = new AbortController();
+			const hist = store.history;
+			hist.push({ role: 'user', content: text });
+			store.history = hist.slice(-THREAD_CAP);
+			if (currentView === 'chat') renderChatLog();
+			submitCommand(undefined, 1);
+		});
+		bar.appendChild(chip);
+	});
+}
+
+/* One hop out from whatever the answer actually leaned on. A note already
+ * named in the reply is dropped — offering "Tell me about Sam" right after a
+ * paragraph about Sam is noise, not a suggestion. */
+function graphFollowups(question, answer) {
+	const notes = store.vault;
+	if (notes.length < 2) return [];
+	const said = (question + ' ' + answer).toLowerCase();
+	const used = pickNotes(question, 4);
+	const out = [];
+	for (const note of used) {
+		for (const title of parseNoteLinks(note.body)) {
+			if (said.includes(title.toLowerCase())) continue;
+			if (out.some((o) => o.title.toLowerCase() === title.toLowerCase())) continue;
+			out.push({ title, from: note.title });
+		}
+	}
+	return out.slice(0, 2).map((o) => 'What about ' + o.title + '?');
+}
+
 function addLinkChip(url, label) {
 	const chip = document.createElement('button');
 	chip.className = 'chip';
@@ -4573,6 +4655,9 @@ async function runTool(action) {
 	}
 }
 
+/* Both fenced protocols come out here rather than in two passes, so every
+ * caller is covered by construction — including the stop path, where a reply
+ * cut off mid-block must not leave half a JSON array on screen as prose. */
 function stripActions(text) {
 	const re = /```jarvis-action\s*\n?([\s\S]*?)```/g;
 	const actions = [];
@@ -4580,7 +4665,31 @@ function stripActions(text) {
 	while ((m = re.exec(text))) {
 		try { actions.push(JSON.parse(m[1])); } catch {}
 	}
-	return { actions, cleaned: text.replace(re, '').trim() };
+	const nextRe = /```jarvis-next\s*\n?([\s\S]*?)```/g;
+	const followups = [];
+	while ((m = nextRe.exec(text))) {
+		try {
+			const list = JSON.parse(m[1]);
+			if (Array.isArray(list)) list.forEach((t) => { if (typeof t === 'string' && t.trim()) followups.push(t.trim()); });
+		} catch {}
+	}
+	/* An unterminated fence is a reply that was stopped or ran out of tokens
+	 * mid-block. Cut from the fence to the end rather than showing the raw
+	 * opening as text. */
+	const cleaned = text.replace(re, '').replace(nextRe, '').replace(/```jarvis-(action|next)[\s\S]*$/, '').trim();
+	return { actions, followups: dedupeFollowups(followups), cleaned };
+}
+function dedupeFollowups(list) {
+	const seen = new Set(), out = [];
+	for (const raw of list) {
+		const t = raw.replace(/\s+/g, ' ').trim().slice(0, 70);
+		const k = t.toLowerCase();
+		if (!t || seen.has(k)) continue;
+		seen.add(k);
+		out.push(t);
+		if (out.length === 3) break;   // three is a menu; six is a wall
+	}
+	return out;
 }
 
 /* re-arm reminders that were still pending from a previous visit */
@@ -4861,6 +4970,15 @@ function buildSystemPrompt(question) {
 		'For tools that just take an action for the user (remember, forget, set_reminder, cancel_reminder, add_note, delete_note, open_link, web_search, set_device, run_scene) write a short natural spoken sentence together with the JSON block in the same message — the block is invisible to the user, so the sentence must stand alone as your complete reply.',
 		'For tools that fetch information — or that take a while and might fail — you need to know the outcome of before answering (get_time, get_weather, get_status, list_reminders, list_notes, recall_memory, list_devices, get_device, list_transcripts, get_transcript, generate_image, generate_video, list_calendar_events, get_business_doc) output ONLY the JSON block with no other text; you will be given the result and can then write your real spoken reply.',
 		'',
+		/* Chips, not conversation: they are read at a glance and tapped, so
+		 * they have to be short and phrased the way the person would say them,
+		 * not the way an assistant would offer them. */
+		'After your spoken reply — never instead of it, and never when you are only calling a fetching tool — you may add up to three short follow-ups the user might want to say next:',
+		'```jarvis-next',
+		'["Book the pottery class", "What else does she like?"]',
+		'```',
+		'Write them in the user\'s voice, under six words each, and only when they are genuinely useful next steps. Offer none rather than padding. This block is invisible and is never spoken.',
+		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
 		'',
@@ -5126,6 +5244,7 @@ function retryLast() {
 	store.history = hist.slice(0, i + 1);
 	if (currentView === 'chat') renderChatLog();
 	setBusy(true);
+	clearFollowups();
 	turnAbort = new AbortController();
 	submitCommand(undefined, 1);
 }
@@ -5137,6 +5256,7 @@ async function submitCommand(text, depth) {
 		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); startOnboarding(); return; }
 		if (busy) return;
 		setBusy(true);
+		clearFollowups();
 		turnAbort = new AbortController();
 		const hist = store.history;
 		hist.push({ role: 'user', content: text });
@@ -5217,7 +5337,7 @@ async function submitCommand(text, depth) {
 	store.history = hist.slice(-THREAD_CAP);
 	if (currentView === 'chat') renderChatLog();
 
-	const { actions, cleaned } = stripActions(raw);
+	const { actions, followups, cleaned } = stripActions(raw);
 	if (actions.length) {
 		const results = [];
 		for (const action of actions) {
@@ -5244,6 +5364,10 @@ async function submitCommand(text, depth) {
 	document.getElementById('retryBtn').hidden = false; // a finished answer is still worth a second try
 	const finalText = cleaned || (actions.length ? actions.map((a) => a.tool).join(', ') + ' done.' : raw);
 	setCaption(finalText || '…');
+	/* The model's own suggestions win; the graph only fills a gap, so a model
+	 * that ignores the convention still gets chips and one that uses it is
+	 * never second-guessed. */
+	renderFollowups(followups.length ? followups : graphFollowups(asked, finalText));
 	renderView(currentView);
 	speak(finalText, () => {
 		if (store.autoListen && store.mode !== 'text' && SR) startListening({ wake: store.mode === 'wake' });
