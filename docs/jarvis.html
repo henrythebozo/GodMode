@@ -1243,6 +1243,15 @@
 	.chainkind { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
 	.chainargerr { font-size: 11.5px; color: var(--err); }
 
+	/* ---- signing in ---- */
+	.signinbox {
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
+		padding: 16px; margin: 12px 0 6px;
+		display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+	}
+	.signinbox .hint { flex-basis: 100%; margin: 0; }
+	.signinbox button[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
+
 	/* ---- onboarding ---- */
 	#onboardDlg { max-width: 440px; }
 	.obhint { font-size: 12px; color: var(--dim); margin-top: 8px; min-height: 16px; }
@@ -1874,10 +1883,25 @@
 
 	<div class="setbody">
 	<div class="settab on" id="settab-account">
+		<h3>Sign in</h3>
+		<div class="signinbox">
+			<button type="button" class="primary" data-signin-btn>Sign in with OpenRouter</button>
+			<button type="button" class="ghost small" data-signout-btn hidden>Sign out</button>
+			<p class="hint" data-signin-state></p>
+		</div>
+		<p class="hint">
+			OpenRouter is the only one of the four that a page with no server can sign you into: it does OAuth with no
+			client secret to hide. <b>Anthropic</b> has no third-party sign-in at all — its OAuth is reserved for
+			Anthropic's own apps, and a claude.ai login grants no API access — and <b>Google</b>'s needs a Cloud project
+            and a consent screen, which is more work than pasting a key. Since OpenRouter brokers Claude, Gemini and GPT,
+            signing in there reaches all three anyway.
+		</p>
+
+		<h3>Or bring your own key</h3>
 		<p>
-			Bring your own API key — either an
-			<a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a> key (300+ models) or your
-			own OpenAI / Anthropic key. Everything — keys, memory, reminders, notes — is stored only on this device.
+			An <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter</a> key (300+ models) or
+			your own OpenAI / Anthropic / Gemini key. Everything — keys, memory, reminders, notes — is stored only on
+			this device.
 		</p>
 		<label>OpenRouter key<input type="password" id="keyInput" placeholder="sk-or-v1-…" autocomplete="off" /></label>
 		<label><span>OpenAI key <span class="hint">(optional — enables model id <code>gpt:gpt-5.2</code> etc.)</span></span>
@@ -2211,8 +2235,13 @@
 <dialog id="onboardDlg">
 	<div class="obstep" data-obstep="1">
 		<h2>Welcome.</h2>
-		<p>Jarvis talks to a model provider straight from this browser. Your key is stored on this device and never passes through a server of ours — there isn't one.</p>
-		<div class="eyebrow" style="margin: 20px 0 8px">Pick a provider</div>
+		<p>Jarvis talks to a model provider straight from this browser. Whatever it uses to do that is stored on this device and never passes through a server of ours — there isn't one.</p>
+		<div class="signinbox">
+			<button type="button" class="primary" data-signin-btn>Sign in with OpenRouter</button>
+			<button type="button" class="ghost small" data-signout-btn hidden>Sign out</button>
+			<p class="hint" data-signin-state></p>
+		</div>
+		<div class="eyebrow" style="margin: 20px 0 8px">Or bring your own key</div>
 		<div class="viewlist" id="obProviders"></div>
 	</div>
 	<div class="obstep" data-obstep="2" hidden>
@@ -2476,6 +2505,11 @@ const store = {
 	set usage(v) { localStorage.setItem('jarvis.usage', JSON.stringify(v)); },
 	get chains() { try { return JSON.parse(localStorage.getItem('jarvis.chains')) || []; } catch { return []; } },
 	set chains(v) { localStorage.setItem('jarvis.chains', JSON.stringify(v)); },
+	/* 'openrouter-oauth' when the key came from signing in, empty when it was
+	 * pasted. The difference decides whether the UI offers Sign in or Sign out,
+	 * and whether signing out is safe to describe as leaving the account alone. */
+	get keySource() { return localStorage.getItem('jarvis.keySource') || ''; },
+	set keySource(v) { localStorage.setItem('jarvis.keySource', v || ''); },
 	get onboarded() { return localStorage.getItem('jarvis.onboarded') === '1'; },
 	set onboarded(v) { localStorage.setItem('jarvis.onboarded', v ? '1' : '0'); },
 	get transcripts() { try { return JSON.parse(localStorage.getItem('jarvis.transcripts')) || []; } catch { return []; } },
@@ -3500,6 +3534,9 @@ document.getElementById('resetJarvisBtn').addEventListener('click', async () => 
 });
 
 document.getElementById('settingsSave').addEventListener('click', () => {
+	/* Typing a different key by hand means it is no longer the one OpenRouter
+	 * issued, so the Sign out affordance must stop claiming otherwise. */
+	if (document.getElementById('keyInput').value.trim() !== store.key) store.keySource = '';
 	store.theme = document.querySelector('#themeSeg button.on')?.dataset.themeOpt || store.theme;
 	store.glassIntensity = parseInt(document.getElementById('glassIntensityInput').value, 10);
 	store.key = document.getElementById('keyInput').value.trim();
@@ -6029,7 +6066,7 @@ function renderOverview() {
 
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
-	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch', 'skin',
+	'key', 'keySource', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch', 'skin',
 	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'vault', 'reminders', 'notes', 'convos', 'convoId', 'chains', 'usage', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity', 'theme',
@@ -7076,6 +7113,164 @@ async function generateBriefing() {
 	if (!recording) speak(text);
 }
 
+/* ========================== signing in ==================================
+ * "Sign in" instead of "paste a key", for the one provider where that is
+ * actually possible from a page with no backend.
+ *
+ * OpenRouter implements OAuth 2.0 with PKCE and — the part that matters here —
+ * requires no client id and no client secret. A single-file page served from
+ * anywhere can run the whole flow itself. Since OpenRouter brokers Claude,
+ * Gemini and GPT, one sign-in covers all three.
+ *
+ * The other two cannot be done, and it is worth writing down why so nobody
+ * spends a day rediscovering it:
+ *
+ *   Anthropic — the OAuth that exists is first-party. Claude Code and Claude
+ *   Desktop authenticate a subscription against Anthropic's own registered
+ *   clients; there is no public client registration that would let a third
+ *   party put "Sign in with Claude" on a page, and a claude.ai login grants no
+ *   API access. Only a console API key reaches the Messages API.
+ *
+ *   Google — OAuth for the Generative Language API is real but is documented
+ *   for desktop apps holding a client_secret.json, and demands a Cloud
+ *   project, an enabled API, a consent screen and a registered client. That is
+ *   strictly more work than pasting an AI Studio key, and the secret has
+ *   nowhere safe to live in a page with no server. A key stays the better
+ *   route until Google ships a browser-shaped flow.
+ *
+ * PKCE, briefly: make a random verifier, send only its SHA-256 hash to the
+ * authorize endpoint, then present the verifier itself when exchanging the
+ * code. An attacker who intercepts the redirect gets a code they cannot spend,
+ * because they never saw the verifier. It is what lets a public client with no
+ * secret be safe.
+ */
+const OR_AUTH_URL = 'https://openrouter.ai/auth';
+const OR_KEYS_URL = 'https://openrouter.ai/api/v1/auth/keys';
+const OR_VERIFIER_KEY = 'jarvis.oauth.verifier';
+
+/* Base64url, which is base64 with two characters swapped and the padding
+ * dropped — required because the challenge travels in a query string. */
+function b64url(bytes) {
+	let bin = '';
+	new Uint8Array(bytes).forEach((b) => { bin += String.fromCharCode(b); });
+	return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function makeVerifier() {
+	return b64url(crypto.getRandomValues(new Uint8Array(32)));
+}
+async function challengeFor(verifier) {
+	const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+	return b64url(digest);
+}
+
+/* A redirect target has to be a real URL the browser can come back to, so this
+ * is unavailable on a file:// page and inside the native shell, where there is
+ * no origin OpenRouter could return to. Saying so up front beats a button that
+ * fails after you have already left the app. */
+function signInAvailable() {
+	return (location.protocol === 'https:' || location.protocol === 'http:') &&
+		typeof crypto !== 'undefined' && !!(crypto.subtle && crypto.getRandomValues) &&
+		!(typeof nativeShell !== 'undefined' && nativeShell);
+}
+function signInBlockedReason() {
+	if (typeof nativeShell !== 'undefined' && nativeShell) return 'Sign-in runs in a browser tab, which the app shell does not have. Paste a key below, or sign in on the web version and export a backup.';
+	if (location.protocol === 'file:') return 'This page is open from a file, so there is no address for OpenRouter to send you back to. Serve it over http (npm run web) or use the hosted copy, and the button appears.';
+	if (!(crypto && crypto.subtle)) return 'This browser has no Web Crypto, which the sign-in needs to hash its one-time secret. Paste a key instead.';
+	return 'Sign-in is unavailable here. Paste a key instead.';
+}
+
+/* Where OpenRouter sends you back to: this page, with no query and no hash, so
+ * the code it appends is the only thing in the query string when we read it. */
+function callbackUrl() {
+	return location.origin + location.pathname;
+}
+
+async function startOpenRouterLogin() {
+	if (!signInAvailable()) { toast('Cannot sign in here', signInBlockedReason(), 9000); return; }
+	try {
+		const verifier = makeVerifier();
+		sessionStorage.setItem(OR_VERIFIER_KEY, verifier);
+		const url = OR_AUTH_URL +
+			'?callback_url=' + encodeURIComponent(callbackUrl()) +
+			'&code_challenge=' + encodeURIComponent(await challengeFor(verifier)) +
+			'&code_challenge_method=S256';
+		location.href = url;
+	} catch (err) {
+		toast('Could not start sign-in', String(err && err.message ? err.message : err));
+	}
+}
+
+/* Runs on every load. Does nothing at all unless there is BOTH a ?code= in the
+ * query and a verifier this tab put in sessionStorage — so a code pasted into
+ * the address bar by anyone else is inert, and a stale one from a previous
+ * attempt cannot be replayed. */
+async function finishOpenRouterLogin() {
+	const params = new URLSearchParams(location.search);
+	const code = params.get('code');
+	if (!code) return false;
+	const verifier = sessionStorage.getItem(OR_VERIFIER_KEY);
+	/* The code is stripped from the URL either way. Leaving it there puts a
+	 * one-time credential into the history, the back button and any bookmark. */
+	const clean = () => history.replaceState(null, '', callbackUrl());
+	if (!verifier) { clean(); return false; }
+	sessionStorage.removeItem(OR_VERIFIER_KEY);
+	try {
+		const res = await fetch(OR_KEYS_URL, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ code, code_verifier: verifier, code_challenge_method: 'S256' }),
+		});
+		if (!res.ok) {
+			let detail = res.status + ' ' + res.statusText;
+			try { detail = (await res.json()).error?.message || detail; } catch {}
+			throw new Error(detail);
+		}
+		const data = await res.json();
+		if (!data || !data.key) throw new Error('OpenRouter did not return a key.');
+		store.key = data.key;
+		store.keySource = 'openrouter-oauth';
+		clean();
+		renderSignIn();
+		updateDashStatus();
+		logActivity('Signed in with OpenRouter.');
+		toast('Signed in', 'OpenRouter is connected. Claude, Gemini and GPT all run through it.');
+		return true;
+	} catch (err) {
+		clean();
+		toast('Sign-in did not complete', String(err && err.message ? err.message : err), 9000);
+		return false;
+	}
+}
+
+function signOutOpenRouter() {
+	store.key = '';
+	store.keySource = '';
+	renderSignIn();
+	updateDashStatus();
+	toast('Signed out', 'The key is gone from this device. Your OpenRouter account is untouched — revoke the key there if you want it dead.');
+}
+
+/* One renderer for both places the state appears, so Settings and onboarding
+ * can never disagree about whether you are signed in. */
+function renderSignIn() {
+	const signedIn = !!store.key;
+	const viaOauth = store.keySource === 'openrouter-oauth';
+	document.querySelectorAll('[data-signin-btn]').forEach((b) => {
+		b.hidden = signedIn && viaOauth;
+		b.disabled = !signInAvailable();
+	});
+	document.querySelectorAll('[data-signout-btn]').forEach((b) => { b.hidden = !(signedIn && viaOauth); });
+	document.querySelectorAll('[data-signin-state]').forEach((el) => {
+		el.textContent = signedIn && viaOauth
+			? 'Signed in with OpenRouter. Claude, Gemini and GPT all run through it.'
+			: signedIn
+				? 'Using a key you pasted. Signing in would replace it with one OpenRouter manages for you.'
+				: (signInAvailable()
+					? 'One sign-in, no key to copy — and it covers Claude, Gemini and GPT.'
+					: signInBlockedReason());
+	});
+}
+
 /* ============================== onboarding ===============================
  * First run used to open Settings — eight tabs, four key fields, no order and
  * no explanation of why a key is being asked for at all. Three questions
@@ -7145,6 +7340,7 @@ function startOnboarding() {
 	});
 	document.getElementById('obUserName').value = store.userName || '';
 	document.getElementById('obAsstName').value = store.assistantName || 'Jarvis';
+	renderSignIn();
 	obShow(1);
 	dlg.showModal();
 }
@@ -7184,6 +7380,12 @@ function finishOnboarding(skipped) {
 	updateDashStatus();
 	setCaption(anyKey() ? 'Ready. Tap the mic, or type below.' : 'No key yet — add one in Settings whenever you are ready.');
 }
+/* Delegated rather than bound per button: the same pair appears in onboarding
+ * and in Settings, and a third place should not need another listener. */
+document.addEventListener('click', (e) => {
+	if (e.target.closest('[data-signin-btn]')) startOpenRouterLogin();
+	else if (e.target.closest('[data-signout-btn]')) signOutOpenRouter();
+});
 document.getElementById('obKeyInput').addEventListener('input', obCheckKey);
 document.getElementById('obBack1').addEventListener('click', () => obShow(1));
 document.getElementById('obNext2').addEventListener('click', () => { obSaveKey(); obShow(3); setTimeout(() => document.getElementById('obUserName').focus(), 60); });
@@ -7283,6 +7485,11 @@ if ('serviceWorker' in navigator && !nativeShell && (location.protocol === 'http
 /* ================================ boot ================================ */
 applyListenMode();
 showView('dashboard');
+renderSignIn();
+/* Handled before the first-run prompt fires: coming back from OpenRouter with a
+ * code means you are mid-setup, and being asked to set up again on arrival
+ * would be the app forgetting what it just sent you off to do. */
+finishOpenRouterLogin();
 scheduleBriefing();
 scheduleChains();
 initIntro();

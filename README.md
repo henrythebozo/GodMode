@@ -94,9 +94,16 @@ the button next to "Henry OS" in the sidebar, or go straight to
   `⌘/Ctrl+,` settings, `/` jump to the composer, `M` toggle the mic.
 - If your lead model fails (rate limit, outage, bad key), Jarvis automatically
   falls back to the next model you've configured rather than dropping the turn.
-- Same bring-your-own-key model as Henry OS — an OpenRouter key, or your own
-  OpenAI/Anthropic/[Gemini](https://ai.google.dev) key, stored only on your
-  device. Out of the box it runs Team mode with Claude Sonnet 5 leading and
+- **Sign in rather than paste a key.** One button runs
+  [OpenRouter](https://openrouter.ai)'s OAuth (PKCE, no client secret, nothing
+  to register) and Jarvis is connected — and since OpenRouter brokers Claude,
+  Gemini and GPT, that one sign-in reaches all three. It is the only one of the
+  four that a page with no server *can* sign you into: Anthropic's OAuth is
+  reserved for Anthropic's own apps and a claude.ai login grants no API access,
+  and Google's wants a Cloud project and a consent screen — more work than the
+  key it would replace. Bringing your own key still works exactly as before: an
+  OpenRouter key, or your own OpenAI/Anthropic/[Gemini](https://ai.google.dev)
+  key, stored only on your device. Out of the box it runs Team mode with Claude Sonnet 5 leading and
   Opus 5 consulting; switch to a single model in Settings → Account to halve
   the per-question cost.
 

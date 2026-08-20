@@ -19,6 +19,7 @@ import * as V from './lib/vault.mjs';
 import * as P from './lib/provider.mjs';
 import * as G from './lib/graph.mjs';
 import { runTurn } from './lib/agent.mjs';
+import * as OAuth from './lib/oauth.mjs';
 
 const args = process.argv.slice(2);
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -42,6 +43,8 @@ ${bold('jarvis')} — ${dim('a linked markdown memory vault, and the assistant t
   ${bold('jarvis')} "what's on my plate today"     ask a question
   ${bold('jarvis ask')} "..." [--model ID] [--no-memory]
 
+  ${bold('jarvis login')}                           sign in with OpenRouter — no key to paste
+  ${bold('jarvis logout')}                          forget the key on this machine
   ${bold('jarvis init')}                            create the vault and store a key
   ${bold('jarvis mem add')} "..." [-f Folder] [-t Title] [-l Other]
   ${bold('jarvis mem list')} [query]                list notes, newest first
@@ -119,6 +122,78 @@ function turn(cfg, question, opts) {
 	return runTurn(cfg, question, { io, ...(opts || {}) });
 }
 
+/* -------------------------------- login ---------------------------------- */
+
+/* A `gpt:` / `claude:` / `gemini:` model id means "go straight to that vendor
+ * with that vendor's key", which an OpenRouter key cannot do. Signing in and
+ * then failing on the first question because the lead model still points
+ * somewhere the new key has no business would be a strange welcome. Anything
+ * already routed through OpenRouter is left exactly as it is. */
+function leadModelForOpenRouter(cfg) {
+	if (/^(gpt|claude|gemini):/.test(cfg.model || '')) cfg.model = 'anthropic/claude-sonnet-5';
+}
+
+async function cmdLogin(cfg) {
+	const manual = hasFlag('manual');
+	if (cfg.key) console.log(dim('Replacing the OpenRouter key already on this machine (' + redact(cfg.key) + ').\n'));
+
+	const verifier = OAuth.makeVerifier();
+	const challenge = OAuth.challengeFor(verifier);
+
+	/* No loopback server, for a machine with no browser — a remote shell, a
+	 * container, anything over ssh. OpenRouter shows the key on screen and you
+	 * paste it once; still better than hunting through the dashboard. */
+	if (manual) {
+		console.log('Open this on any device, then paste the key it shows you:\n');
+		console.log('  ' + accent('https://openrouter.ai/auth?key_label=' + encodeURIComponent('Jarvis CLI')) + '\n');
+		const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+		const key = await ask(rl, 'Key: ', '');
+		rl.close();
+		if (!key) die('Nothing pasted.');
+		cfg.key = key;
+		cfg.keySource = 'openrouter-manual';
+		leadModelForOpenRouter(cfg);
+		saveConfig(cfg);
+		console.log(ok('✓') + ' Saved to ' + CONFIG_PATH + dim(' (0600)'));
+		return;
+	}
+
+	let code;
+	try {
+		code = await OAuth.waitForCode({
+			onReady: (port, callback) => {
+				const url = OAuth.authUrl(callback, challenge);
+				console.log('Opening OpenRouter in your browser…');
+				console.log(dim('  If nothing opens, go to:\n  ' + url + '\n'));
+				OAuth.openBrowser(url);
+				console.log(dim('  Waiting on 127.0.0.1:' + port + ' — Ctrl-C to give up.'));
+			},
+		});
+	} catch (err) {
+		die((err && err.message ? err.message : String(err)));
+	}
+
+	let key;
+	try { key = await OAuth.exchangeCode(code, verifier); }
+	catch (err) { die('Could not exchange the code: ' + (err && err.message ? err.message : err)); }
+
+	cfg.key = key;
+	cfg.keySource = 'openrouter-oauth';
+	leadModelForOpenRouter(cfg);
+	saveConfig(cfg);
+	console.log('\n' + ok('✓') + ' Signed in. Key saved to ' + CONFIG_PATH + dim(' (0600)'));
+	console.log(dim('  Claude, Gemini and GPT all run through OpenRouter — `jarvis config model <id>` to switch.\n'));
+}
+
+function cmdLogout(cfg) {
+	if (!cfg.key) { console.log(dim('Not signed in.')); return; }
+	cfg.key = '';
+	cfg.keySource = '';
+	saveConfig(cfg);
+	console.log(ok('✓') + ' Forgotten on this machine.');
+	console.log(dim('  Your OpenRouter account is untouched — revoke the key at openrouter.ai/keys if you want it dead.'));
+}
+
 /* --------------------------------- init ---------------------------------- */
 
 function writeWelcome(vault) {
@@ -164,8 +239,18 @@ async function cmdInit(cfg) {
 	cfg.vault = path.resolve(vault.replace(/^~(?=$|\/)/, os.homedir()));
 
 	console.log('\nWhich provider?');
+	console.log('  ' + dim('0) Sign in with OpenRouter — no key to paste (recommended)'));
 	PROVIDERS.forEach((p) => console.log('  ' + p.n + ') ' + p.label));
-	const pick = await ask(rl, 'Choice [1]: ', '1');
+	const pick = await ask(rl, 'Choice [0]: ', '0');
+	if (pick === '0') {
+		rl.close();
+		V.ensureVault(cfg.vault);
+		for (const f of ['People', 'Projects', 'Areas', 'Topics']) fs.mkdirSync(path.join(cfg.vault, f), { recursive: true });
+		writeWelcome(cfg.vault);
+		saveConfig(cfg);
+		console.log(ok('✓') + ' Vault ready at ' + bold(cfg.vault) + '\n');
+		return cmdLogin(cfg);
+	}
 	const prov = PROVIDERS.find((p) => p.n === pick) || PROVIDERS[0];
 
 	if (process.env[prov.field] || cfg[prov.field]) {
@@ -497,6 +582,8 @@ async function main() {
 	if (args[0] === '--version' || args[0] === '-v') { console.log('jarvis 1.0.0'); return; }
 
 	const cmd = args[0];
+	if (cmd === 'login') return cmdLogin(cfg);
+	if (cmd === 'logout') return cmdLogout(cfg);
 	if (cmd === 'init') return cmdInit(cfg);
 	if (cmd === 'mem' || cmd === 'memory') { args.shift(); const sub = args.shift(); return cmdMem(cfg, sub, args); }
 	if (cmd === 'graph') { args.shift(); return cmdGraph(cfg, args); }

@@ -25,7 +25,7 @@ You need Node 18 or newer (`node --version`).
 git clone https://github.com/henrythebozo/GodMode
 cd GodMode/cli
 npm link          # puts `jarvis` on your PATH
-jarvis init
+jarvis login      # opens a browser, no key to paste
 ```
 
 `npm link` needs no network and installs nothing — there is nothing to install.
@@ -41,9 +41,28 @@ key, and what to call each other — then creates the vault and writes
 `~/.jarvis/config.json` with `0600` permissions. Add `--yes` to take every
 default without being asked, which is what you want from a dotfiles script.
 
+### Signing in, or a key
+
+`jarvis login` runs OpenRouter's OAuth: it binds a server to `127.0.0.1` on a
+port the OS picks, opens your browser, takes the code off the callback and
+exchanges it with PKCE. Nothing is exposed past the loopback interface and the
+server exists only for the length of the sign-in. On a machine with no browser
+— a container, anything over ssh — `jarvis login --manual` prints a URL you can
+open anywhere and paste the key back from. `jarvis logout` forgets it here and
+leaves your OpenRouter account alone.
+
+**Only OpenRouter can be signed into, and that is not a shortcut we took.**
+Anthropic's OAuth is reserved for Anthropic's own clients — there is no public
+client registration that would let this offer "Sign in with Claude", and a
+claude.ai login grants no API access. Google's exists but wants a Cloud
+project, an enabled API, a consent screen and a `client_secret.json`, which is
+more work than the AI Studio key it would replace. OpenRouter brokers Claude,
+Gemini and GPT, so signing in there reaches all three regardless.
+
 ### Keys
 
-Read from the environment first, the config file second. Whichever you prefer:
+If you would rather bring your own, they are read from the environment first
+and the config file second. Whichever you prefer:
 
 ```sh
 export ANTHROPIC_API_KEY=sk-ant-...      # or OPENAI_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY
@@ -123,6 +142,8 @@ format.
 
 | | |
 |---|---|
+| `jarvis login [--manual]` | sign in with OpenRouter; `--manual` for a machine with no browser |
+| `jarvis logout` | forget the key on this machine |
 | `jarvis "question"` | ask; `ask` is optional |
 | `jarvis ask "…" --model ID --no-memory` | pick a model, or send no notes |
 | `jarvis mem add "…" -f Folder -t Title -l Other` | write a note, optionally linked |

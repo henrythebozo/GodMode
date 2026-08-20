@@ -51,6 +51,31 @@ Two rules the vault design rests on, both learned the hard way:
    to the note that mentions it, and unresolved nodes silently vanish from the
    graph.
 
+## Signing in: only OpenRouter, and why
+
+Do not go looking for "Sign in with Claude" or "Sign in with Google" again —
+both were checked against the vendors' own docs and neither is available to a
+third-party client here:
+
+- **Anthropic.** The OAuth that exists is first-party. Claude Code and Claude
+  Desktop authenticate a subscription against Anthropic's own registered
+  clients (`claude setup-token`, `CLAUDE_CODE_OAUTH_TOKEN`); there is no public
+  client registration, and a claude.ai login grants no API access at all.
+- **Google.** OAuth for the Generative Language API is real but is documented
+  for desktop apps holding a `client_secret.json`, and needs a Cloud project,
+  an enabled API and a consent screen — strictly more setup than the AI Studio
+  key it would replace, with nowhere safe for the secret in a page with no
+  server.
+- **OpenRouter.** PKCE, no client id, no client secret. A single-file page can
+  run the whole flow. It brokers Claude, Gemini and GPT, so one sign-in reaches
+  all three anyway — which is why it is the only one implemented.
+
+PKCE fails *silently until the exchange*: a wrong `code_challenge` produces a
+perfectly normal redirect and only dies at a server this environment cannot
+reach. Both implementations are therefore checked against the worked example in
+RFC 7636 appendix B, and the browser's challenge is compared byte-for-byte with
+Node's for the same verifier. Keep those assertions.
+
 ## Testing what cannot be reached from here
 
 No live model provider has ever been called from this environment, and a child
