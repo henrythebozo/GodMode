@@ -197,6 +197,13 @@ where it is and the other machine's becomes `Noah (conflict).md` — retitled, s
 it is its own node in the graph rather than a second ambiguous `[[Noah]]`. Read
 both, keep what you want, delete the other.
 
+**Keep the vault out of Dropbox, iCloud and OneDrive.** They copy a folder
+file by file, in their own order, with no idea that a git repository is one
+consistent structure — half-copied, it is corrupt, and you find out weeks
+later. `jarvis vault init` refuses to set up git inside one and tells you how
+to move it; `--allow-cloud` overrides that. Pick one mechanism per folder: git
+**or** a file syncer, never both on the same directory.
+
 **Nothing is pushed until it has been read for keys.** Every file that would
 travel is checked against the same four key shapes the app matches a paste
 against, and a push carrying one stops with the file named. Keys live in

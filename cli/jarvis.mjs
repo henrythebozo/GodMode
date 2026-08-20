@@ -743,6 +743,13 @@ function cmdImport(cfg, rest) {
  * of both corrupted, and a look through everything about to leave the machine
  * for anything shaped like an API key.
  */
+/* Once the repository exists, refusing would only strand somebody who is
+ * mid-sync. Say it every time instead — it stays true until they move it. */
+function warnIfCloud(vault) {
+	const cloud = VG.cloudSyncName(vault);
+	if (cloud) console.error(accent('! ') + dim('This vault is inside ' + cloud + ', which can corrupt a git repository. Use one or the other.'));
+}
+
 function needRepo(vault) {
 	if (!VG.isRepo(vault)) die('The vault is not in git yet. Run `jarvis vault init <git-url>` first.');
 }
@@ -764,6 +771,19 @@ function cmdVault(cfg, sub, rest) {
 
 	if (sub === 'init') {
 		const remote = rest.filter((a) => !a.startsWith('-'))[0] || '';
+		/* Refused, not warned. By the time a repository inside a file syncer
+		 * shows symptoms it is already corrupt, and the fix at THIS moment is
+		 * one `mv` — which is why this is the one place worth blocking. */
+		const cloud = hasFlag('allow-cloud') ? '' : VG.cloudSyncName(vault);
+		if (cloud) {
+			console.error(bad('✗ ') + 'That folder is inside ' + cloud + '.');
+			console.error(dim('  ' + VG.realish(vault)));
+			console.error('\n  ' + cloud + ' copies a folder file by file, in its own order, with no idea');
+			console.error('  that a git repository is one consistent structure. Half-copied, it is');
+			console.error('  corrupt — and you find out weeks later. Use one or the other, not both.');
+			console.error(dim('\n  Move the vault somewhere ' + cloud + ' does not touch:\n    mv "' + vault + '" ~/jarvis-vault\n    jarvis config vault ~/jarvis-vault\n\n  Or keep ' + cloud + ' as the sync and skip git entirely — it works, it just\n  has no history. --allow-cloud overrides this if you know better.'));
+			process.exit(1);
+		}
 		const made = VG.initRepo(vault, remote);
 		console.log(ok('✓') + ' ' + vault + (made.length ? dim('  (' + made.join(', ') + ')') : dim('  (already set up)')));
 		const files = VG.commitAll(vault, 'Add the vault');
@@ -775,6 +795,7 @@ function cmdVault(cfg, sub, rest) {
 
 	if (sub === 'push' || sub === 'sync') {
 		needRepo(vault);
+		warnIfCloud(vault);
 		/* Look before pushing, every time. A key that has been pushed has to be
 		 * revoked; rewriting history afterwards does not make it untrue. */
 		const secrets = hasFlag('allow-secrets') ? [] : VG.scanForSecrets(vault);
@@ -801,6 +822,7 @@ function cmdVault(cfg, sub, rest) {
 
 	if (sub === 'pull') {
 		needRepo(vault);
+		warnIfCloud(vault);
 		if (!VG.remoteUrl(vault)) die('No remote. `jarvis vault init <git-url>` to add one.');
 		const dirty = VG.pendingChanges(vault);
 		/* Uncommitted work would be clobbered by the merge, so it is committed
@@ -828,6 +850,8 @@ function cmdVault(cfg, sub, rest) {
 		const pending = VG.pendingChanges(vault);
 		const ab = VG.aheadBehind(vault);
 		console.log('\n' + bold(vault));
+		const cloud = VG.cloudSyncName(vault);
+		if (cloud) console.log(bad('  warning ') + 'inside ' + cloud + ' — a file syncer and git on one folder will corrupt it');
 		console.log(dim('  branch  ') + (VG.branchName(vault) || '(none)'));
 		console.log(dim('  origin  ') + (remote || dim('(none — `jarvis vault init <git-url>`)')));
 		console.log(dim('  local   ') + (pending.length ? pending.length + ' uncommitted change' + (pending.length === 1 ? '' : 's') : 'clean'));

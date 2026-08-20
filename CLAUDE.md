@@ -87,6 +87,15 @@ of it. Two things there are deliberate and worth keeping:
   take — walking the tree and running `check-ignore` per file is a subprocess
   per note, and an ignored file cannot leak anyway.
 
+`vault init` **refuses** inside Dropbox / iCloud / OneDrive and the rest, but
+only warns once the repository exists — refusing then would strand someone
+mid-sync, and the warning stays true until they move it. Detection resolves
+symlinks first (`~/jarvis-vault` pointing into iCloud looks innocent from the
+path), and walks up to the nearest existing ancestor because the vault may not
+exist yet at init. The pattern list is deliberately conservative: a false
+positive blocks a fine setup and teaches people to reach for `--allow-cloud`,
+so a folder merely *called* `Sync` or `Box` does not count.
+
 `initRepo` forces the branch to `main` **only on a repo it just created**.
 Renaming the branch of a folder somebody already had in git would strand their
 history on the old branch and push an empty `main` over the top of it.

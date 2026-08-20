@@ -98,6 +98,60 @@ export function scanForSecrets(vault) {
 	return hits;
 }
 
+/* ----------------------- git inside a file syncer ------------------------
+ * The one setup in this plan that quietly destroys data. Dropbox, iCloud and
+ * the rest sync a directory file by file, in whatever order they please, with
+ * no idea that the loose objects, the packfiles and the refs pointing at them
+ * are a single consistent structure. A repository half-copied that way is
+ * corrupt, and the corruption shows up long after the choice that caused it.
+ *
+ * Pick one mechanism per folder: git, OR a file syncer. Never both.
+ *
+ * These patterns are deliberately conservative. A false positive blocks a
+ * setup that was perfectly fine and teaches people to reach for the override,
+ * so a folder merely CALLED "Sync" or "Box" is not enough — only the names
+ * these products actually create.
+ */
+const CLOUD_FOLDERS = [
+	['iCloud Drive', /(^|\/)Library\/Mobile Documents(\/|$)/i],
+	['iCloud Drive', /(^|\/)iCloudDrive(\/|$)/i],                    // Windows
+	['a cloud folder', /(^|\/)Library\/CloudStorage(\/|$)/i],        // macOS 12+ mounts Dropbox, Drive, OneDrive and Box here
+	['Dropbox', /(^|\/)Dropbox( \([^/]*\))?(\/|$)/i],
+	['Google Drive', /(^|\/)Google ?Drive[^/]*(\/|$)/i],
+	['Google Drive', /(^|\/)My Drive(\/|$)/i],
+	['OneDrive', /(^|\/)OneDrive[^/]*(\/|$)/i],
+	['Nextcloud', /(^|\/)Nextcloud(\/|$)/i],
+	['ownCloud', /(^|\/)ownCloud(\/|$)/i],
+	['pCloud', /(^|\/)pCloudDrive(\/|$)/i],
+	['MEGA', /(^|\/)MEGA(sync)?(\/|$)/i],
+	['Proton Drive', /(^|\/)Proton ?Drive(\/|$)/i],
+];
+
+/* Symlinks are the whole point of resolving first: `~/jarvis-vault` pointing
+ * into iCloud is a normal thing to do and looks completely innocent from the
+ * path alone. The vault may not exist yet at init, so this resolves the
+ * nearest ancestor that does and re-attaches the rest. */
+export function realish(p) {
+  let cur = path.resolve(p);
+  const tail = [];
+  for (;;) {
+    try { return path.join(fs.realpathSync(cur), ...tail.slice().reverse()); }
+    catch {
+      const parent = path.dirname(cur);
+      if (parent === cur) return path.resolve(p);
+      tail.push(path.basename(cur));
+      cur = parent;
+    }
+  }
+}
+
+/* The name of the service syncing this folder, or '' if nothing looks like one. */
+export function cloudSyncName(dir) {
+	const p = realish(dir).split(path.sep).join('/');
+	for (const [name, re] of CLOUD_FOLDERS) if (re.test(p)) return name;
+	return '';
+}
+
 /* ------------------------------- the basics ------------------------------ */
 
 export function initRepo(vault, remote) {
