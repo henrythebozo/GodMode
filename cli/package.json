@@ -1,0 +1,10 @@
+{
+	"name": "jarvis-cli",
+	"version": "1.0.0",
+	"description": "Jarvis in the terminal — a linked markdown memory vault and the assistant that reads it.",
+	"type": "module",
+	"bin": { "jarvis": "./jarvis.mjs" },
+	"engines": { "node": ">=18" },
+	"license": "MIT",
+	"files": ["jarvis.mjs", "lib", "README.md"]
+}

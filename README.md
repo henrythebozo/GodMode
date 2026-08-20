@@ -100,6 +100,43 @@ the button next to "Henry OS" in the sidebar, or go straight to
   Opus 5 consulting; switch to a single model in Settings → Account to halve
   the per-question cost.
 
+### 🧠 Memory is a graph, not a list
+
+Everything Jarvis remembers is a **note** — a title, a folder, and a body — and
+notes link to each other by writing a title in double square brackets inside
+the text. The **Graph** view draws the result: notes as circles, folders as
+hubs, and a hollow circle for anything you have linked to but not written yet.
+Click a node to read it, and everything it is not connected to fades back.
+
+Links live in the prose and nowhere else, so there is one copy of the truth and
+it cannot drift out of step with the text. Renaming a note rewrites every link
+pointing at it.
+
+### ⌨️ Jarvis in the terminal
+
+[`cli/`](cli) is the same assistant as a **zero-dependency command-line tool**,
+and the same memory graph as **plain markdown files on your disk** — a folder
+you can open in Obsidian, commit to git, grep, or edit in vim.
+
+```sh
+cd cli && npm link && jarvis init
+
+jarvis "what's on my plate today"
+jarvis mem add "Noah starts school Sept 3" -f People -t Noah
+jarvis mem link Noah "Homeschool Portal"
+jarvis graph --open          # renders the whole vault and opens it
+```
+
+Node built-ins only — nothing to install, no lockfile, no build step. It takes
+the same four providers, or point `baseUrl` at Ollama or any other
+OpenAI-compatible server for a local model. Keys live in `~/.jarvis/`, never in
+the vault, because the vault is the part you are meant to sync and share.
+
+The browser and the terminal cannot reach each other's storage, so the bridge
+is a file you move across rather than a claim of sync: `jarvis export`, then
+Settings → Data → Import — and the other way round. Full setup and command
+reference in [`cli/README.md`](cli/README.md).
+
 ### 📱 Jarvis for iOS
 
 [`mobile-app/`](mobile-app) wraps Jarvis in a real native iOS app with

@@ -24,6 +24,53 @@ bridge). When you change `docs/jarvis.html`:
    no browser or Xcode in this environment — so static checks are what stand
    in for testing.
 
+## `cli/` — the terminal half
+
+`cli/` is a zero-dependency Node CLI sharing no code with `docs/jarvis.html`,
+because that file is a single no-build page with no imports and a shared module
+would break it. Two things are therefore **deliberate duplicates**, and both
+sides have to move together:
+
+- **The provider layer** (`cli/lib/provider.mjs` vs the `streamCompletion` /
+  `parseEvent` pair in the page). Request bodies, the SSE shapes for all four
+  providers, the `stream_options` self-healing retry, and the price table.
+- **The vault** (`cli/lib/vault.mjs` vs the vault section in the page). Note
+  shape, `[[wikilink]]` parsing, graph building, and the force layout.
+
+When you change one, change the other, and say so in the commit. The tests
+that would catch a drift are `cli.mjs` and `vault.js` in the scratchpad.
+
+Two rules the vault design rests on, both learned the hard way:
+
+1. **Links live in the prose and nowhere else.** They are parsed out of the
+   body on every read. Storing them alongside means two copies and the first
+   edit through Obsidian or an editor desyncs them.
+2. **A `[[link]]` resolves by TITLE only.** There is a separate loose search
+   for what a person or model typed, which may fall back to matching a body.
+   Using the loose one for link resolution makes every unwritten link "resolve"
+   to the note that mentions it, and unresolved nodes silently vanish from the
+   graph.
+
+## Testing what cannot be reached from here
+
+No live model provider has ever been called from this environment, and a child
+process cannot open a socket to a localhost mock server either (the parent
+process can). So:
+
+- The **web app's** streaming path is tested by stubbing `window.fetch` with a
+  real `ReadableStream` emitting each provider's real SSE frames.
+- The **CLI's** assistant path is tested in-process by stubbing `globalThis.fetch`
+  and importing `cli/lib/agent.mjs` — which is why the agent logic lives in a
+  module and takes an injectable `io` rather than writing to stdout directly.
+- The CLI's filesystem half is tested by running the real binary as a
+  subprocess, which is the only honest way to cover argument parsing.
+
+Two harness bugs to avoid repeating: setting `animation-delay` does not re-seek
+a running animation in Chromium (`a.pause(); a.currentTime = …` does), and
+`getAnimations()` includes CSS *transitions*, so freezing everything at
+`currentTime = 0` rewinds in-flight colour transitions and screenshots the
+pre-transition state.
+
 ## On cinematic/scroll-driven visual treatments
 
 Jarvis is a functional single-page app (a dashboard, not a scrolling

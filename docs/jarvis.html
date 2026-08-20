@@ -1128,6 +1128,69 @@
 	}
 	.usagechip:hover { background: var(--panel-2); color: var(--text); border-color: var(--ring); }
 
+	/* ---- the vault: memory list and graph ---- */
+	.memtoolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+	.memtoolbar input {
+		flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+		color: var(--text); font: inherit; font-size: 13px; padding: 7px 14px;
+	}
+	.memtoolbar input:focus { outline: none; border-color: var(--ring); }
+	.memcount { flex: none; color: var(--dim); font-size: 12px; }
+	.noterow { display: flex; align-items: flex-start; gap: 8px; }
+	.noterow .nfolder {
+		flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim);
+		background: var(--panel-3); border-radius: 5px; padding: 3px 7px; margin-top: 2px;
+	}
+	.notelinks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+	.notelink {
+		background: var(--ring-soft); color: var(--ring); border: none; border-radius: 999px;
+		padding: 2px 8px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit;
+	}
+	.notelink.missing { background: none; border: 1px dashed var(--line); color: var(--dim); }
+	.notelink:hover { filter: brightness(1.15); }
+
+	.graphpanel { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 0; padding: 0; overflow: hidden; }
+	.graphstage { position: relative; min-height: 460px; height: 60vh; touch-action: none; }
+	.graphstage svg { width: 100%; height: 100%; display: block; cursor: grab; }
+	.graphstage svg.dragging { cursor: grabbing; }
+	.graphempty { position: absolute; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; color: var(--dim); font-size: 13px; }
+	.graphside { border-left: 1px solid var(--line-soft); padding: 18px; overflow-y: auto; min-width: 0; }
+	.graphside h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; word-break: break-word; }
+	.graphside .gmeta { font-size: 11.5px; color: var(--dim); margin-bottom: 12px; }
+	.graphside .gbody { font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+	.graphside .empty { padding: 0; }
+	.gedge { stroke: var(--line); stroke-width: 1; }
+	.gedge.folder { stroke: var(--line-soft); }
+	.gedge.hot { stroke: var(--ring); stroke-width: 1.6; }
+	.gnode { cursor: pointer; }
+	.gnode circle { fill: var(--text); transition: fill 0.15s ease; }
+	.gnode.folder circle { fill: var(--ring); }
+	.gnode.unresolved circle { fill: none; stroke: var(--dim); stroke-width: 1.2; }
+	.gnode text {
+		font-size: 9px; text-anchor: middle; fill: var(--dim); pointer-events: none;
+		paint-order: stroke; stroke: var(--panel); stroke-width: 2.6px;
+	}
+	.gnode.folder text { fill: var(--ring); font-weight: 600; font-size: 10px; }
+	.gnode.on circle, .gnode:hover circle { fill: var(--ring); }
+	.gnode.on text, .gnode:hover text { fill: var(--text); }
+	.gnode.faded { opacity: 0.15; }
+	.gedge.faded { opacity: 0.06; }
+	.graphlegend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 12px; color: var(--dim); font-size: 11.5px; }
+	.graphlegend span { display: flex; align-items: center; gap: 6px; }
+	.graphlegend i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+	.graphlegend .lg-note { background: var(--text); }
+	.graphlegend .lg-folder { background: var(--ring); }
+	.graphlegend .lg-unres { border: 1.2px solid var(--dim); }
+	.graphlegend .graphhint { margin-left: auto; }
+	.graphtoggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); cursor: pointer; }
+	.graphtoggle input { accent-color: var(--ring); }
+	@media (max-width: 900px) {
+		.graphpanel { grid-template-columns: 1fr; }
+		.graphstage { height: 46vh; min-height: 320px; }
+		.graphside { border-left: none; border-top: 1px solid var(--line-soft); max-height: 34vh; }
+		.graphlegend .graphhint { display: none; }
+	}
+
 	/* ---- conversations ---- */
 	.headtools { display: flex; gap: 8px; flex: none; }
 	.convohead { display: flex; align-items: center; gap: 8px; margin: -8px 0 12px; color: var(--dim); font-size: 12.5px; }
@@ -1536,6 +1599,7 @@
 		<button class="navitem" data-view="overview"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>Overview</button>
 		<button class="navitem" data-view="chat"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg>Chat</button>
 		<button class="navitem" data-view="tasks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg>Tasks</button>
+		<button class="navitem" data-view="graph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg>Graph</button>
 		<button class="navitem" data-view="memory"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>Memory</button>
 		<button class="navitem" data-view="systems"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>Systems</button>
 		<button class="navitem" data-view="apps"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
@@ -1682,9 +1746,42 @@
 				</div>
 
 				<div class="view" id="view-memory">
-					<div class="viewhead"><h1>Memory</h1></div>
+					<div class="viewhead">
+						<h1>Memory</h1>
+						<div class="headtools">
+							<button type="button" class="ghost small" id="memNewBtn">New note</button>
+							<button type="button" class="ghost small" data-view="graph">Graph</button>
+						</div>
+					</div>
 					<div class="glasspanel viewpanel">
+						<div class="memtoolbar">
+							<input type="text" id="memFilter" placeholder="Filter notes and links…" autocomplete="off" />
+							<span class="memcount" id="memCount"></span>
+						</div>
 						<div class="viewlist" id="panel-memory"></div>
+					</div>
+				</div>
+
+				<div class="view" id="view-graph">
+					<div class="viewhead">
+						<h1>Graph</h1>
+						<div class="headtools">
+							<label class="graphtoggle"><input type="checkbox" id="graphFolders" checked /> Folders</label>
+							<button type="button" class="ghost small" id="graphRelayout">Re-lay out</button>
+						</div>
+					</div>
+					<div class="glasspanel graphpanel">
+						<div class="graphstage" id="graphStage">
+							<svg id="graphSvg" role="img" aria-label="Map of your memory notes and the links between them"></svg>
+							<div class="graphempty" id="graphEmpty" hidden></div>
+						</div>
+						<div class="graphside" id="graphSide"></div>
+					</div>
+					<div class="graphlegend">
+						<span><i class="lg-note"></i> note</span>
+						<span><i class="lg-folder"></i> folder</span>
+						<span><i class="lg-unres"></i> linked, not written yet</span>
+						<span class="graphhint">Drag to pan, scroll to zoom, click a node to open it.</span>
 					</div>
 				</div>
 
@@ -1731,6 +1828,7 @@
 		<button class="navitem" data-view="overview"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>Overview</button>
 		<button class="navitem" data-view="chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg>Chat</button>
 		<button class="navitem" data-view="tasks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg>Tasks</button>
+		<button class="navitem" data-view="graph"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg>Graph</button>
 		<button class="navitem" data-view="memory"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>Memory</button>
 		<button class="navitem" data-view="systems"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>Systems</button>
 		<button class="navitem" data-view="apps"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
@@ -1990,6 +2088,22 @@
 		<button class="ghost small" id="skinRandom" type="button">Surprise me</button>
 		<button class="ghost small" id="skinReset" type="button">Reset</button>
 		<button class="primary" id="skinDone" type="button" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
+<dialog id="noteDlg">
+	<h2>Note</h2>
+	<label for="noteTitle">Title</label>
+	<input type="text" id="noteTitle" autocomplete="off" />
+	<label for="noteFolder">Folder</label>
+	<select id="noteFolder"></select>
+	<label for="noteBody">Body</label>
+	<textarea id="noteBody" rows="7" placeholder="Write it in plain words. Wrap a title in double square brackets to link to another note — the link can point at something you have not written yet."></textarea>
+	<div class="eyebrow" style="margin: 18px 0 8px">Linked from</div>
+	<div class="notelinks" id="noteBacklinks"></div>
+	<div class="row" style="margin-top: 18px">
+		<button class="ghost small" type="button" id="noteCancel">Cancel</button>
+		<button class="primary" type="button" id="noteSave" style="margin-left:auto">Save</button>
 	</div>
 </dialog>
 
@@ -2260,8 +2374,27 @@ const store = {
 		return /-(US|LR|MM)$/.test(loc) ? 'imperial' : 'metric';
 	},
 	set units(v) { localStorage.setItem('jarvis.units', v); },
-	get memory() { try { return JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch { return []; } },
-	set memory(v) { localStorage.setItem('jarvis.memory', JSON.stringify(v)); },
+	/* Memory is a VAULT of linked notes now, and `memory` is the flat view of it
+	 * that fifteen existing call sites already expected — a note's body, in
+	 * order. The setter reconciles rather than replaces: a body it already has
+	 * keeps its note, so splicing one fact out of the list, or restoring the
+	 * list through undo, does not quietly discard everything else about the
+	 * notes that survived. Links are not stored at all; they are parsed from
+	 * [[wikilinks]] in the body every time it is read, which is what makes this
+	 * safe — the text IS the link, so anything that preserves the text
+	 * preserves the graph. */
+	get memory() { return store.vault.map((n) => n.body); },
+	set memory(v) {
+		const old = store.vault;
+		const taken = new Set();
+		store.vault = (v || []).map((body) => {
+			const hit = old.find((n) => n.body === body && !taken.has(n.id));
+			if (hit) { taken.add(hit.id); return hit; }
+			return newNote(body);
+		});
+	},
+	get vault() { try { return JSON.parse(localStorage.getItem('jarvis.vault')) || legacyVault(); } catch { return legacyVault(); } },
+	set vault(v) { localStorage.setItem('jarvis.vault', JSON.stringify(v)); },
 	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
 	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
 	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
@@ -2883,6 +3016,7 @@ function renderView(name) {
 	else if (name === 'chat') { renderChatLog(); renderConvoHead(); }
 	else if (name === 'tasks') { renderChainsPanel(); renderReminders(); renderNotes(); }
 	else if (name === 'memory') renderMemory();
+	else if (name === 'graph') renderGraph();
 	else if (name === 'systems') { renderHome(); renderTranscripts(); }
 	else if (name === 'apps') renderAppsView();
 }
@@ -3603,6 +3737,14 @@ document.getElementById('convosBtn').addEventListener('click', openConvos);
 document.getElementById('convoNewBtn').addEventListener('click', () => { document.getElementById('convosDlg').close(); newConversation(); showView('chat'); });
 document.getElementById('convoDoneBtn').addEventListener('click', () => document.getElementById('convosDlg').close());
 
+document.getElementById('memNewBtn').addEventListener('click', () => createNoteNamed('New note'));
+document.getElementById('memFilter').addEventListener('input', (e) => { memFilterText = e.target.value; renderMemory(); });
+document.getElementById('noteCancel').addEventListener('click', () => document.getElementById('noteDlg').close());
+document.getElementById('noteSave').addEventListener('click', saveOpenNote);
+document.getElementById('graphFolders').addEventListener('change', renderGraph);
+document.getElementById('graphRelayout').addEventListener('click', () => { graphState.selected = null; renderGraph(); });
+wireGraphStage();
+
 document.getElementById('chainsOpenBtn').addEventListener('click', openChains);
 document.getElementById('chainsDoneBtn').addEventListener('click', () => document.getElementById('chainsDlg').close());
 document.getElementById('chainNewBtn').addEventListener('click', () => openChainEditor(null));
@@ -3731,9 +3873,12 @@ async function toolGetStatus() {
 function toolRemember(args) {
 	const fact = (args.fact || '').trim();
 	if (!fact) return { ok: false, message: 'No fact given.' };
-	const mem = store.memory;
-	mem.push(fact);
-	store.memory = mem.slice(-60);
+	/* Straight into the vault rather than through the flat `memory` view, so the
+	 * folder and any [[links]] the model wrote survive — the flat setter only
+	 * knows about bodies. */
+	const v = store.vault;
+	v.push(newNote(fact, args && args.folder, args && args.title));
+	store.vault = v.slice(-120);
 	renderMemory();
 	return { ok: true, message: 'Remembered: ' + fact };
 }
@@ -3769,7 +3914,9 @@ function toolForget(args) {
 	let mem = store.memory;
 	if (!q) return { ok: false, message: 'Say what to forget — or "all" to clear everything.' };
 	if (q === 'all' || q === 'everything') {
-		snapshotWipe('cleared all memory', 'memory', store.memory);
+		/* Snapshots the VAULT, not the flat view. Restoring bodies alone would
+		   put the facts back and lose every folder and link they had. */
+		snapshotWipe('cleared all memory', 'vault', store.vault);
 		store.memory = []; renderMemory();
 		return { ok: true, message: 'Cleared everything from memory. Say "undo that" to put it back.' };
 	}
@@ -4271,6 +4418,8 @@ async function runTool(action) {
 	try {
 		switch (name) {
 			case 'undo': return undoWipe();
+			case 'link_memory': return toolLinkMemory(args);
+			case 'related_memory': return toolRelatedMemory(args);
 			case 'list_chains': return toolListChains();
 			case 'run_chain': return await toolRunChain(args);
 			case 'get_time': return toolGetTime();
@@ -4487,9 +4636,11 @@ const TOOL_DOCS = [
 	'get_time {} — current local date and time.',
 	'get_weather {"location": string optional, "days": number optional 1-7} — current weather; omit location to use the browser\'s location. Add "days" to also get a daily forecast (e.g. days 2 for tomorrow, days 7 for the week) — use it whenever asked about a future day, not just today.',
 	'get_status {} — battery, connectivity, model, and memory/reminder/note counts.',
-	'remember {"fact": string} — permanently remember a fact about the user.',
+	'remember {"fact": string, "title"?: string, "folder"?: "Memory"|"People"|"Projects"|"Areas"|"Topics"|"Preferences", "links"?: ignored} — permanently remember a fact. Give it a short title and the folder it belongs in. To connect it to something already remembered, write that thing\'s title in double square brackets inside the fact itself, e.g. "Noah is working on [[APEX]]" — those links are what draw the memory graph.',
 	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
 	'recall_memory {} — list everything currently remembered about the user.',
+	'link_memory {"from": string, "to": string} — connect two remembered notes to each other by title, so they show up as linked in the memory graph. The target does not have to exist yet. Use this whenever the user tells you two things are related.',
+	'related_memory {"topic": string} — everything linked to a topic, one hop out, with what is written under each.',
 	'undo {} — reverse the last "clear everything" (all memory, all notes, or all reminders). Only the most recent one, and only within this session. Use it when the user says undo, put it back, or that was a mistake.',
 	'list_chains {} — list the saved chains the user has built, with their step counts.',
 	'run_chain {"name": string} — run one saved chain by name. Match loosely on the name the user says. Use this whenever they ask for something by a name that matches a chain rather than doing its steps yourself.',
@@ -4918,23 +5069,298 @@ function formatDuration(ms) {
 	return m ? m + 'm ' + (s % 60) + 's' : s + 's';
 }
 
+let memFilterText = '';
 function renderMemory() {
+	/* Every path that changes the vault already calls this, so redrawing the
+	 * graph from here means no caller has to remember to do both. */
+	if (currentView === 'graph') renderGraph();
 	const box = document.getElementById('panel-memory');
-	const mem = store.memory;
-	if (!mem.length) { box.innerHTML = '<div class="empty">Jarvis hasn\'t learned anything about you yet. Try “remember that I…”.</div>'; return; }
+	const all = store.vault;
+	const q = memFilterText.trim().toLowerCase();
+	const notes = (q ? all.filter((n) => (n.title + ' ' + n.body + ' ' + n.folder).toLowerCase().includes(q)) : all)
+		.slice().sort((a, b) => (b.at || 0) - (a.at || 0));
+	const countEl = document.getElementById('memCount');
+	if (countEl) countEl.textContent = all.length ? notes.length + ' of ' + all.length : '';
+	if (!notes.length) {
+		box.innerHTML = '<div class="empty">' + (all.length
+			? 'No notes match that.'
+			: 'Nothing remembered yet. Say “remember that I…”, or press New note. Link notes to each other by writing a title in double square brackets.') + '</div>';
+		return;
+	}
 	box.innerHTML = '';
-	mem.forEach((fact, i) => {
+	notes.forEach((note) => {
 		const row = document.createElement('div');
-		row.className = 'row-item';
-		row.innerHTML = '<div class="txt">' + esc(fact) + '</div>';
+		row.className = 'row-item noterow';
+		const folder = document.createElement('span');
+		folder.className = 'nfolder';
+		folder.textContent = note.folder;
+		const txt = document.createElement('button');
+		txt.type = 'button';
+		txt.className = 'txt';
+		txt.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:left;flex:1;min-width:0;cursor:pointer';
+		txt.innerHTML = '<b>' + esc(note.title) + '</b><small>' + esc(note.body.replace(/\s+/g, ' ').slice(0, 120)) + '</small>';
+		txt.addEventListener('click', () => openNote(note.id));
+		row.append(folder, txt);
+		const links = parseNoteLinks(note.body);
+		if (links.length) {
+			const wrap = document.createElement('div');
+			wrap.className = 'notelinks';
+			wrap.style.cssText = 'flex-basis:100%;order:3';
+			links.forEach((l) => {
+				const b = document.createElement('button');
+				const target = findNoteByTitle(l);
+				b.type = 'button';
+				b.className = 'notelink' + (target ? '' : ' missing');
+				b.textContent = l;
+				b.title = target ? 'Open ' + l : l + ' — nothing written under that title yet';
+				b.addEventListener('click', () => (target ? openNote(target.id) : createNoteNamed(l)));
+				wrap.appendChild(b);
+			});
+			row.appendChild(wrap);
+		}
 		const del = document.createElement('button');
 		del.innerHTML = '✕';
-		del.title = 'Forget';
-		del.addEventListener('click', () => { const m = store.memory; m.splice(i, 1); store.memory = m; renderMemory(); });
+		del.title = 'Forget this note';
+		del.addEventListener('click', async () => {
+			if (!(await confirmAction('Forget this note?', '“' + note.title + '” and its links will be removed from this device.'))) return;
+			store.vault = store.vault.filter((n) => n.id !== note.id);
+			renderMemory();
+			if (currentView === 'graph') renderGraph();
+		});
 		row.appendChild(del);
 		box.appendChild(row);
 	});
 }
+
+/* ------------------------------ note editor ------------------------------- */
+let editingNoteId = null;
+function openNote(id) {
+	const note = store.vault.find((n) => n.id === id);
+	if (!note) return;
+	editingNoteId = id;
+	document.getElementById('noteTitle').value = note.title;
+	document.getElementById('noteBody').value = note.body;
+	const sel = document.getElementById('noteFolder');
+	const folders = [...new Set(VAULT_FOLDERS.concat(store.vault.map((n) => n.folder)))].filter(Boolean);
+	sel.innerHTML = folders.map((f) => '<option value="' + esc(f) + '">' + esc(f) + '</option>').join('');
+	sel.value = note.folder;
+	renderNoteBacklinks(note);
+	document.getElementById('noteDlg').showModal();
+}
+function createNoteNamed(title) {
+	const note = newNote('', 'Memory', title);
+	saveNote(note);
+	renderMemory();
+	openNote(note.id);
+}
+function renderNoteBacklinks(note) {
+	const box = document.getElementById('noteBacklinks');
+	const back = backlinksFor(note.title);
+	box.innerHTML = back.length
+		? back.map((b) => '<button type="button" class="notelink" data-open="' + esc(b.id) + '">' + esc(b.title) + '</button>').join('')
+		: '<span class="dim" style="font-size:12px">Nothing links here yet.</span>';
+	box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => openNote(b.dataset.open)));
+}
+function saveOpenNote() {
+	const note = store.vault.find((n) => n.id === editingNoteId);
+	if (!note) return;
+	const title = document.getElementById('noteTitle').value.trim();
+	if (!title) { toast('Give it a title', 'A note is linked to by its title, so it needs one.'); return; }
+	/* Renaming rewrites every [[link]] pointing at the old title. Skipping this
+	 * would not break anything loudly — it would quietly turn each backlink
+	 * into a link to a note that no longer exists. */
+	if (title !== note.title) {
+		const from = note.title;
+		const re = new RegExp('\\[\\[' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(\\|[^\\]]*)?\\]\\]', 'gi');
+		const v = store.vault.map((n) => (n.id === note.id ? n : { ...n, body: n.body.replace(re, '[[' + title + '$1]]') }));
+		store.vault = v;
+	}
+	const fresh = store.vault.find((n) => n.id === editingNoteId);
+	fresh.title = title;
+	fresh.folder = document.getElementById('noteFolder').value;
+	fresh.body = document.getElementById('noteBody').value;
+	saveNote(fresh);
+	document.getElementById('noteDlg').close();
+	renderMemory();
+	if (currentView === 'graph') renderGraph();
+}
+
+/* -------------------------------- graph view ------------------------------ */
+let graphState = { nodes: [], edges: [], vb: null, selected: null };
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function renderGraph() {
+	const svg = document.getElementById('graphSvg');
+	const stage = document.getElementById('graphStage');
+	const emptyEl = document.getElementById('graphEmpty');
+	if (!svg) return;
+	const withFolders = document.getElementById('graphFolders').checked;
+	const graph = buildVaultGraph({ folders: withFolders });
+	svg.innerHTML = '';
+	if (!graph.nodes.length) {
+		emptyEl.hidden = false;
+		emptyEl.textContent = 'Nothing to draw yet. Every fact Jarvis remembers becomes a node here, and linking two of them draws the line between.';
+		graphState = { nodes: [], edges: [], vb: null, selected: null };
+		return;
+	}
+	emptyEl.hidden = true;
+	const rect = stage.getBoundingClientRect();
+	const W = Math.max(320, rect.width || 800), H = Math.max(280, rect.height || 480);
+	/* Fewer passes on a big vault: the layout is O(n^2) per pass, and past a
+	 * couple of hundred nodes the extra settling is not worth a locked-up tab. */
+	const iterations = graph.nodes.length > 160 ? 220 : 420;
+	const laid = layoutGraph(graph, W, H, iterations);
+	const byId = new Map(laid.nodes.map((n) => [n.id, n]));
+
+	const xs = laid.nodes.map((n) => n.x), ys = laid.nodes.map((n) => n.y);
+	const pad = 46;
+	const vb = { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad, w: 0, h: 0 };
+	vb.w = Math.max(...xs) + pad - vb.x;
+	vb.h = Math.max(...ys) + pad - vb.y;
+	graphState = { nodes: laid.nodes, edges: laid.edges, vb, selected: graphState.selected };
+	applyViewBox();
+
+	const frag = document.createDocumentFragment();
+	laid.edges.forEach((e) => {
+		const a = byId.get(e.from), b = byId.get(e.to);
+		if (!a || !b) return;
+		const line = document.createElementNS(SVG_NS, 'line');
+		line.setAttribute('x1', a.x.toFixed(1)); line.setAttribute('y1', a.y.toFixed(1));
+		line.setAttribute('x2', b.x.toFixed(1)); line.setAttribute('y2', b.y.toFixed(1));
+		line.setAttribute('class', 'gedge ' + e.kind);
+		line.dataset.from = e.from; line.dataset.to = e.to;
+		frag.appendChild(line);
+	});
+	laid.nodes.forEach((n) => {
+		const r = n.kind === 'folder' ? 7 : n.kind === 'unresolved' ? 3 : 4 + Math.min(6, n.deg * 0.7);
+		const g = document.createElementNS(SVG_NS, 'g');
+		g.setAttribute('class', 'gnode ' + n.kind);
+		g.dataset.id = n.id;
+		const circle = document.createElementNS(SVG_NS, 'circle');
+		circle.setAttribute('cx', n.x.toFixed(1)); circle.setAttribute('cy', n.y.toFixed(1)); circle.setAttribute('r', r.toFixed(1));
+		const text = document.createElementNS(SVG_NS, 'text');
+		text.setAttribute('x', n.x.toFixed(1)); text.setAttribute('y', (n.y + r + 11).toFixed(1));
+		text.textContent = n.title;
+		g.append(circle, text);
+		g.addEventListener('click', () => selectGraphNode(n.id));
+		frag.appendChild(g);
+	});
+	svg.appendChild(frag);
+	selectGraphNode(graphState.selected, true);
+}
+function applyViewBox() {
+	const vb = graphState.vb;
+	if (!vb) return;
+	document.getElementById('graphSvg').setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].map((v) => v.toFixed(1)).join(' '));
+}
+function selectGraphNode(id, quiet) {
+	const side = document.getElementById('graphSide');
+	const svg = document.getElementById('graphSvg');
+	graphState.selected = id || null;
+	const near = new Set();
+	if (id) {
+		near.add(id);
+		graphState.edges.forEach((e) => { if (e.from === id) near.add(e.to); if (e.to === id) near.add(e.from); });
+	}
+	svg.querySelectorAll('.gnode').forEach((g) => {
+		g.classList.toggle('on', !!id && g.dataset.id === id);
+		g.classList.toggle('faded', !!id && !near.has(g.dataset.id));
+	});
+	svg.querySelectorAll('.gedge').forEach((l) => {
+		const touching = !!id && (l.dataset.from === id || l.dataset.to === id);
+		l.classList.toggle('hot', touching);
+		l.classList.toggle('faded', !!id && !touching);
+	});
+	if (!id) {
+		const n = store.vault.length;
+		side.innerHTML = '<div class="empty">' + (n
+			? n + ' note' + (n === 1 ? '' : 's') + '. Click a node to read it.'
+			: 'Nothing here yet.') + '</div>';
+		return;
+	}
+	const node = graphState.nodes.find((x) => x.id === id);
+	const note = store.vault.find((x) => x.title.toLowerCase() === id);
+	if (!note) {
+		/* Folder hubs and unresolved links are real nodes with no note behind
+		 * them; the panel says which, rather than showing a blank. */
+		const isFolder = node && node.kind === 'folder';
+		const inFolder = isFolder ? store.vault.filter((x) => x.folder.toLowerCase() === id) : [];
+		side.innerHTML = '<h3>' + esc(node ? node.title : id) + '</h3>' +
+			'<div class="gmeta">' + (isFolder ? 'Folder · ' + inFolder.length + ' note' + (inFolder.length === 1 ? '' : 's') : 'Linked to, but not written yet') + '</div>';
+		if (!isFolder) {
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'ghost small';
+			btn.textContent = 'Write it';
+			btn.addEventListener('click', () => createNoteNamed(node ? node.title : id));
+			side.appendChild(btn);
+		} else {
+			const list = document.createElement('div');
+			list.className = 'notelinks';
+			inFolder.forEach((x) => {
+				const b = document.createElement('button');
+				b.type = 'button'; b.className = 'notelink'; b.textContent = x.title;
+				b.addEventListener('click', () => openNote(x.id));
+				list.appendChild(b);
+			});
+			side.appendChild(list);
+		}
+		return;
+	}
+	const back = backlinksFor(note.title);
+	side.innerHTML = '<h3>' + esc(note.title) + '</h3>' +
+		'<div class="gmeta">' + esc(note.folder) + ' · ' + parseNoteLinks(note.body).length + ' out · ' + back.length + ' in</div>' +
+		'<div class="gbody">' + esc(note.body) + '</div>';
+	const row = document.createElement('div');
+	row.className = 'row';
+	row.style.marginTop = '14px';
+	const edit = document.createElement('button');
+	edit.type = 'button'; edit.className = 'ghost small'; edit.textContent = 'Edit';
+	edit.addEventListener('click', () => openNote(note.id));
+	row.appendChild(edit);
+	side.appendChild(row);
+	if (!quiet) side.scrollTop = 0;
+}
+
+/* Pan and zoom by rewriting the viewBox rather than transforming a group: the
+ * labels then keep their pixel size at every zoom level instead of scaling
+ * into illegibility. */
+function wireGraphStage() {
+	const svg = document.getElementById('graphSvg');
+	let drag = null;
+	svg.addEventListener('wheel', (e) => {
+		if (!graphState.vb) return;
+		e.preventDefault();
+		const k = e.deltaY > 0 ? 1.12 : 0.89;
+		const r = svg.getBoundingClientRect();
+		const px = graphState.vb.x + ((e.clientX - r.left) / r.width) * graphState.vb.w;
+		const py = graphState.vb.y + ((e.clientY - r.top) / r.height) * graphState.vb.h;
+		graphState.vb.x = px - (px - graphState.vb.x) * k;
+		graphState.vb.y = py - (py - graphState.vb.y) * k;
+		graphState.vb.w *= k; graphState.vb.h *= k;
+		applyViewBox();
+	}, { passive: false });
+	svg.addEventListener('pointerdown', (e) => {
+		if (!graphState.vb) return;
+		drag = { x: e.clientX, y: e.clientY, moved: false };
+		svg.classList.add('dragging');
+		svg.setPointerCapture(e.pointerId);
+	});
+	svg.addEventListener('pointermove', (e) => {
+		if (!drag || !graphState.vb) return;
+		const r = svg.getBoundingClientRect();
+		graphState.vb.x -= (e.clientX - drag.x) * (graphState.vb.w / r.width);
+		graphState.vb.y -= (e.clientY - drag.y) * (graphState.vb.h / r.height);
+		drag = { x: e.clientX, y: e.clientY, moved: true };
+		applyViewBox();
+	});
+	const end = () => { drag = null; svg.classList.remove('dragging'); };
+	svg.addEventListener('pointerup', end);
+	svg.addEventListener('pointercancel', end);
+	/* Clicking empty canvas clears the selection, the way closing a note does. */
+	svg.addEventListener('click', (e) => { if (e.target === svg) selectGraphNode(null); });
+}
+
+
 
 function renderReminders() {
 	const box = document.getElementById('panel-reminders');
@@ -5193,6 +5619,7 @@ const TOOL_VERBS = {
 	open_link: 'Opening a link', get_time: 'Checking the time',
 	remember: 'Saving that', forget: 'Updating memory', recall_memory: 'Reading memory',
 	undo: 'Putting it back',
+	link_memory: 'Connecting two notes', related_memory: 'Following the links',
 	list_chains: 'Checking your chains', run_chain: 'Running a chain',
 	add_note: 'Writing a note', list_notes: 'Reading your notes', delete_note: 'Removing a note',
 	set_reminder: 'Setting a reminder', list_reminders: 'Checking reminders',
@@ -5398,7 +5825,7 @@ function renderOverview() {
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
 	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch', 'skin',
-	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'convos', 'convoId', 'chains', 'usage', 'transcripts', 'devices',
+	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'vault', 'reminders', 'notes', 'convos', 'convoId', 'chains', 'usage', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity', 'theme',
 	'bizName', 'bizWhat', 'bizNotes', 'bizLogo', 'bizColor', 'bizDocs',
@@ -5436,6 +5863,12 @@ function importBackup(file) {
 			   which is no longer a field of its own — folded in as one
 			   conversation rather than dropped on the floor. Done first so an
 			   explicit `convos` in a newer backup still wins. */
+			/* A backup from before the vault carries `memory` as bare strings.
+			   Each becomes a note so nothing is lost on the way in; an explicit
+			   `vault` in a newer backup still wins, being applied after. */
+			if (Array.isArray(data.memory) && !Array.isArray(data.vault)) {
+				store.vault = data.memory.filter((f) => typeof f === 'string').map((f) => newNote(f));
+			}
 			if (Array.isArray(data.history) && !Array.isArray(data.convos)) {
 				const rec = newConvoRecord(data.history);
 				const opener = data.history.find((m) => m && m.role === 'user');
@@ -5459,6 +5892,34 @@ function resetJarvis() {
 	location.reload();
 }
 
+function toolLinkMemory(args) {
+	const from = String((args && args.from) || '').trim();
+	const to = String((args && args.to) || '').trim();
+	if (!from || !to) return { ok: false, message: 'Give both ends: from and to.' };
+	const res = linkNotes(from, to);
+	if (res.ok) {
+		renderMemory();
+		if (currentView === 'graph') renderGraph();
+	}
+	return res;
+}
+function toolRelatedMemory(args) {
+	const topic = String((args && args.topic) || '').trim();
+	if (!topic) return { ok: false, message: 'Which topic?' };
+	const note = findNote(topic);
+	const title = note ? note.title : topic;
+	const out = parseNoteLinks(note ? note.body : '').map((l) => {
+		const t = findNoteByTitle(l);
+		return l + (t ? ': ' + t.body.replace(/\s+/g, ' ').slice(0, 140) : ' (nothing written under that title yet)');
+	});
+	backlinksFor(title).forEach((b) => out.push(b.title + ': ' + b.body.replace(/\s+/g, ' ').slice(0, 140)));
+	if (!note && !out.length) return { ok: false, message: 'Nothing remembered about "' + topic + '".' };
+	return {
+		ok: true,
+		message: title + (note ? ': ' + note.body.replace(/\s+/g, ' ') : ' (no note of its own)') +
+			(out.length ? '\nLinked: ' + out.join('; ') : '\nNothing is linked to it yet.'),
+	};
+}
 function toolListChains() {
 	const list = store.chains;
 	if (!list.length) return { ok: true, message: 'No chains are saved. They are built in Tasks → Edit chains.' };
@@ -5471,6 +5932,190 @@ async function toolRunChain(args) {
 	const hit = list.find((c) => c.name.toLowerCase() === q) || list.find((c) => c.name.toLowerCase().includes(q));
 	if (!hit) return { ok: false, message: 'No chain called "' + q + '". Saved chains: ' + (list.map((c) => c.name).join(', ') || 'none') + '.' };
 	return await runChain(hit.id, { nested: true });
+}
+
+/* ============================== the vault ================================
+ * Memory as a graph of linked notes rather than a list of sentences, in the
+ * same shape the CLI writes to disk and Obsidian reads: a title, a folder, a
+ * body, and [[Wikilinks]] inside the prose.
+ *
+ * Links live in the TEXT and nowhere else. Storing them alongside would mean
+ * two copies to keep in step, and the first edit through any other route —
+ * Obsidian, the CLI, a hand-edited backup — would desync them. Parsing on read
+ * costs nothing at this size and cannot drift.
+ */
+const VAULT_FOLDERS = ['Memory', 'People', 'Projects', 'Areas', 'Topics', 'Preferences'];
+
+function noteTitleFrom(text) {
+	const t = String(text || '').replace(/\s+/g, ' ').trim();
+	if (!t) return 'Untitled';
+	const first = t.split(/(?<=[.!?])\s/)[0];
+	const base = first.length <= 56 ? first : t.slice(0, 56);
+	return base.replace(/[.!?]+$/, '').trim() || 'Untitled';
+}
+function newNote(body, folder, title) {
+	return { id: uid(), title: title || noteTitleFrom(body), folder: folder || 'Memory', body: String(body || ''), at: Date.now() };
+}
+/* A one-time read of the pre-vault jarvis.memory, not a boot-time migration —
+ * for the same reason activeConvo() is not one: a store cleared or imported
+ * later in the session would slip straight past a migration that only ran once
+ * at startup. */
+function legacyVault() {
+	let old = [];
+	try { old = JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch {}
+	return old.filter((f) => typeof f === 'string').map((f) => newNote(f));
+}
+function parseNoteLinks(body) {
+	/* Code comes out first. Without this, a note that merely quotes the link
+	 * syntax — a how-to, a snippet, this app's own welcome text — spawns nodes
+	 * nobody meant to create. Obsidian does the same. */
+	const text = String(body || '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ');
+	const out = [];
+	const re = /\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g;
+	let m;
+	while ((m = re.exec(text))) {
+		const t = m[1].trim();
+		if (t && !out.some((x) => x.toLowerCase() === t.toLowerCase())) out.push(t);
+	}
+	return out;
+}
+/* Two lookups, and the difference matters.
+ *
+ * A [[wikilink]] resolves by TITLE and nothing else. The loose search below
+ * falls back to matching the body, and a link's target text is itself part of
+ * a body — so resolving links through it made every unwritten link "resolve"
+ * to the very note that mentioned it, and the whole unresolved-node concept
+ * silently disappeared from the graph.
+ *
+ * The loose one is for what a person or a model TYPED, where guessing is the
+ * helpful thing to do. */
+function findNoteByTitle(title) {
+	const t = String(title || '').toLowerCase().trim();
+	if (!t) return null;
+	return store.vault.find((n) => n.title.toLowerCase() === t) || null;
+}
+function findNoteLoose(query) {
+	const q = String(query || '').toLowerCase().trim();
+	if (!q) return null;
+	const v = store.vault;
+	return v.find((n) => n.title.toLowerCase() === q)
+		|| v.find((n) => n.title.toLowerCase().includes(q))
+		|| null;
+}
+function findNote(query) {
+	const q = String(query || '').toLowerCase().trim();
+	if (!q) return null;
+	return findNoteLoose(q) || store.vault.find((n) => n.body.toLowerCase().includes(q)) || null;
+}
+function saveNote(note) {
+	const v = store.vault;
+	const i = v.findIndex((n) => n.id === note.id);
+	note.at = Date.now();
+	if (i < 0) v.push(note); else v[i] = note;
+	store.vault = v;
+	return note;
+}
+function linkNotes(aTitle, bTitle) {
+	const a = findNote(aTitle);
+	if (!a) return { ok: false, message: 'No note called "' + aTitle + '".' };
+	/* Loose on the title, never on the body: linking to "Portal" should find a
+	 * note called Homeschool Portal, but must NOT find one that merely mentions
+	 * the word — that would silently attach the link to the wrong note. */
+	const b = findNoteLoose(bTitle);
+	const target = b ? b.title : String(bTitle);
+	const push = (note, title) => {
+		if (parseNoteLinks(note.body).some((l) => l.toLowerCase() === title.toLowerCase())) return false;
+		const rel = note.body.match(/^Related: .*$/m);
+		note.body = rel
+			? note.body.replace(rel[0], rel[0] + ', [[' + title + ']]')
+			: (note.body.trim() ? note.body.trim() + '\n\nRelated: [[' + title + ']]' : 'Related: [[' + title + ']]');
+		saveNote(note);
+		return true;
+	};
+	push(a, target);
+	/* Both directions when both ends exist. A one-way link is a footnote; two
+	 * ways is what makes the graph navigable from either end. */
+	if (b) push(b, a.title);
+	return { ok: true, message: 'Linked ' + a.title + ' and ' + target + '.' };
+}
+function backlinksFor(title) {
+	const t = String(title).toLowerCase();
+	return store.vault.filter((n) => parseNoteLinks(n.body).some((l) => l.toLowerCase() === t));
+}
+/* Three kinds of node, the same three the CLI draws:
+ *   note       - one that exists
+ *   unresolved - a [[Target]] nothing has written yet, which is real
+ *                information: the shape of what you have not got round to
+ *   folder     - the hubs, without which a lightly-linked vault is just dust */
+function buildVaultGraph(opts) {
+	opts = opts || {};
+	const notes = store.vault;
+	const nodes = new Map();
+	const edges = [];
+	const key = (t) => String(t).toLowerCase();
+	const add = (title, kind) => {
+		const k = key(title);
+		if (!nodes.has(k)) nodes.set(k, { id: k, title, kind, deg: 0 });
+		else if (kind === 'note' && nodes.get(k).kind === 'unresolved') nodes.get(k).kind = 'note';
+		return nodes.get(k);
+	};
+	const join = (a, b, kind) => {
+		if (key(a) === key(b)) return;
+		const id = key(a) + ' ' + key(b);
+		if (edges.some((e) => e.id === id)) return;
+		edges.push({ id, from: key(a), to: key(b), kind });
+		nodes.get(key(a)).deg++;
+		nodes.get(key(b)).deg++;
+	};
+	notes.forEach((n) => add(n.title, 'note'));
+	if (opts.folders !== false) notes.forEach((n) => { if (n.folder) add(n.folder, 'folder'); });
+	notes.forEach((n) => {
+		parseNoteLinks(n.body).forEach((l) => { add(l, 'unresolved'); join(n.title, l, 'link'); });
+		if (opts.folders !== false && n.folder) join(n.folder, n.title, 'folder');
+	});
+	return { nodes: [...nodes.values()], edges };
+}
+
+/* A force layout in forty lines of arithmetic: repulsion between every pair, a
+ * spring along every edge, a pull toward the middle, and a cooling factor.
+ * That is the whole of what a layout library would give at this size, and
+ * CLAUDE.md rules out pulling one in. Seeded on a spiral rather than at random
+ * so the same vault lays out the same way every time — a picture you have
+ * learnt to read should stay where you left it. */
+function layoutGraph(graph, W, H, iterations) {
+	const nodes = graph.nodes.map((n, i) => {
+		const a = i * 2.399963, r = 8 * Math.sqrt(i + 1);
+		return { ...n, x: W / 2 + r * Math.cos(a), y: H / 2 + r * Math.sin(a), vx: 0, vy: 0 };
+	});
+	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const edges = graph.edges.map((e) => ({ ...e, a: byId.get(e.from), b: byId.get(e.to) })).filter((e) => e.a && e.b);
+	for (let step = 0; step < iterations; step++) {
+		const cool = 1 - step / iterations;
+		for (let i = 0; i < nodes.length; i++) {
+			for (let j = i + 1; j < nodes.length; j++) {
+				const a = nodes[i], b = nodes[j];
+				let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+				if (d2 < 0.01) { dx = (i - j) * 0.1 + 0.05; dy = 0.05; d2 = dx * dx + dy * dy; }
+				const d = Math.sqrt(d2), f = 5200 / d2;
+				a.vx -= (dx / d) * f; a.vy -= (dy / d) * f;
+				b.vx += (dx / d) * f; b.vy += (dy / d) * f;
+			}
+		}
+		for (const e of edges) {
+			const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
+			const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+			const f = (d - 62) * 0.045;
+			e.a.vx += (dx / d) * f; e.a.vy += (dy / d) * f;
+			e.b.vx -= (dx / d) * f; e.b.vy -= (dy / d) * f;
+		}
+		for (const n of nodes) {
+			n.vx += (W / 2 - n.x) * 0.0016;
+			n.vy += (H / 2 - n.y) * 0.0016;
+			n.x += n.vx * cool * 0.5; n.y += n.vy * cool * 0.5;
+			n.vx *= 0.82; n.vy *= 0.82;
+		}
+	}
+	return { nodes, edges: graph.edges };
 }
 
 /* ---------------------------- conversations UI ---------------------------- */
@@ -5716,6 +6361,8 @@ function collectCommands() {
 	 ['apps', 'Connections', 'providers keys integrations']].forEach(([v, label, keys]) => {
 		add('Go to ' + label, 'Navigate', () => showView(v), keys);
 	});
+	add('Open the memory graph', 'See how your notes connect', () => showView('graph'), 'graph map notes links vault obsidian connections');
+	add('New note', 'Write something into memory', () => { showView('memory'); createNoteNamed('New note'); }, 'note memory remember write vault');
 	add('New chat', 'Start a fresh conversation', () => { newConversation(); showView('chat'); }, 'new thread conversation clear reset start over');
 	add('Conversations', 'Switch, rename or delete a thread', openConvos, 'history threads chats switch rename delete');
 	add('Tokens and cost', 'Usage so far, and the calculator', openUsage, 'tokens cost price spend money billing usage calculator estimate');
@@ -5743,7 +6390,10 @@ function collectCommands() {
 }
 function collectSearchIndex() {
 	const items = [];
-	store.memory.forEach((fact) => items.push({ view: 'memory', title: fact, sub: 'Memory', text: fact }));
+	store.vault.forEach((n) => items.push({
+		view: 'memory', title: n.title, sub: n.folder + (parseNoteLinks(n.body).length ? ' · ' + parseNoteLinks(n.body).length + ' links' : ''),
+		text: n.title + ' ' + n.body, run: () => { showView('memory'); openNote(n.id); },
+	}));
 	store.notes.forEach((n) => items.push({ view: 'tasks', title: n.text, sub: 'Note · ' + new Date(n.at).toLocaleDateString(), text: n.text }));
 	store.reminders.forEach((r) => items.push({ view: 'tasks', title: r.text, sub: 'Reminder · ' + new Date(r.at).toLocaleString(), text: r.text }));
 	store.transcripts.forEach((t) => items.push({ view: 'systems', title: t.title, sub: 'Recording', text: [t.title, t.text, t.analysis || ''].join(' ') }));
