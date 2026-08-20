@@ -439,8 +439,14 @@ function cmdMem(cfg, sub, rest) {
 		const text = rest.filter((a) => !a.startsWith('-')).join(' ').trim();
 		if (!text) die('Nothing to remember. `jarvis mem add "..."`');
 		const body = text + (links.length ? '\n\nRelated: ' + links.map((l) => '[[' + l + ']]').join(', ') : '');
-		const file = V.writeNote(vault, { title: title === true || !title ? V.titleFrom(text) : title, folder: folder === true ? V.DEFAULT_FOLDER : folder, body });
+		const finalTitle = title === true || !title ? V.titleFrom(text) : title;
+		const clash = V.findByTitle(vault, finalTitle);
+		const file = V.writeNote(vault, { title: finalTitle, folder: folder === true ? V.DEFAULT_FOLDER : folder, body });
 		console.log(ok('✓') + ' ' + path.relative(vault, file));
+		/* Two notes with one title is legal but awkward — a [[link]] to it can
+		 * only resolve to one of them — and it is more often a slip than a
+		 * plan, so say it happened rather than letting it be discovered later. */
+		if (clash) console.log(dim('  note: "' + finalTitle + '" already existed at ' + path.relative(vault, clash.file) + ' — both are kept, but a [[link]] to it is now ambiguous'));
 		links.forEach((l) => console.log(dim('  ↔ ' + l)));
 		return;
 	}
@@ -449,7 +455,7 @@ function cmdMem(cfg, sub, rest) {
 		let notes = V.listNotes(vault);
 		if (q) notes = notes.filter((n) => (n.title + ' ' + n.body).toLowerCase().includes(q));
 		if (!notes.length) return console.log(dim(q ? 'No notes match that.' : 'The vault is empty. `jarvis mem add "..."`'));
-		notes.sort((a, b) => String(b.updated).localeCompare(String(a.updated)));
+		notes.sort((a, b) => (b.at || 0) - (a.at || 0));   // real mtime, so an edit made in Obsidian moves the note
 		const w = Math.max(...notes.map((n) => n.folder.length));
 		notes.forEach((n) => console.log(dim(n.folder.padEnd(w) + '  ') + bold(n.title) + (n.links.length ? dim('  → ' + n.links.join(', ')) : '')));
 		console.log(dim('\n' + notes.length + ' note' + (notes.length === 1 ? '' : 's')));

@@ -98,6 +98,10 @@ function walk(dir, out) {
 	return out;
 }
 
+function statMtime(file) {
+	try { return fs.statSync(file).mtimeMs; } catch { return 0; }
+}
+
 export function readNote(file, vault) {
 	const text = fs.readFileSync(file, 'utf8');
 	const { meta, body } = parseFrontmatter(text);
@@ -111,6 +115,12 @@ export function readNote(file, vault) {
 		tags: Array.isArray(meta.tags) ? meta.tags : (meta.tags ? [meta.tags] : []),
 		created: meta.created || '',
 		updated: meta.updated || '',
+		/* `updated:` says when JARVIS last wrote the file. Obsidian, vim and
+		 * every other editor change the body and leave the frontmatter alone,
+		 * so on its own it makes an edit made elsewhere look like it never
+		 * happened. mtime is the part nothing can forget to update; the larger
+		 * of the two wins so a vault copied around by git still sorts sanely. */
+		at: Math.max(Date.parse(meta.updated) || 0, statMtime(file)),
 		body: body.trim(),
 		links: parseLinks(body),
 	};
@@ -145,11 +155,23 @@ export function findNote(vault, query) {
 	return findLoose(vault, q) || listNotes(vault).find((n) => n.body.toLowerCase().includes(q)) || null;
 }
 
+/* Two different titles can slug to one filename — "A/B" and "A-B" both become
+ * A-B.md, since the slash is not legal in a filename on Windows. Writing
+ * straight to that path silently destroyed whichever note got there first,
+ * and reported success while doing it. A new note never overwrites an existing
+ * file now; it takes the next free name instead, matching the web app. */
+function freeFilename(dir, title) {
+	const base = slug(title);
+	let name = base, i = 2;
+	while (fs.existsSync(path.join(dir, name + '.md'))) name = base + ' (' + i++ + ')';
+	return path.join(dir, name + '.md');
+}
+
 export function writeNote(vault, note) {
 	const folder = note.folder || DEFAULT_FOLDER;
 	const dir = path.join(vault, folder);
 	fs.mkdirSync(dir, { recursive: true });
-	const file = note.file || path.join(dir, slug(note.title) + '.md');
+	const file = note.file || freeFilename(dir, note.title);
 	const now = new Date().toISOString();
 	const meta = { title: note.title, folder, created: note.created || now, updated: now };
 	if (note.tags && note.tags.length) meta.tags = note.tags;

@@ -2424,7 +2424,7 @@ const store = {
 		if (legacy) return [legacy]; // migrate the old single-model setting, exactly as it was — don't silently add a second model to someone's existing setup
 		return ['anthropic/claude-sonnet-5', 'anthropic/claude-opus-5']; // brand-new default: Sonnet 5 leads (fast, drives voice/tools), Opus 5 gets consulted in Team mode
 	},
-	set models(v) { localStorage.setItem('jarvis.models', JSON.stringify(v)); },
+	set models(v) { trySave(() => localStorage.setItem('jarvis.models', JSON.stringify(v))); },
 	get teamMode() { return localStorage.getItem('jarvis.teamMode') !== '0'; }, // on by default, pairing with the two-model default above; explicit '0' (Settings toggle) always wins
 	set teamMode(v) { localStorage.setItem('jarvis.teamMode', v ? '1' : '0'); },
 	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
@@ -2481,9 +2481,9 @@ const store = {
 	 * nothing tells you it happened. */
 	set vault(v) { trySave(() => localStorage.setItem('jarvis.vault', JSON.stringify(v))); },
 	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
-	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
+	set reminders(v) { trySave(() => localStorage.setItem('jarvis.reminders', JSON.stringify(v))); },
 	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
-	set notes(v) { localStorage.setItem('jarvis.notes', JSON.stringify(v)); },
+	set notes(v) { trySave(() => localStorage.setItem('jarvis.notes', JSON.stringify(v))); },
 	/* `history` is the ACTIVE conversation's messages, not a store of its own.
 	 * Threads landed after ~30 call sites were already reading and writing
 	 * store.history, so it stays an accessor over whichever thread is open —
@@ -2503,7 +2503,7 @@ const store = {
 		store.convos = list;
 	},
 	get convos() { try { return JSON.parse(localStorage.getItem('jarvis.convos')) || []; } catch { return []; } },
-	set convos(v) { localStorage.setItem('jarvis.convos', JSON.stringify(v)); },
+	set convos(v) { trySave(() => localStorage.setItem('jarvis.convos', JSON.stringify(v))); },
 	get convoId() { return localStorage.getItem('jarvis.convoId') || ''; },
 	set convoId(v) { localStorage.setItem('jarvis.convoId', v || ''); },
 	/* Real numbers off the wire where a provider reports them, never guesses.
@@ -2512,18 +2512,22 @@ const store = {
 		try { return JSON.parse(localStorage.getItem('jarvis.usage')) || { calls: 0, in: 0, out: 0, cost: 0, since: Date.now(), models: {} }; }
 		catch { return { calls: 0, in: 0, out: 0, cost: 0, since: Date.now(), models: {} }; }
 	},
-	set usage(v) { localStorage.setItem('jarvis.usage', JSON.stringify(v)); },
+	set usage(v) { trySave(() => localStorage.setItem('jarvis.usage', JSON.stringify(v))); },
 	get chains() { try { return JSON.parse(localStorage.getItem('jarvis.chains')) || []; } catch { return []; } },
-	set chains(v) { localStorage.setItem('jarvis.chains', JSON.stringify(v)); },
+	set chains(v) { trySave(() => localStorage.setItem('jarvis.chains', JSON.stringify(v))); },
 	/* 'openrouter-oauth' when the key came from signing in, empty when it was
 	 * pasted. The difference decides whether the UI offers Sign in or Sign out,
 	 * and whether signing out is safe to describe as leaving the account alone. */
+	/* Titles both sides agreed on at the end of the last successful sync — the
+	 * third input that lets a deletion be told apart from an addition. */
+	get vaultSynced() { try { const v = JSON.parse(localStorage.getItem('jarvis.vaultSynced')); return Array.isArray(v) ? v : []; } catch { return []; } },
+	set vaultSynced(v) { trySave(() => localStorage.setItem('jarvis.vaultSynced', JSON.stringify(v))); },
 	get keySource() { return localStorage.getItem('jarvis.keySource') || ''; },
 	set keySource(v) { localStorage.setItem('jarvis.keySource', v || ''); },
 	get onboarded() { return localStorage.getItem('jarvis.onboarded') === '1'; },
 	set onboarded(v) { localStorage.setItem('jarvis.onboarded', v ? '1' : '0'); },
 	get transcripts() { try { return JSON.parse(localStorage.getItem('jarvis.transcripts')) || []; } catch { return []; } },
-	set transcripts(v) { localStorage.setItem('jarvis.transcripts', JSON.stringify(v)); },
+	set transcripts(v) { trySave(() => localStorage.setItem('jarvis.transcripts', JSON.stringify(v))); },
 	get devices() {
 		try {
 			const v = JSON.parse(localStorage.getItem('jarvis.devices'));
@@ -2533,7 +2537,7 @@ const store = {
 		localStorage.setItem('jarvis.devices', JSON.stringify(seeded));
 		return seeded;
 	},
-	set devices(v) { localStorage.setItem('jarvis.devices', JSON.stringify(v)); },
+	set devices(v) { trySave(() => localStorage.setItem('jarvis.devices', JSON.stringify(v))); },
 	get haEnabled() { return localStorage.getItem('jarvis.haEnabled') === '1'; },
 	set haEnabled(v) { localStorage.setItem('jarvis.haEnabled', v ? '1' : '0'); },
 	get haUrl() { return localStorage.getItem('jarvis.haUrl') || ''; },
@@ -2547,7 +2551,7 @@ const store = {
 	get higgsVideoEndpoint() { return localStorage.getItem('jarvis.higgsVideoEndpoint') || ''; },
 	set higgsVideoEndpoint(v) { localStorage.setItem('jarvis.higgsVideoEndpoint', v); },
 	get activity() { try { return JSON.parse(localStorage.getItem('jarvis.activity')) || []; } catch { return []; } },
-	set activity(v) { localStorage.setItem('jarvis.activity', JSON.stringify(v)); },
+	set activity(v) { trySave(() => localStorage.setItem('jarvis.activity', JSON.stringify(v))); },
 	get briefingEnabled() { return localStorage.getItem('jarvis.briefingEnabled') === '1'; },
 	set briefingEnabled(v) { localStorage.setItem('jarvis.briefingEnabled', v ? '1' : '0'); },
 	get briefingTime() { return localStorage.getItem('jarvis.briefingTime') || '08:00'; },
@@ -2578,9 +2582,9 @@ const store = {
 	get bizColor() { return localStorage.getItem('jarvis.bizColor') || '#007aff'; }, // drives the generated monogram mark
 	set bizColor(v) { localStorage.setItem('jarvis.bizColor', v); },
 	get skin() { try { return { ...SKIN_DEFAULT, ...(JSON.parse(localStorage.getItem('jarvis.skin')) || {}) }; } catch { return { ...SKIN_DEFAULT }; } },
-	set skin(v) { localStorage.setItem('jarvis.skin', JSON.stringify(v)); },
+	set skin(v) { trySave(() => localStorage.setItem('jarvis.skin', JSON.stringify(v))); },
 	get bizDocs() { try { return JSON.parse(localStorage.getItem('jarvis.bizDocs')) || []; } catch { return []; } },
-	set bizDocs(v) { localStorage.setItem('jarvis.bizDocs', JSON.stringify(v)); },
+	set bizDocs(v) { trySave(() => localStorage.setItem('jarvis.bizDocs', JSON.stringify(v))); },
 };
 
 /* localStorage is a few MB total, and business docs plus a logo are by far the
@@ -2662,8 +2666,18 @@ function activeConvo() {
 	if (!cur) { cur = list[0]; store.convoId = cur.id; }
 	return cur;
 }
+/* Threads are never evicted, for the same reason notes are not: a thread you
+ * did not delete should still be there. But something has to say so before the
+ * quota does — a failed save mid-sentence is a much worse way to find out. */
+let convosWarned = false;
+function warnIfManyConvos(count) {
+	if (convosWarned || count < 120) return;
+	convosWarned = true;
+	toast('A lot of chats saved', count + ' threads. Nothing is deleted automatically — if saving ever fails, clear a few old ones in Chats.', 9000);
+}
 function newConversation() {
 	const list = store.convos;
+	warnIfManyConvos(list.length);
 	/* An untouched blank thread is reused rather than stacked on: pressing New
 	 * chat twice should not leave a trail of empty ones to scroll past. */
 	const blank = list.find((c) => !c.msgs.length);
@@ -6773,7 +6787,14 @@ function noteToMarkdown(n) {
 	const now = new Date(n.at || Date.now()).toISOString();
 	return ['---', 'title: ' + n.title, 'folder: ' + n.folder, 'created: ' + now, 'updated: ' + now, '---', '', n.body.trim(), ''].join('\n');
 }
-function markdownToNote(text, fallbackTitle, folder) {
+/* `mtime` is the whole reason this argument exists. Obsidian — and every
+ * other editor — writes the body and leaves the frontmatter alone, so the
+ * `updated:` line only ever says when JARVIS last wrote the file. Trusting it
+ * meant an edit made in Obsidian looked older than the app's stale copy, and
+ * the next sync wrote the stale copy back over it. The filesystem is the one
+ * party that always knows. The larger of the two wins, so a vault moved
+ * around by git or Dropbox — which can reset mtimes — still keeps its order. */
+function markdownToNote(text, fallbackTitle, folder, mtime) {
 	let meta = {}, body = text;
 	if (text.startsWith('---\n')) {
 		const end = text.indexOf('\n---', 3);
@@ -6790,7 +6811,7 @@ function markdownToNote(text, fallbackTitle, folder) {
 		title: meta.title || fallbackTitle,
 		folder: meta.folder || folder || 'Memory',
 		body: body.trim(),
-		at: Date.parse(meta.updated) || Date.now(),
+		at: Math.max(Date.parse(meta.updated) || 0, mtime || 0) || Date.now(),
 	};
 }
 
@@ -6809,6 +6830,10 @@ async function connectVaultFolder() {
 }
 async function disconnectVaultFolder() {
 	vaultDir = null;
+	/* The record of what the two sides agreed on describes a folder that is no
+	 * longer connected. Keeping it would make the first sync with the NEXT
+	 * folder delete notes for the crime of not being in it. */
+	store.vaultSynced = [];
 	await clearVaultHandle().catch(() => {});
 	renderVaultFolder();
 	toast('Folder disconnected', 'The files are untouched — this only forgets where they were.');
@@ -6816,23 +6841,71 @@ async function disconnectVaultFolder() {
 
 async function readVaultFolder(dir) {
 	const out = [];
-	const walk = async (handle, folder) => {
+	const walk = async (handle, folder, prefix) => {
 		for await (const [name, entry] of handle.entries()) {
 			if (name.startsWith('.')) continue;
-			if (entry.kind === 'directory') await walk(entry, folder || name);
+			if (entry.kind === 'directory') await walk(entry, folder || name, prefix + name + '/');
 			else if (name.endsWith('.md')) {
-				const text = await (await entry.getFile()).text();
-				out.push(markdownToNote(text, name.replace(/\.md$/, ''), folder));
+				const file = await entry.getFile();
+				const note = markdownToNote(await file.text(), name.replace(/\.md$/, ''), folder, file.lastModified);
+				note.path = prefix + name;   // where it actually is, which is not always where its folder says
+				out.push(note);
 			}
 		}
 	};
-	await walk(dir, '');
+	await walk(dir, '', '');
 	return out;
+}
+
+/* Two notes can share a title — the vault does not forbid it, even though a
+ * [[link]] to one is then ambiguous. Grouping instead of keying means the
+ * second one is paired off with its own file rather than silently collapsing
+ * into the first, which used to cost one of the two bodies outright. */
+function groupByTitle(items) {
+	const m = new Map();
+	items.forEach((n) => {
+		const k = String(n.title || '').toLowerCase();
+		if (!m.has(k)) m.set(k, []);
+		m.get(k).push(n);
+	});
+	return m;
+}
+function takeByTitle(map, title) {
+	const list = map.get(String(title || '').toLowerCase());
+	if (!list || !list.length) return null;
+	return list.shift();
+}
+/* One file per note even when two notes want the same name. */
+function uniqueFilename(title, taken) {
+	const base = noteFilename(title);
+	let name = base, i = 2;
+	while (taken.has(name.toLowerCase())) name = base + ' (' + i++ + ')';
+	taken.add(name.toLowerCase());
+	return name;
+}
+async function removeVaultFile(dir, relPath) {
+	const parts = relPath.split('/');
+	let handle = dir;
+	for (let i = 0; i < parts.length - 1; i++) handle = await handle.getDirectoryHandle(parts[i]);
+	await handle.removeEntry(parts[parts.length - 1]);
 }
 
 /* Per note, most-recently-updated wins. Notes are matched by TITLE, because
  * that is what a [[link]] points at and what the filename is derived from —
- * the ids are private to each side and would never match. */
+ * the ids are private to each side and would never match.
+ *
+ * Deletion needs a THIRD input, and this is the part a two-way compare cannot
+ * do: with only "here" and "there", a note missing from one side is
+ * indistinguishable from a note that is new on the other, so the safe reading
+ * is always "new", and nothing can ever be deleted — delete a note in Obsidian
+ * and the app writes it straight back. store.vaultSynced records what both
+ * sides agreed on last time, which turns that guess into a fact. It holds
+ * titles only, not bodies: identity is all the question needs, and a second
+ * copy of the vault in localStorage is a poor use of a small quota.
+ *
+ * The FIRST sync has no such record and therefore deletes nothing — two
+ * separately-grown vaults meeting for the first time merge, which is the only
+ * defensible reading of "I have notes here and notes there". */
 async function syncVaultFolder() {
 	const dir = await vaultDirReady(true);
 	if (!dir) { toast('No folder connected', 'Connect one first, or grant permission when asked.'); return; }
@@ -6842,37 +6915,77 @@ async function syncVaultFolder() {
 	try { onDisk = await readVaultFolder(dir); }
 	catch (err) { out.textContent = 'Could not read the folder: ' + (err && err.message ? err.message : err); return; }
 
-	const byTitle = new Map(onDisk.map((n) => [n.title.toLowerCase(), n]));
 	const mine = store.vault;
+	const lastSeen = store.vaultSynced;
+	const firstSync = lastSeen.length === 0;
+	const diskByTitle = groupByTitle(onDisk);
+	const seenByTitle = groupByTitle(lastSeen.map((t) => ({ title: t })));
 	const merged = [];
-	let pulled = 0, pushed = 0;
+	let pulled = 0, pushed = 0, goneThere = 0, goneHere = 0;
+
 	mine.forEach((n) => {
-		const theirs = byTitle.get(n.title.toLowerCase());
-		if (theirs && (theirs.at || 0) > (n.at || 0)) { merged.push({ ...n, folder: theirs.folder, body: theirs.body, at: theirs.at }); pulled++; }
-		else { merged.push(n); if (!theirs || theirs.body !== n.body) pushed++; }
-		byTitle.delete(n.title.toLowerCase());
+		const theirs = takeByTitle(diskByTitle, n.title);
+		const agreedBefore = takeByTitle(seenByTitle, n.title);
+		if (!theirs) {
+			/* Missing from disk. Deleted in Obsidian, or simply never written? */
+			if (!firstSync && agreedBefore) { goneThere++; return; }
+			merged.push(n); pushed++; return;
+		}
+		if (theirs.body === n.body && (theirs.folder || '') === (n.folder || '')) { merged.push(n); return; }
+		if ((theirs.at || 0) > (n.at || 0)) { merged.push({ ...n, folder: theirs.folder, body: theirs.body, at: theirs.at }); pulled++; }
+		else { merged.push(n); pushed++; }
 	});
-	byTitle.forEach((n) => { merged.push(n); pulled++; });
+	diskByTitle.forEach((list) => list.forEach((n) => {
+		const agreedBefore = takeByTitle(seenByTitle, n.title);
+		if (!firstSync && agreedBefore) { goneHere++; return; }   // deleted in the app; the file goes too
+		merged.push({ id: n.id, title: n.title, folder: n.folder, body: n.body, at: n.at });
+		pulled++;
+	}));
 	store.vault = merged;
 
 	out.textContent = 'Writing…';
-	let wrote = 0;
+	/* Where every note belongs, decided before anything is touched so that the
+	 * delete pass below can tell a stale file from a live one. */
+	const taken = new Set();
+	const planned = merged.map((n) => ({ note: n, path: (n.folder || 'Memory') + '/' + uniqueFilename(n.title, taken) + '.md' }));
+	const keep = new Set(planned.map((p) => p.path));
+	const onDiskNow = new Map(onDisk.map((n) => [n.path, n]));
+
+	let wrote = 0, removed = 0;
 	try {
-		for (const n of merged) {
-			const folderHandle = await dir.getDirectoryHandle(n.folder || 'Memory', { create: true });
-			const fileHandle = await folderHandle.getFileHandle(noteFilename(n.title) + '.md', { create: true });
+		for (const { note, path } of planned) {
+			const there = onDiskNow.get(path);
+			/* Rewriting a file whose content already matches only churns its
+			 * mtime — and mtime is now load-bearing, so this is correctness,
+			 * not just a saving. */
+			if (there && there.body === note.body && there.title === note.title && (there.folder || '') === (note.folder || '')) continue;
+			const slash = path.lastIndexOf('/');
+			const folderHandle = await dir.getDirectoryHandle(path.slice(0, slash), { create: true });
+			const fileHandle = await folderHandle.getFileHandle(path.slice(slash + 1), { create: true });
 			const w = await fileHandle.createWritable();
-			await w.write(noteToMarkdown(n));
+			await w.write(noteToMarkdown(note));
 			await w.close();
 			wrote++;
 		}
+		/* Anything left over: a note deleted in the app, or the old location of
+		 * one that moved folder. Both are files that should no longer exist. */
+		for (const path of onDiskNow.keys()) {
+			if (keep.has(path)) continue;
+			await removeVaultFile(dir, path);
+			removed++;
+		}
 	} catch (err) {
-		out.textContent = 'Wrote ' + wrote + ' of ' + merged.length + ', then stopped: ' + (err && err.message ? err.message : err);
+		out.textContent = 'Wrote ' + wrote + ' of ' + planned.length + ', then stopped: ' + (err && err.message ? err.message : err);
 		renderMemory();
 		return;
 	}
+	/* Only now, with both sides actually in step, is it true to say so. Record
+	 * it — a manifest saved after a half-finished write would call the missing
+	 * half "deleted" on the next run. */
+	store.vaultSynced = merged.map((n) => n.title);
 	renderMemory();
-	out.textContent = merged.length + ' notes in step — ' + pulled + ' pulled in, ' + wrote + ' written out.';
+	const moved = [pulled && pulled + ' pulled in', wrote && wrote + ' written out', removed && removed + ' file' + (removed === 1 ? '' : 's') + ' removed', goneThere && goneThere + ' deleted here'].filter(Boolean).join(', ');
+	out.textContent = merged.length + ' notes in step' + (moved ? ' — ' + moved : ' — nothing to do');
 	toast('Vault synced', merged.length + ' notes. Open the folder in Obsidian to see the same graph.');
 }
 
@@ -6887,8 +7000,14 @@ function renderVaultFolder() {
 		return;
 	}
 	const on = !!vaultDir;
+	/* Deleting is the half of sync that cannot be undone, so which rule is in
+	 * force has to be readable BEFORE the button is pressed, not explained
+	 * afterwards in the result line. */
+	const everSynced = store.vaultSynced.length > 0;
 	box.textContent = on
-		? 'Connected to “' + vaultDir.name + '”. Syncing is manual — nothing is read or written until you press it.'
+		? 'Connected to “' + vaultDir.name + '”. Syncing is manual — nothing is read or written until you press it. ' + (everSynced
+			? 'A note deleted on either side is now deleted on the other; otherwise the newer version wins.'
+			: 'This first sync merges both sides and deletes nothing — after it, a deletion on either side crosses over.')
 		: 'Not connected. Point this at the same folder the jarvis CLI uses (~/jarvis-vault by default) and both sides keep the same notes.';
 	document.getElementById('vaultConnectBtn').textContent = on ? 'Change folder' : 'Connect folder';
 	document.getElementById('vaultSyncBtn').hidden = !on;

@@ -45,12 +45,26 @@ sides have to move together:
 When you change one, change the other, and say so in the commit. The tests
 that would catch a drift are `cli.mjs` and `vault.js` in the scratchpad.
 
-Two rules the vault design rests on, both learned the hard way:
+Four rules the vault design rests on, all learned the hard way:
 
 1. **Links live in the prose and nowhere else.** They are parsed out of the
    body on every read. Storing them alongside means two copies and the first
    edit through Obsidian or an editor desyncs them.
-2. **A `[[link]]` resolves by TITLE only.** There is a separate loose search
+2. **Timestamps come from mtime, not from frontmatter.** `updated:` records
+   when *Jarvis* last wrote the file. Obsidian, vim and everything else change
+   the body and leave frontmatter alone, so an edit made anywhere else is
+   invisible to it — which is how the folder sync came to overwrite real
+   Obsidian edits with the app's stale copy, and how `mem list --newest` came
+   to ignore them. Both sides now take `max(Date.parse(updated), mtime)`.
+3. **Sync needs three inputs, not two.** With only "here" and "there", a note
+   missing from one side cannot be told apart from a note that is new on the
+   other, so the safe reading is always "new" and nothing can ever be deleted.
+   `store.vaultSynced` holds the titles both sides agreed on at the end of the
+   last successful sync. It is written only after the write pass finishes —
+   recording it earlier would make a half-written vault's missing half look
+   deleted next time — and cleared when the folder is disconnected, so the
+   first sync with the *next* folder cannot delete for non-membership.
+4. **A `[[link]]` resolves by TITLE only.** There is a separate loose search
    for what a person or model typed, which may fall back to matching a body.
    Using the loose one for link resolution makes every unwritten link "resolve"
    to the note that mentions it, and unresolved nodes silently vanish from the

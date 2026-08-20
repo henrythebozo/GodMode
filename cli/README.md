@@ -261,5 +261,15 @@ sentence becoming its own note.
   will not scale to thousands of notes.
 - Folder sync moves whole notes and never merges inside a file. Edit the same
   note in two places between syncs and the newer one wins outright. That is a
-  job for git, which is why the vault is a git-friendly folder.
+  job for git, which is why the vault is a git-friendly folder. "Newer" is the
+  file's mtime, not the `updated:` line — no editor but this one touches
+  frontmatter, so trusting that line made an edit in Obsidian look like it had
+  never happened.
+- Deletion crosses the sync only from the *second* sync onward. The app records
+  what both sides agreed on last time, and without that record a note missing
+  from one side is indistinguishable from a note that is new on the other. So
+  the first sync between a vault and a folder always merges, and never deletes.
+- Two notes can share a title, and each gets its own file (`Noah.md`,
+  `Noah (2).md`). Nothing is lost, but a `[[link]]` to that title can only
+  resolve to one of them — `jarvis mem add` says so when it happens.
 - There is no watch mode and no daemon. Every command is one shot.
