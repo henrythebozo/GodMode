@@ -1111,6 +1111,67 @@
 	.composer button:hover { filter: brightness(0.92); }
 	.composer button:active { transform: scale(0.92); }
 	.composer button::after { content: ''; position: absolute; inset: -3px; border-radius: 50%; }
+	/* Stop is a different act from send, so it gets a different colour rather
+	   than a swapped glyph on the same button — you should be able to tell at a
+	   glance whether the next click starts something or ends it. */
+	#stopBtn { background: var(--err); color: #fff; }
+
+	/* the row under the caption: a retry offer and the running cost, both of
+	   which are absent most of the time and must not reserve space when they are */
+	#turnbar { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
+	#turnbar:not(:has(> :not([hidden]))) { display: none; }
+	.usagechip {
+		background: none; border: 1px solid var(--line); color: var(--dim);
+		border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 500;
+		cursor: pointer; font-variant-numeric: tabular-nums;
+		transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	}
+	.usagechip:hover { background: var(--panel-2); color: var(--text); border-color: var(--ring); }
+
+	/* ---- conversations ---- */
+	.headtools { display: flex; gap: 8px; flex: none; }
+	.convohead { display: flex; align-items: center; gap: 8px; margin: -8px 0 12px; color: var(--dim); font-size: 12.5px; }
+	.convohead b { color: var(--text); font-weight: 600; }
+	.convohead .cvcount { margin-left: auto; flex: none; }
+	.convorow { display: flex; align-items: center; gap: 8px; }
+	.convorow.on { background: var(--ring-soft); box-shadow: inset 2px 0 0 var(--ring); }
+
+	/* ---- usage + calculator ---- */
+	.usagegrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin-top: 14px; }
+	.usagestat {
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+	}
+	.usagestat .uv { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+	.usagestat .ul { font-size: 10.5px; color: var(--dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+	.calcnote { font-size: 12px; color: var(--dim); margin-bottom: 10px; }
+	.calcout {
+		margin-top: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+		padding: 12px 14px; font-size: 13px; line-height: 1.7; font-variant-numeric: tabular-nums;
+	}
+	.calcout b { font-weight: 700; }
+	.calcout .cwarn { color: var(--warn); }
+
+	/* ---- chains ---- */
+	.chainstep {
+		display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+	}
+	.chainstep .csbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+	.chainstep select, .chainstep input, .chainstep textarea { margin: 0; }
+	.chainstep .csdrop { flex: none; background: none; border: none; color: var(--dim); cursor: pointer; font-size: 15px; padding: 2px 4px; }
+	.chainstep .csdrop:hover { color: var(--err); }
+	.chainkind { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
+	.chainargerr { font-size: 11.5px; color: var(--err); }
+
+	/* ---- onboarding ---- */
+	#onboardDlg { max-width: 440px; }
+	.obhint { font-size: 12px; color: var(--dim); margin-top: 8px; min-height: 16px; }
+	.obhint.bad { color: var(--err); }
+	.obhint.good { color: var(--ok); }
+	.obdots { display: flex; justify-content: center; gap: 6px; margin: 22px 0 10px; }
+	.obdots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); transition: background 0.2s ease, transform 0.2s ease; }
+	.obdots i.on { background: var(--ring); transform: scale(1.3); }
+	#obSkip { display: block; margin: 0 auto; }
 
 	.qagrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 	.qabtn {
@@ -1534,11 +1595,16 @@
 								<div id="stateLabel" role="status" aria-live="polite">Standby</div>
 								<div id="toolcap" aria-hidden="true"><span class="tcdot"></span><span class="tctext"></span></div>
 								<div id="caption" class="dim" role="status" aria-live="polite" aria-atomic="true">Tap the mic, or type below, to talk to Jarvis.</div>
+								<div id="turnbar">
+									<button type="button" id="retryBtn" class="ghost small" hidden>Retry</button>
+									<button type="button" id="usageChip" class="usagechip" hidden title="Tokens and cost"></button>
+								</div>
 							</div>
 							<div class="composer">
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
 								<button id="composerMicBtn" class="micinline" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg></button>
 								<button id="textSend" title="Send" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
+								<button id="stopBtn" title="Stop" aria-label="Stop generating" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5" /></svg></button>
 							</div>
 					</div>
 				</div>
@@ -1587,16 +1653,28 @@
 				</div>
 
 				<div class="view" id="view-chat">
-					<div class="viewhead"><h1>Chat</h1></div>
+					<div class="viewhead">
+						<h1>Chat</h1>
+						<div class="headtools">
+							<button type="button" class="ghost small" id="newChatBtn">New chat</button>
+							<button type="button" class="ghost small" id="convosBtn">History</button>
+						</div>
+					</div>
+					<div class="convohead" id="convoHead"></div>
 					<div class="glasspanel viewpanel">
 						<div class="viewlist" id="chatLog"></div>
 					</div>
 				</div>
 
 				<div class="view" id="view-tasks">
-					<div class="viewhead"><h1>Tasks</h1></div>
+					<div class="viewhead">
+						<h1>Tasks</h1>
+						<div class="headtools"><button type="button" class="ghost small" id="chainsOpenBtn">Edit chains</button></div>
+					</div>
 					<div class="glasspanel viewpanel">
-						<div class="eyebrow" style="margin-bottom:8px">Reminders</div>
+						<div class="eyebrow" style="margin-bottom:8px">Chains</div>
+						<div class="viewlist" id="panel-chains"></div>
+						<div class="eyebrow" style="margin:22px 0 8px">Reminders</div>
 						<div class="viewlist" id="panel-reminders"></div>
 						<div class="eyebrow" style="margin:22px 0 8px">Notes</div>
 						<div class="viewlist" id="panel-notes"></div>
@@ -1892,6 +1970,15 @@
 	</div>
 </dialog>
 
+<dialog id="promptDlg">
+	<h2 id="promptTitle">Rename</h2>
+	<input type="text" id="promptInput" autocomplete="off" />
+	<div class="row">
+		<button class="ghost" id="promptCancelBtn" type="button">Cancel</button>
+		<button class="primary" id="promptOkBtn" type="button">Save</button>
+	</div>
+</dialog>
+
 <dialog id="skinDlg">
 	<h2>Customize Jarvis</h2>
 	<p>Everything here is drawn in CSS and saved on this device. Status colours still win while Jarvis is listening or speaking.</p>
@@ -1906,9 +1993,103 @@
 	</div>
 </dialog>
 
+<dialog id="convosDlg">
+	<h2>Conversations</h2>
+	<p>Each thread keeps its own history and its own context window. Nothing here leaves this device.</p>
+	<div class="viewlist" id="convoList" style="margin-top: 14px"></div>
+	<div class="row">
+		<button class="ghost small" type="button" id="convoNewBtn">New chat</button>
+		<button class="primary" type="button" id="convoDoneBtn" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
+<dialog id="usageDlg">
+	<h2>Tokens &amp; cost</h2>
+	<p>Counted from what each provider actually reports on the wire, not estimated. Prices are the public list rates below and are a guide, not a bill.</p>
+	<div class="usagegrid" id="usageTotals"></div>
+	<div class="eyebrow" style="margin: 20px 0 8px">By model</div>
+	<div class="viewlist" id="usageByModel"></div>
+
+	<div class="eyebrow" style="margin: 22px 0 8px">Token calculator</div>
+	<p class="calcnote">Estimates before you spend. Token counts use the ~4-characters-per-token rule every provider quotes for English, so treat them as within about 10%, not exact.</p>
+	<label for="calcModel">Model</label>
+	<select id="calcModel"></select>
+	<label for="calcText">Prompt</label>
+	<textarea id="calcText" rows="4" placeholder="Paste or type the prompt you are about to send…"></textarea>
+	<label for="calcOut">Expected reply length (tokens)</label>
+	<input type="number" id="calcOut" min="0" step="50" value="400" />
+	<div class="calcout" id="calcOutput"></div>
+	<div class="row">
+		<button class="ghost small" type="button" id="calcFromChat">Use this conversation</button>
+		<button class="ghost small" type="button" id="usageReset">Reset counters</button>
+		<button class="primary" type="button" id="usageDone" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
+<dialog id="chainsDlg">
+	<h2>Chains</h2>
+	<p>A chain is a named list of steps Jarvis runs in order. A step is either a tool with its arguments, or an instruction handed to Jarvis to carry out in its own words.</p>
+	<div class="viewlist" id="chainList" style="margin-top: 14px"></div>
+	<div class="row">
+		<button class="ghost small" type="button" id="chainNewBtn">New chain</button>
+		<button class="primary" type="button" id="chainsDoneBtn" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
+<dialog id="chainEditDlg">
+	<h2 id="chainEditTitle">Edit chain</h2>
+	<label for="chainName">Name</label>
+	<input type="text" id="chainName" placeholder="Morning rundown" autocomplete="off" />
+	<div class="eyebrow" style="margin: 18px 0 8px">Steps</div>
+	<div id="chainSteps"></div>
+	<div class="row">
+		<button class="ghost small" type="button" id="chainAddTool">Add tool step</button>
+		<button class="ghost small" type="button" id="chainAddSay">Add instruction</button>
+	</div>
+	<div class="row" style="margin-top: 16px">
+		<button class="ghost small" type="button" id="chainDelete">Delete</button>
+		<button class="ghost small" type="button" id="chainCancel" style="margin-left:auto">Cancel</button>
+		<button class="primary" type="button" id="chainSave">Save</button>
+	</div>
+</dialog>
+
+<dialog id="onboardDlg">
+	<div class="obstep" data-obstep="1">
+		<h2>Welcome.</h2>
+		<p>Jarvis talks to a model provider straight from this browser. Your key is stored on this device and never passes through a server of ours — there isn't one.</p>
+		<div class="eyebrow" style="margin: 20px 0 8px">Pick a provider</div>
+		<div class="viewlist" id="obProviders"></div>
+	</div>
+	<div class="obstep" data-obstep="2" hidden>
+		<h2 id="obKeyTitle">Add your key</h2>
+		<p id="obKeyHelp"></p>
+		<label for="obKeyInput">API key</label>
+		<input type="password" id="obKeyInput" placeholder="sk-…" autocomplete="off" />
+		<div class="obhint" id="obKeyHint"></div>
+		<div class="row" style="margin-top: 16px">
+			<button class="ghost small" type="button" id="obBack1">Back</button>
+			<button class="primary" type="button" id="obNext2" style="margin-left:auto">Continue</button>
+		</div>
+	</div>
+	<div class="obstep" data-obstep="3" hidden>
+		<h2>Names.</h2>
+		<p>Both are only used in what Jarvis says and how it addresses you. Change them any time in Settings.</p>
+		<label for="obUserName">What should Jarvis call you?</label>
+		<input type="text" id="obUserName" placeholder="Henry" autocomplete="off" />
+		<label for="obAsstName">What should it be called?</label>
+		<input type="text" id="obAsstName" placeholder="Jarvis" autocomplete="off" />
+		<div class="row" style="margin-top: 16px">
+			<button class="ghost small" type="button" id="obBack2">Back</button>
+			<button class="primary" type="button" id="obFinish" style="margin-left:auto">Start</button>
+		</div>
+	</div>
+	<div class="obdots" id="obDots" aria-hidden="true"><i></i><i></i><i></i></div>
+	<button type="button" class="linkbtn" id="obSkip">Skip and set this up later</button>
+</dialog>
+
 <dialog id="searchDlg">
-	<h2>Search</h2>
-	<input type="text" id="searchInput" placeholder="Search memory, notes, reminders, recordings, chat…" autocomplete="off" />
+	<h2>Search &amp; run</h2>
+	<input type="text" id="searchInput" placeholder="Search anything, or type a command — “new chat”, “lights off”, “dark mode”…" autocomplete="off" />
 	<div class="viewlist" id="searchResults" style="margin-top: 14px"></div>
 </dialog>
 
@@ -2085,8 +2266,39 @@ const store = {
 	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
 	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
 	set notes(v) { localStorage.setItem('jarvis.notes', JSON.stringify(v)); },
-	get history() { try { return JSON.parse(localStorage.getItem('jarvis.history')) || []; } catch { return []; } },
-	set history(v) { localStorage.setItem('jarvis.history', JSON.stringify(v)); },
+	/* `history` is the ACTIVE conversation's messages, not a store of its own.
+	 * Threads landed after ~30 call sites were already reading and writing
+	 * store.history, so it stays an accessor over whichever thread is open —
+	 * every one of those sites keeps working untouched, and there is exactly
+	 * one definition of "the current conversation". */
+	get history() { return activeConvo().msgs; },
+	set history(v) {
+		const list = store.convos;
+		const i = list.findIndex((c) => c.id === store.convoId);
+		if (i < 0) return;
+		list[i].msgs = v;
+		list[i].at = Date.now();
+		if (!list[i].titled) {
+			const first = v.find((m) => m.role === 'user');
+			if (first) { list[i].title = convoTitle(first.content); list[i].titled = true; }
+		}
+		store.convos = list;
+	},
+	get convos() { try { return JSON.parse(localStorage.getItem('jarvis.convos')) || []; } catch { return []; } },
+	set convos(v) { localStorage.setItem('jarvis.convos', JSON.stringify(v)); },
+	get convoId() { return localStorage.getItem('jarvis.convoId') || ''; },
+	set convoId(v) { localStorage.setItem('jarvis.convoId', v || ''); },
+	/* Real numbers off the wire where a provider reports them, never guesses.
+	 * { calls, in, out, cost, since, models: { id: {calls,in,out,cost} } } */
+	get usage() {
+		try { return JSON.parse(localStorage.getItem('jarvis.usage')) || { calls: 0, in: 0, out: 0, cost: 0, since: Date.now(), models: {} }; }
+		catch { return { calls: 0, in: 0, out: 0, cost: 0, since: Date.now(), models: {} }; }
+	},
+	set usage(v) { localStorage.setItem('jarvis.usage', JSON.stringify(v)); },
+	get chains() { try { return JSON.parse(localStorage.getItem('jarvis.chains')) || []; } catch { return []; } },
+	set chains(v) { localStorage.setItem('jarvis.chains', JSON.stringify(v)); },
+	get onboarded() { return localStorage.getItem('jarvis.onboarded') === '1'; },
+	set onboarded(v) { localStorage.setItem('jarvis.onboarded', v ? '1' : '0'); },
 	get transcripts() { try { return JSON.parse(localStorage.getItem('jarvis.transcripts')) || []; } catch { return []; } },
 	set transcripts(v) { localStorage.setItem('jarvis.transcripts', JSON.stringify(v)); },
 	get devices() {
@@ -2196,6 +2408,75 @@ function esc(s) {
 	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+/* ============================ conversations ==============================
+ * Threads, with store.history as a live view onto whichever one is open.
+ * There is deliberately no separate boot-time migration: activeConvo() heals a
+ * missing or dangling active thread on first read, folding any pre-threads
+ * jarvis.history in as the first conversation. A migration that only ran at
+ * boot would miss a store imported or cleared mid-session. */
+function convoTitle(text) {
+	const t = (text || '').replace(/\s+/g, ' ').trim();
+	if (!t) return 'New chat';
+	return t.length > 46 ? t.slice(0, 46).replace(/\s\S*$/, '') + '…' : t;
+}
+function newConvoRecord(msgs) {
+	return { id: uid(), title: 'New chat', titled: false, at: Date.now(), msgs: msgs || [] };
+}
+function activeConvo() {
+	let list = store.convos;
+	if (!list.length) {
+		let legacy = [];
+		try { legacy = JSON.parse(localStorage.getItem('jarvis.history')) || []; } catch { legacy = []; }
+		const first = newConvoRecord(legacy);
+		const opener = legacy.find((m) => m.role === 'user');
+		if (opener) { first.title = convoTitle(opener.content); first.titled = true; }
+		store.convos = [first];
+		store.convoId = first.id;
+		return first;
+	}
+	let cur = list.find((c) => c.id === store.convoId);
+	if (!cur) { cur = list[0]; store.convoId = cur.id; }
+	return cur;
+}
+function newConversation() {
+	const list = store.convos;
+	/* An untouched blank thread is reused rather than stacked on: pressing New
+	 * chat twice should not leave a trail of empty ones to scroll past. */
+	const blank = list.find((c) => !c.msgs.length);
+	if (blank) { store.convoId = blank.id; }
+	else {
+		const rec = newConvoRecord([]);
+		list.unshift(rec);
+		store.convos = list;
+		store.convoId = rec.id;
+	}
+	renderConvoHead();
+	if (currentView === 'chat') renderChatLog();
+	return store.convoId;
+}
+function switchConversation(id) {
+	if (!store.convos.some((c) => c.id === id)) return;
+	store.convoId = id;
+	renderConvoHead();
+	showView('chat');
+}
+function renameConversation(id, title) {
+	const list = store.convos;
+	const c = list.find((x) => x.id === id);
+	if (!c) return;
+	c.title = convoTitle(title) || 'Untitled';
+	c.titled = true;
+	store.convos = list;
+	renderConvoHead();
+}
+function deleteConversation(id) {
+	store.convos = store.convos.filter((c) => c.id !== id);
+	if (store.convoId === id) store.convoId = '';
+	activeConvo(); // re-seeds rather than leaving no thread open at all
+	renderConvoHead();
+	if (currentView === 'chat') renderChatLog();
+}
 
 /* ============================== elements ================================ */
 const orbWrap = document.getElementById('orbWrap');
@@ -2473,6 +2754,14 @@ function applyTheme(theme) {
 }
 applyTheme(store.theme);
 applySkin();
+/* Settings previews a theme without saving it, so applyTheme alone is not
+ * enough for the palette — this is the persist-and-apply pair. */
+function setTheme(theme) {
+	store.theme = theme === 'light' ? 'light' : 'dark';
+	applyTheme(store.theme);
+	document.querySelectorAll('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === store.theme));
+	toast(store.theme === 'light' ? 'Light mode' : 'Dark mode', 'Switched the theme.');
+}
 
 /* the Appearance slider in Settings drives these two custom properties live, no reload needed */
 function applyGlassIntensity(v) {
@@ -2529,6 +2818,40 @@ function confirmAction(title, body) {
 	});
 }
 
+/* Same contract as confirmAction, resolving to the typed string or null. The
+ * platform prompt() is unavailable inside an installed PWA on iOS, and the app
+ * already owns a dialog idiom, so it uses that. */
+function promptText(title, initial) {
+	return new Promise((resolve) => {
+		const dlg = document.getElementById('promptDlg');
+		document.getElementById('promptTitle').textContent = title;
+		const input = document.getElementById('promptInput');
+		input.value = initial || '';
+		const okBtn = document.getElementById('promptOkBtn');
+		const cancelBtn = document.getElementById('promptCancelBtn');
+		let done = false;
+		const finish = (v) => {
+			if (done) return;
+			done = true;
+			okBtn.removeEventListener('click', onOk);
+			cancelBtn.removeEventListener('click', onCancel);
+			dlg.removeEventListener('cancel', onCancel);
+			input.removeEventListener('keydown', onKey);
+			dlg.close();
+			resolve(v);
+		};
+		const onOk = () => finish(input.value.trim());
+		const onCancel = () => finish(null);
+		const onKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); onOk(); } };
+		okBtn.addEventListener('click', onOk);
+		cancelBtn.addEventListener('click', onCancel);
+		dlg.addEventListener('cancel', onCancel);
+		input.addEventListener('keydown', onKey);
+		dlg.showModal();
+		setTimeout(() => { input.focus(); input.select(); }, 50);
+	});
+}
+
 /* ================================ navigation ============================= */
 let currentView = 'dashboard';
 function showView(name) {
@@ -2557,8 +2880,8 @@ function markEntering(view) {
 function renderView(name) {
 	if (name === 'dashboard') renderDashboard();
 	else if (name === 'overview') renderOverview();
-	else if (name === 'chat') renderChatLog();
-	else if (name === 'tasks') { renderReminders(); renderNotes(); }
+	else if (name === 'chat') { renderChatLog(); renderConvoHead(); }
+	else if (name === 'tasks') { renderChainsPanel(); renderReminders(); renderNotes(); }
 	else if (name === 'memory') renderMemory();
 	else if (name === 'systems') { renderHome(); renderTranscripts(); }
 	else if (name === 'apps') renderAppsView();
@@ -3080,11 +3403,13 @@ function speak(text, onDone) {
 	};
 	speechSynthesis.speak(utter);
 }
-muteBtn.addEventListener('click', () => {
+function toggleMute() {
 	store.muted = !store.muted;
 	muteBtn.classList.toggle('on', store.muted);
 	if (store.muted && window.speechSynthesis) speechSynthesis.cancel();
-});
+	return store.muted;
+}
+muteBtn.addEventListener('click', toggleMute);
 
 /* ============================ speech recognition ========================= */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3268,6 +3593,47 @@ function stopRecording(save) {
 
 recordBtn.addEventListener('click', () => { if (recording) stopRecording(true); else startRecording(); });
 document.getElementById('textSend').addEventListener('click', sendTyped);
+document.getElementById('stopBtn').addEventListener('click', stopTurn);
+document.getElementById('retryBtn').addEventListener('click', retryLast);
+document.getElementById('usageChip').addEventListener('click', openUsage);
+
+/* ---- conversations, chains, usage: dialog wiring ---- */
+document.getElementById('newChatBtn').addEventListener('click', () => { newConversation(); showView('chat'); });
+document.getElementById('convosBtn').addEventListener('click', openConvos);
+document.getElementById('convoNewBtn').addEventListener('click', () => { document.getElementById('convosDlg').close(); newConversation(); showView('chat'); });
+document.getElementById('convoDoneBtn').addEventListener('click', () => document.getElementById('convosDlg').close());
+
+document.getElementById('chainsOpenBtn').addEventListener('click', openChains);
+document.getElementById('chainsDoneBtn').addEventListener('click', () => document.getElementById('chainsDlg').close());
+document.getElementById('chainNewBtn').addEventListener('click', () => openChainEditor(null));
+document.getElementById('chainAddTool').addEventListener('click', () => { chainDraft.steps.push({ kind: 'tool', tool: CHAIN_TOOLS[0], args: {} }); renderChainSteps(); });
+document.getElementById('chainAddSay').addEventListener('click', () => { chainDraft.steps.push({ kind: 'say', text: '' }); renderChainSteps(); });
+document.getElementById('chainSave').addEventListener('click', saveChainDraft);
+document.getElementById('chainCancel').addEventListener('click', () => document.getElementById('chainEditDlg').close());
+document.getElementById('chainDelete').addEventListener('click', async () => {
+	if (!(await confirmAction('Delete this chain?', '“' + (chainDraft.name || document.getElementById('chainName').value || 'this chain') + '” will be removed from this device.'))) return;
+	store.chains = store.chains.filter((c) => c.id !== chainDraft.id);
+	document.getElementById('chainEditDlg').close();
+	renderChainList();
+	renderChainsPanel();
+});
+
+document.getElementById('usageDone').addEventListener('click', () => document.getElementById('usageDlg').close());
+['calcModel', 'calcText', 'calcOut'].forEach((id) => {
+	const el = document.getElementById(id);
+	el.addEventListener(id === 'calcModel' ? 'change' : 'input', renderCalc);
+});
+document.getElementById('calcFromChat').addEventListener('click', () => {
+	document.getElementById('calcText').value = store.history.slice(-24).map((m) => m.content).join('\n');
+	renderCalc();
+});
+document.getElementById('usageReset').addEventListener('click', async () => {
+	if (!(await confirmAction('Reset the counters?', 'Token and cost totals go back to zero. This only clears what Jarvis has recorded on this device — it changes nothing at your provider.'))) return;
+	store.usage = { calls: 0, in: 0, out: 0, cost: 0, since: Date.now(), models: {} };
+	lastTurnUsage = null;
+	renderUsageChip();
+	renderUsage();
+});
 textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendTyped(); });
 function sendTyped() {
 	const v = textInput.value.trim();
@@ -3905,6 +4271,8 @@ async function runTool(action) {
 	try {
 		switch (name) {
 			case 'undo': return undoWipe();
+			case 'list_chains': return toolListChains();
+			case 'run_chain': return await toolRunChain(args);
 			case 'get_time': return toolGetTime();
 			case 'get_weather': return await toolGetWeather(args);
 			case 'get_status': return await toolGetStatus();
@@ -3985,19 +4353,43 @@ function backendFor(modelId) {
 		headers: { 'x-api-key': store.anthKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
 	};
 }
-function parseDelta(kind, data) {
+/* Returns { text, usage } for one SSE event. Usage is whatever that event
+ * happens to carry and is merged into a running total by the caller, because
+ * no two providers report it the same way: Anthropic sends input on
+ * message_start and output on message_delta, Gemini repeats a cumulative
+ * usageMetadata on most events, and OpenAI-shaped endpoints send one usage
+ * object on a final chunk that only appears if stream_options asked for it. */
+function parseEvent(kind, data) {
+	const ev = JSON.parse(data);
 	if (kind === 'anthropic') {
-		const ev = JSON.parse(data);
-		return ev.type === 'content_block_delta' ? ev.delta?.text : undefined;
+		const out = { text: undefined, usage: null };
+		if (ev.type === 'content_block_delta') out.text = ev.delta?.text;
+		if (ev.type === 'message_start' && ev.message?.usage) out.usage = { in: ev.message.usage.input_tokens || 0 };
+		if (ev.type === 'message_delta' && ev.usage) out.usage = { out: ev.usage.output_tokens || 0 };
+		return out;
 	}
 	if (kind === 'gemini') {
-		const ev = JSON.parse(data);
 		const parts = ev.candidates?.[0]?.content?.parts;
-		return Array.isArray(parts) ? parts.map((p) => p.text || '').join('') : undefined;
+		const u = ev.usageMetadata;
+		return {
+			text: Array.isArray(parts) ? parts.map((p) => p.text || '').join('') : undefined,
+			usage: u ? { in: u.promptTokenCount || 0, out: u.candidatesTokenCount || 0 } : null,
+		};
 	}
-	return JSON.parse(data).choices?.[0]?.delta?.content;
+	return {
+		text: ev.choices?.[0]?.delta?.content,
+		usage: ev.usage ? { in: ev.usage.prompt_tokens || 0, out: ev.usage.completion_tokens || 0 } : null,
+	};
 }
-async function streamCompletion(model, messages, onDelta) {
+/* Some OpenAI-compatible endpoints reject unknown top-level parameters with a
+ * 400 rather than ignoring them, and stream_options is the newest of them. No
+ * live provider has ever been reachable from this environment, so rather than
+ * bet every request on it: ask for usage, and if the endpoint objects to the
+ * parameter by name, drop it, remember that for the session, and retry once.
+ * The cost of being wrong is then a missing token count, not a dead app. */
+const noStreamOptions = new Set();
+async function streamCompletion(model, messages, onDelta, opts) {
+	opts = opts || {};
 	const backend = backendFor(model);
 	let sysMsg = null, chatMsgs = messages, body;
 	if (backend.kind === 'gemini') {
@@ -4011,30 +4403,55 @@ async function streamCompletion(model, messages, onDelta) {
 		}
 		body = { model: backend.model, messages: chatMsgs, stream: true };
 		if (backend.kind === 'anthropic') { body.max_tokens = 1024; if (sysMsg) body.system = sysMsg.content; }
+		else if (!noStreamOptions.has(backend.url)) body.stream_options = { include_usage: true };
 	}
-	const res = await fetch(backend.url, { method: 'POST', headers: backend.headers, body: JSON.stringify(body) });
+	const res = await fetch(backend.url, { method: 'POST', headers: backend.headers, body: JSON.stringify(body), signal: opts.signal });
 	if (!res.ok) {
 		let detail = res.status + ' ' + res.statusText;
 		try { detail = (await res.json()).error?.message || detail; } catch {}
+		if (res.status === 400 && body.stream_options && /stream_options/i.test(detail)) {
+			noStreamOptions.add(backend.url);
+			return streamCompletion(model, messages, onDelta, opts);
+		}
 		throw new Error(detail);
 	}
 	const reader = res.body.getReader();
+	/* An abort mid-read rejects reader.read(); cancelling the reader as well is
+	 * what actually releases the socket rather than leaving it draining. */
+	/* .catch as well as try/catch: cancelling a stream that the abort has
+	 * already errored returns a REJECTED PROMISE rather than throwing, and an
+	 * unhandled one of those surfaces as a page error every single stop. */
+	const onAbort = () => { try { const c = reader.cancel(); if (c && c.catch) c.catch(() => {}); } catch {} };
+	if (opts.signal) opts.signal.addEventListener('abort', onAbort, { once: true });
 	const decoder = new TextDecoder();
+	const used = { in: 0, out: 0 };
 	let buf = '', text = '';
-	for (;;) {
-		const { done, value } = await reader.read();
-		if (done) break;
-		buf += decoder.decode(value, { stream: true });
-		const lines = buf.split('\n');
-		buf = lines.pop();
-		for (const line of lines) {
-			const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
-			if (!data || data === '[DONE]') continue;
-			try {
-				const delta = parseDelta(backend.kind, data);
-				if (delta) { text += delta; onDelta(text); }
-			} catch {}
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			buf += decoder.decode(value, { stream: true });
+			const lines = buf.split('\n');
+			buf = lines.pop();
+			for (const line of lines) {
+				const data = line.startsWith('data: ') ? line.slice(6).trim() : null;
+				if (!data || data === '[DONE]') continue;
+				try {
+					const ev = parseEvent(backend.kind, data);
+					if (ev.usage) {
+						if (typeof ev.usage.in === 'number' && ev.usage.in) used.in = ev.usage.in;
+						if (typeof ev.usage.out === 'number' && ev.usage.out) used.out = ev.usage.out;
+					}
+					if (ev.text) { text += ev.text; onDelta(text); }
+				} catch {}
+			}
 		}
+	} finally {
+		if (opts.signal) opts.signal.removeEventListener('abort', onAbort);
+		/* Recorded even on an abort: the tokens were spent whether or not the
+		 * answer was wanted, and a meter that only counts finished replies
+		 * would quietly under-report every cancelled one. */
+		if (used.in || used.out) recordUsage(model, used.in, used.out);
 	}
 	return text;
 }
@@ -4044,18 +4461,21 @@ async function streamCompletion(model, messages, onDelta) {
  * turn when there's another model sitting right there. Only falls back on a
  * model that produced nothing; a model that answered (even briefly) is done.
  * Throws the LAST error if every model fails, so the user sees a real reason. */
-async function streamWithFallback(messages, onDelta) {
+async function streamWithFallback(messages, onDelta, signal) {
 	const models = store.models;
 	let lastErr = null;
 	for (let i = 0; i < models.length; i++) {
 		try {
-			const text = await streamCompletion(models[i], messages, onDelta);
+			const text = await streamCompletion(models[i], messages, onDelta, { signal });
 			if (i > 0) {
 				toast('Switched models', shortModelName(models[0]) + ' failed, so ' + shortModelName(models[i]) + ' answered instead.', 8000);
 				logActivity('Fell back to ' + shortModelName(models[i]) + '.');
 			}
 			return text;
 		} catch (err) {
+			/* A stop is not a failure to route around: trying the next model
+			 * would be the app arguing with the person who just pressed stop. */
+			if (err && err.name === 'AbortError') throw err;
 			lastErr = err;
 			onDelta(''); // clear any partial text from the failed attempt before the next one streams in
 		}
@@ -4071,6 +4491,8 @@ const TOOL_DOCS = [
 	'forget {"query": string} — remove remembered facts matching this text, or "all" to clear everything.',
 	'recall_memory {} — list everything currently remembered about the user.',
 	'undo {} — reverse the last "clear everything" (all memory, all notes, or all reminders). Only the most recent one, and only within this session. Use it when the user says undo, put it back, or that was a mistake.',
+	'list_chains {} — list the saved chains the user has built, with their step counts.',
+	'run_chain {"name": string} — run one saved chain by name. Match loosely on the name the user says. Use this whenever they ask for something by a name that matches a chain rather than doing its steps yourself.',
 	'set_reminder {"text": string, "minutes": number} — remind the user in N minutes.',
 	'list_reminders {} — list active reminders.',
 	'cancel_reminder {"query": string} — cancel a reminder matching this text, or "all".',
@@ -4143,8 +4565,161 @@ function shortModelName(id) {
 	return (s.includes(':') ? s.split(':')[1] : s.split('/')[1] || s) || s;
 }
 
+/* ============================ tokens and cost ============================
+ * Two separate things that are easy to conflate:
+ *   - USAGE is measured. Every number in store.usage came off the wire in a
+ *     provider's own SSE stream, so it is what you were actually billed for.
+ *   - The CALCULATOR is an estimate, and says so wherever it appears. There is
+ *     no tokenizer in this file — shipping one would mean a megabyte of vocab
+ *     per model family, against a no-build single-file app — so it uses the
+ *     ~4-chars-per-token rule and is honest about the error bar.
+ * Prices are public list rates in USD per million tokens. A model that isn't
+ * in the table reports tokens and no cost rather than a made-up number: a
+ * confidently wrong figure about someone's money is worse than a blank.
+ */
+const MODEL_PRICES = [
+	[/claude-opus-4|claude-opus-5/i, 15, 75],
+	[/claude-sonnet-4|claude-sonnet-5/i, 3, 15],
+	[/claude-3-5-haiku|claude-haiku-4/i, 0.8, 4],
+	[/claude-3-opus/i, 15, 75],
+	[/claude-3-5-sonnet|claude-3-7-sonnet/i, 3, 15],
+	[/gpt-4o-mini/i, 0.15, 0.6],
+	[/gpt-4o/i, 2.5, 10],
+	[/gpt-4\.1-mini/i, 0.4, 1.6],
+	[/gpt-4\.1/i, 2, 8],
+	[/o3-mini/i, 1.1, 4.4],
+	[/gpt-5-mini/i, 0.25, 2],
+	[/gpt-5/i, 1.25, 10],
+	[/gemini-2\.5-pro|gemini-1\.5-pro/i, 1.25, 10],
+	[/gemini-2\.5-flash|gemini-2\.0-flash|gemini-1\.5-flash/i, 0.3, 2.5],
+];
+function priceFor(modelId) {
+	const id = String(modelId || '');
+	for (const [re, inPrice, outPrice] of MODEL_PRICES) if (re.test(id)) return { in: inPrice, out: outPrice };
+	return null;
+}
+function costOf(modelId, inTok, outTok) {
+	const p = priceFor(modelId);
+	if (!p) return null;
+	return (inTok / 1e6) * p.in + (outTok / 1e6) * p.out;
+}
+function fmtTokens(n) {
+	if (n >= 1e6) return (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + 'M';
+	if (n >= 1000) return (n / 1000).toFixed(n < 10000 ? 1 : 0) + 'k';
+	return String(Math.round(n));
+}
+function fmtCost(c) {
+	if (c === null || c === undefined) return '—';
+	if (c === 0) return '$0.00';
+	if (c < 0.01) return '$' + c.toFixed(4);
+	return '$' + c.toFixed(c < 1 ? 3 : 2);
+}
+/* ~4 characters per token is the figure OpenAI, Anthropic and Google all quote
+ * for English prose. It is wrong for code, CJK and long URLs, which the
+ * calculator says out loud rather than pretending otherwise. */
+function estimateTokens(text) {
+	return Math.ceil(String(text || '').length / 4);
+}
+
+let lastTurnUsage = null;
+function recordUsage(modelId, inTok, outTok) {
+	const u = store.usage;
+	u.calls += 1;
+	u.in += inTok;
+	u.out += outTok;
+	const c = costOf(modelId, inTok, outTok);
+	if (c !== null) u.cost += c;
+	const key = shortModelName(modelId);
+	const m = u.models[key] || { calls: 0, in: 0, out: 0, cost: 0 };
+	m.calls += 1; m.in += inTok; m.out += outTok;
+	if (c !== null) m.cost += c;
+	u.models[key] = m;
+	store.usage = u;
+	lastTurnUsage = { model: modelId, in: inTok, out: outTok, cost: c };
+	renderUsageChip();
+	if (document.getElementById('usageDlg').open) renderUsage();
+}
+function renderUsageChip() {
+	const chip = document.getElementById('usageChip');
+	if (!lastTurnUsage) { chip.hidden = true; return; }
+	const t = lastTurnUsage.in + lastTurnUsage.out;
+	const total = store.usage;
+	chip.hidden = false;
+	chip.textContent = fmtTokens(t) + ' tok' + (lastTurnUsage.cost === null ? '' : ' · ' + fmtCost(lastTurnUsage.cost));
+	chip.title = 'Last turn: ' + lastTurnUsage.in + ' in, ' + lastTurnUsage.out + ' out on ' + shortModelName(lastTurnUsage.model) +
+		'\nSince ' + new Date(total.since).toLocaleDateString() + ': ' + fmtTokens(total.in + total.out) + ' tokens over ' + total.calls + ' calls, ' + fmtCost(total.cost) +
+		'\nClick for the full breakdown and the calculator';
+}
+function renderUsage() {
+	const u = store.usage;
+	const priced = Object.keys(u.models).filter((k) => priceFor(k) === null);
+	document.getElementById('usageTotals').innerHTML = [
+		['Calls', String(u.calls)],
+		['Tokens in', fmtTokens(u.in)],
+		['Tokens out', fmtTokens(u.out)],
+		['Cost', fmtCost(u.cost)],
+	].map(([l, v]) => '<div class="usagestat"><div class="uv">' + esc(v) + '</div><div class="ul">' + esc(l) + '</div></div>').join('');
+
+	const box = document.getElementById('usageByModel');
+	const rows = Object.entries(u.models).sort((a, b) => (b[1].in + b[1].out) - (a[1].in + a[1].out));
+	if (!rows.length) {
+		box.innerHTML = '<div class="empty">Nothing measured yet. These fill in the first time a model answers.</div>';
+	} else {
+		box.innerHTML = rows.map(([name, m]) =>
+			'<div class="row-item"><div class="txt"><b>' + esc(name) + '</b><small>' +
+			m.calls + ' call' + (m.calls === 1 ? '' : 's') + ' · ' + fmtTokens(m.in) + ' in · ' + fmtTokens(m.out) + ' out' +
+			(priceFor(name) === null ? ' · price unknown' : '') +
+			'</small></div><div class="pstate">' + esc(fmtCost(priceFor(name) === null ? null : m.cost)) + '</div></div>').join('');
+	}
+	if (priced.length) {
+		box.insertAdjacentHTML('beforeend',
+			'<div class="empty">No public price on file for ' + esc(priced.join(', ')) + ', so its tokens are counted but its cost is not.</div>');
+	}
+	renderCalc();
+}
+function calcModelOptions() {
+	const sel = document.getElementById('calcModel');
+	const models = store.models;
+	const cur = sel.value;
+	sel.innerHTML = models.map((m) => '<option value="' + esc(m) + '">' + esc(shortModelName(m)) + '</option>').join('');
+	if (models.includes(cur)) sel.value = cur;
+}
+function renderCalc() {
+	const model = document.getElementById('calcModel').value || store.models[0] || '';
+	const text = document.getElementById('calcText').value;
+	const outTok = Math.max(0, Number(document.getElementById('calcOut').value) || 0);
+	const inTok = estimateTokens(text);
+	const p = priceFor(model);
+	const cost = costOf(model, inTok, outTok);
+	const out = document.getElementById('calcOutput');
+	/* Called out because it is the single biggest source of surprise on a bill:
+	 * the whole conversation is re-sent on every turn, so a long thread costs
+	 * input tokens again each time you speak. */
+	const histTok = estimateTokens(store.history.slice(-24).map((m) => m.content).join('\n'));
+	const lines = [
+		'<div><b>' + fmtTokens(inTok) + '</b> input tokens · <b>' + fmtTokens(outTok) + '</b> expected output</div>',
+		'<div>Estimated cost of one turn: <b>' + fmtCost(cost) + '</b>' +
+			(p ? ' <span class="dim">($' + p.in + '/M in, $' + p.out + '/M out)</span>' : '') + '</div>',
+	];
+	if (!p) lines.push('<div class="cwarn">No public price on file for ' + esc(shortModelName(model)) + ' — token counts only.</div>');
+	if (histTok > 200) {
+		const withHist = costOf(model, inTok + histTok, outTok);
+		lines.push('<div>With this conversation’s last 24 messages attached (' + fmtTokens(histTok) + ' tokens, re-sent every turn): <b>' + fmtCost(withHist) + '</b></div>');
+	}
+	out.innerHTML = lines.join('');
+}
+function openUsage() {
+	calcModelOptions();
+	document.getElementById('usageDlg').showModal();
+	renderUsage();
+}
+
 /* consult every non-lead model in parallel and hand their answers to the lead */
-async function consultTeam(question) {
+/* Takes the turn's signal like everything else on this path. Without it, stop
+ * pressed during "Consulting the team" left every consulted model still
+ * running and still billing — the one part of a turn the button could not
+ * reach, and the slowest one. */
+async function consultTeam(question, signal) {
 	const models = store.models;
 	if (!store.teamMode || models.length < 2) return '';
 	const others = models.slice(1);
@@ -4153,7 +4728,7 @@ async function consultTeam(question) {
 			const text = await streamCompletion(m, [
 				{ role: 'system', content: 'Answer the user\'s question directly and concisely in one to three plain sentences, no markdown, no preamble. You are one of several AI models being privately consulted; another assistant will read your answer and decide what to use from it.' },
 				{ role: 'user', content: question },
-			], () => {});
+			], () => {}, { signal });
 			return { model: m, text: text.trim() };
 		} catch (err) {
 			return { model: m, text: null, error: String(err && err.message ? err.message : err) };
@@ -4183,14 +4758,50 @@ function friendlyActivity(tool, args) {
 
 /* ================================ pipeline ================================ */
 let busy = false;
+let turnAbort = null;
+/* The composer swaps send for stop rather than showing both: while a reply is
+ * streaming there is nothing to send, and a live stop control that does not
+ * move is easier to hit than one that appears somewhere new. */
+function setBusy(on) {
+	busy = on;
+	document.getElementById('textSend').hidden = on;
+	document.getElementById('stopBtn').hidden = !on;
+	if (on) document.getElementById('retryBtn').hidden = true;
+}
+/* Aborts but does NOT clear turnAbort. Clearing it here looked tidy and was
+ * the whole bug: every later `turnAbort && …` guard then read null, so the
+ * turn could not tell it had been stopped — it skipped the bail-out after the
+ * team consultation and handed the lead model no signal at all, which meant
+ * stop during a consultation stopped nothing. The controller is cleared where
+ * the turn actually ends. */
+function stopTurn() {
+	if (!turnAbort || turnAbort.signal.aborted) return;
+	turnAbort.abort();
+}
+/* Re-runs the last thing you said without re-recording it. Any assistant turns
+ * after it are dropped first, so a retry replaces the bad answer instead of
+ * appending a second one under the same question. */
+function retryLast() {
+	if (busy) return;
+	const hist = store.history;
+	let i = hist.length - 1;
+	while (i >= 0 && hist[i].role !== 'user') i--;
+	if (i < 0) { toast('Nothing to retry', 'Ask ' + store.assistantName + ' something first.'); return; }
+	store.history = hist.slice(0, i + 1);
+	if (currentView === 'chat') renderChatLog();
+	setBusy(true);
+	turnAbort = new AbortController();
+	submitCommand(undefined, 1);
+}
 async function submitCommand(text, depth) {
 	depth = depth || 0;
 	if (depth === 0) {
 		if (!text) return;
 		if (recording) { toast('Still recording', 'Stop the recording first, then talk to ' + store.assistantName + '.'); return; }
-		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); openSettings(); return; }
+		if (!anyKey()) { setState('error', 'No API key'); setCaption('Add an API key in Settings to talk to ' + store.assistantName + '.'); startOnboarding(); return; }
 		if (busy) return;
-		busy = true;
+		setBusy(true);
+		turnAbort = new AbortController();
 		const hist = store.history;
 		hist.push({ role: 'user', content: text });
 		store.history = hist.slice(-40);
@@ -4201,7 +4812,18 @@ async function submitCommand(text, depth) {
 	const messages = [{ role: 'system', content: buildSystemPrompt() }];
 	if (depth === 0 && store.teamMode && store.models.length > 1) {
 		setState('thinking', 'Consulting the team');
-		const teamNotes = await consultTeam(text);
+		const teamNotes = await consultTeam(text, turnAbort && turnAbort.signal);
+		/* Stopping during the consultation ends the turn there rather than
+		 * pressing on to the lead model with a handful of aborted notes. */
+		if (turnAbort && turnAbort.signal.aborted) {
+			setBusy(false);
+			turnAbort = null;
+			document.getElementById('retryBtn').hidden = false;
+			setState('idle', 'Standby');
+			setCaption('Stopped.');
+			logActivity('You stopped a reply.');
+			return;
+		}
 		if (teamNotes) {
 			messages.push({
 				role: 'system',
@@ -4214,13 +4836,35 @@ async function submitCommand(text, depth) {
 
 	setState('thinking', 'Thinking');
 	let raw = '';
+	let partialText = '';
 	try {
 		raw = await streamWithFallback(messages, (partial) => {
+			partialText = partial;
 			const { cleaned } = stripActions(partial);
 			if (cleaned) setCaption(cleaned);
-		});
+		}, turnAbort && turnAbort.signal);
 	} catch (err) {
-		busy = false;
+		setBusy(false);
+		turnAbort = null;
+		document.getElementById('retryBtn').hidden = false;
+		/* A stop is a normal outcome, not an error: it keeps whatever had
+		 * already arrived, says so plainly, and never speaks the fragment. */
+		if (err && err.name === 'AbortError') {
+			setState('idle', 'Standby');
+			/* Whatever had already arrived is kept and marked, rather than
+			 * thrown away — you stopped it because you had read enough, and
+			 * the thread should show what you read. It is never spoken. */
+			const kept = stripActions(partialText).cleaned.trim();
+			if (kept) {
+				const h = store.history;
+				h.push({ role: 'assistant', content: kept + ' […stopped]' });
+				store.history = h.slice(-40);
+				if (currentView === 'chat') renderChatLog();
+			}
+			setCaption(kept ? kept + ' […stopped]' : 'Stopped.');
+			logActivity('You stopped a reply.');
+			return;
+		}
 		setState('error', 'Error');
 		setCaption(String(err && err.message ? err.message : err));
 		toast('Jarvis had trouble', String(err && err.message ? err.message : err));
@@ -4255,7 +4899,9 @@ async function submitCommand(text, depth) {
 		}
 	}
 
-	busy = false;
+	setBusy(false);
+	turnAbort = null;
+	document.getElementById('retryBtn').hidden = false; // a finished answer is still worth a second try
 	const finalText = cleaned || (actions.length ? actions.map((a) => a.tool).join(', ') + ' done.' : raw);
 	setCaption(finalText || '…');
 	renderView(currentView);
@@ -4547,6 +5193,7 @@ const TOOL_VERBS = {
 	open_link: 'Opening a link', get_time: 'Checking the time',
 	remember: 'Saving that', forget: 'Updating memory', recall_memory: 'Reading memory',
 	undo: 'Putting it back',
+	list_chains: 'Checking your chains', run_chain: 'Running a chain',
 	add_note: 'Writing a note', list_notes: 'Reading your notes', delete_note: 'Removing a note',
 	set_reminder: 'Setting a reminder', list_reminders: 'Checking reminders',
 	cancel_reminder: 'Cancelling a reminder', list_calendar_events: 'Checking your calendar',
@@ -4751,7 +5398,7 @@ function renderOverview() {
 /* ============================= backup / reset ============================ */
 const STORE_FIELDS = [
 	'key', 'oaiKey', 'anthKey', 'geminiKey', 'models', 'teamMode', 'assistantName', 'userName', 'voiceName', 'rate', 'pitch', 'skin',
-	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'history', 'transcripts', 'devices',
+	'mode', 'wakeWord', 'autoListen', 'muted', 'units', 'memory', 'reminders', 'notes', 'convos', 'convoId', 'chains', 'usage', 'transcripts', 'devices',
 	'haEnabled', 'haUrl', 'haToken', 'higgsKeyId', 'higgsKeySecret', 'higgsVideoEndpoint', 'activity',
 	'briefingEnabled', 'briefingTime', 'briefingLastFired', 'calendarIcs', 'calendarUrl', 'calendarSyncedAt', 'glassIntensity', 'theme',
 	'bizName', 'bizWhat', 'bizNotes', 'bizLogo', 'bizColor', 'bizDocs',
@@ -4785,6 +5432,17 @@ function importBackup(file) {
 			const payload = JSON.parse(String(reader.result));
 			const data = payload && typeof payload === 'object' && payload.data ? payload.data : payload;
 			if (!data || typeof data !== 'object') throw new Error('Not a Jarvis backup file.');
+			/* A backup taken before threads existed carries a flat `history`,
+			   which is no longer a field of its own — folded in as one
+			   conversation rather than dropped on the floor. Done first so an
+			   explicit `convos` in a newer backup still wins. */
+			if (Array.isArray(data.history) && !Array.isArray(data.convos)) {
+				const rec = newConvoRecord(data.history);
+				const opener = data.history.find((m) => m && m.role === 'user');
+				if (opener) { rec.title = convoTitle(opener.content); rec.titled = true; }
+				store.convos = [rec];
+				store.convoId = rec.id;
+			}
 			STORE_FIELDS.forEach((f) => { if (f in data) store[f] = data[f]; });
 			out.textContent = 'Imported — reloading…';
 			setTimeout(() => location.reload(), 700);
@@ -4801,7 +5459,288 @@ function resetJarvis() {
 	location.reload();
 }
 
-/* ================================= search ================================ */
+function toolListChains() {
+	const list = store.chains;
+	if (!list.length) return { ok: true, message: 'No chains are saved. They are built in Tasks → Edit chains.' };
+	return { ok: true, message: 'Chains: ' + list.map((c) => c.name + ' (' + c.steps.length + ' steps)').join('; ') + '.' };
+}
+async function toolRunChain(args) {
+	const q = String((args && args.name) || '').trim().toLowerCase();
+	if (!q) return { ok: false, message: 'Which chain? Give its name.' };
+	const list = store.chains;
+	const hit = list.find((c) => c.name.toLowerCase() === q) || list.find((c) => c.name.toLowerCase().includes(q));
+	if (!hit) return { ok: false, message: 'No chain called "' + q + '". Saved chains: ' + (list.map((c) => c.name).join(', ') || 'none') + '.' };
+	return await runChain(hit.id, { nested: true });
+}
+
+/* ---------------------------- conversations UI ---------------------------- */
+function renderConvoHead() {
+	const head = document.getElementById('convoHead');
+	if (!head) return;
+	const cur = activeConvo();
+	const n = store.convos.length;
+	head.innerHTML = '<b>' + esc(cur.title) + '</b>' +
+		'<span>' + cur.msgs.filter((m) => m.role === 'user' || m.role === 'assistant').length + ' messages</span>' +
+		'<span class="cvcount">' + n + ' thread' + (n === 1 ? '' : 's') + '</span>';
+}
+function renderConvoList() {
+	const box = document.getElementById('convoList');
+	const list = store.convos.slice().sort((a, b) => b.at - a.at);
+	box.innerHTML = '';
+	list.forEach((c) => {
+		const row = document.createElement('div');
+		row.className = 'row-item convorow' + (c.id === store.convoId ? ' on' : '');
+		const open = document.createElement('button');
+		open.type = 'button';
+		open.className = 'txt';
+		open.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:left;flex:1;min-width:0;cursor:pointer';
+		const count = c.msgs.filter((m) => m.role === 'user' || m.role === 'assistant').length;
+		open.innerHTML = '<b>' + esc(c.title) + '</b><small>' + count + ' message' + (count === 1 ? '' : 's') + ' · ' + new Date(c.at).toLocaleString() + '</small>';
+		open.addEventListener('click', () => { document.getElementById('convosDlg').close(); switchConversation(c.id); });
+		const ren = document.createElement('button');
+		ren.type = 'button'; ren.className = 'ghost small'; ren.textContent = 'Rename';
+		ren.addEventListener('click', async () => {
+			const name = await promptText('Rename conversation', c.title);
+			if (name !== null) { renameConversation(c.id, name); renderConvoList(); }
+		});
+		const del = document.createElement('button');
+		del.type = 'button'; del.innerHTML = '✕'; del.title = 'Delete';
+		del.addEventListener('click', async () => {
+			if (!(await confirmAction('Delete this conversation?', '“' + c.title + '” and its ' + count + ' message' + (count === 1 ? '' : 's') + ' will be gone from this device.'))) return;
+			deleteConversation(c.id);
+			renderConvoList();
+		});
+		row.append(open, ren, del);
+		box.appendChild(row);
+	});
+}
+function openConvos() {
+	document.getElementById('convosDlg').showModal();
+	renderConvoList();
+}
+
+/* ================================= chains ================================
+ * A chain is a saved list of steps run in order. Two step kinds, deliberately:
+ *   tool — a tool id plus its JSON arguments, run directly, no model involved
+ *          and so no tokens spent and nothing to misread.
+ *   say  — a line of instruction handed to the assistant, for the parts that
+ *          need judgement rather than a fixed call.
+ * Anything else (conditionals, loops, variables) would be a scripting language
+ * with a form-based editor, which is a worse way to write a program than a
+ * program. Chains stop where a sequence stops being enough. */
+const CHAIN_TOOLS = TOOL_DOCS.split('\n- ').map((line) => line.split(' ')[0]).filter(Boolean).sort();
+function chainById(id) { return store.chains.find((c) => c.id === id) || null; }
+function renderChainList() {
+	const box = document.getElementById('chainList');
+	const list = store.chains;
+	if (!list.length) {
+		box.innerHTML = '<div class="empty">No chains yet. A chain runs several steps in order — “check the weather, read my calendar, then write me a note”.</div>';
+		return;
+	}
+	box.innerHTML = '';
+	list.forEach((c) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' + c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') + ' · ' +
+			esc(c.steps.map((st) => st.kind === 'say' ? 'say' : st.tool).join(' → ').slice(0, 70)) + '</small></div>';
+		const run = document.createElement('button');
+		run.type = 'button'; run.className = 'ghost small'; run.textContent = 'Run';
+		run.addEventListener('click', () => { document.getElementById('chainsDlg').close(); runChain(c.id); });
+		const edit = document.createElement('button');
+		edit.type = 'button'; edit.className = 'ghost small'; edit.textContent = 'Edit';
+		edit.addEventListener('click', () => openChainEditor(c.id));
+		row.append(run, edit);
+		box.appendChild(row);
+	});
+}
+function openChains() {
+	document.getElementById('chainsDlg').showModal();
+	renderChainList();
+}
+let chainDraft = null;
+function openChainEditor(id) {
+	const existing = id ? chainById(id) : null;
+	chainDraft = existing
+		? { id: existing.id, name: existing.name, steps: existing.steps.map((st) => ({ ...st })) }
+		: { id: uid(), name: '', steps: [] };
+	document.getElementById('chainEditTitle').textContent = existing ? 'Edit chain' : 'New chain';
+	document.getElementById('chainName').value = chainDraft.name;
+	document.getElementById('chainDelete').hidden = !existing;
+	renderChainSteps();
+	document.getElementById('chainEditDlg').showModal();
+}
+function renderChainSteps() {
+	const box = document.getElementById('chainSteps');
+	box.innerHTML = '';
+	if (!chainDraft.steps.length) {
+		box.innerHTML = '<div class="empty">No steps yet.</div>';
+		return;
+	}
+	chainDraft.steps.forEach((st, i) => {
+		const wrap = document.createElement('div');
+		wrap.className = 'chainstep';
+		const body = document.createElement('div');
+		body.className = 'csbody';
+		const kind = document.createElement('div');
+		kind.className = 'chainkind';
+		kind.textContent = 'Step ' + (i + 1) + ' · ' + (st.kind === 'say' ? 'instruction' : 'tool');
+		body.appendChild(kind);
+		if (st.kind === 'say') {
+			const ta = document.createElement('textarea');
+			ta.rows = 2;
+			ta.placeholder = 'Tell me what is on my calendar today, briefly.';
+			ta.value = st.text || '';
+			ta.addEventListener('input', () => { st.text = ta.value; });
+			body.appendChild(ta);
+		} else {
+			const sel = document.createElement('select');
+			sel.innerHTML = CHAIN_TOOLS.map((t) => '<option value="' + esc(t) + '">' + esc(t) + '</option>').join('');
+			sel.value = st.tool || CHAIN_TOOLS[0];
+			sel.addEventListener('change', () => { st.tool = sel.value; });
+			const args = document.createElement('input');
+			args.type = 'text';
+			args.placeholder = '{"location": "Boston"}  — arguments as JSON, or leave blank';
+			args.value = st.args && Object.keys(st.args).length ? JSON.stringify(st.args) : '';
+			const err = document.createElement('div');
+			err.className = 'chainargerr';
+			/* Validated as you type rather than on save: a chain whose arguments
+			 * are broken JSON fails silently at run time, hours later. */
+			args.addEventListener('input', () => {
+				const raw = args.value.trim();
+				if (!raw) { st.args = {}; st.argsBad = false; err.textContent = ''; return; }
+				try {
+					const parsed = JSON.parse(raw);
+					if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('must be a JSON object');
+					st.args = parsed; st.argsBad = false; err.textContent = '';
+				} catch (e) { st.argsBad = true; err.textContent = 'Not valid JSON: ' + e.message; }
+			});
+			body.append(sel, args, err);
+		}
+		const drop = document.createElement('button');
+		drop.type = 'button'; drop.className = 'csdrop'; drop.innerHTML = '✕'; drop.title = 'Remove step';
+		drop.addEventListener('click', () => { chainDraft.steps.splice(i, 1); renderChainSteps(); });
+		wrap.append(body, drop);
+		box.appendChild(wrap);
+	});
+}
+function saveChainDraft() {
+	const name = document.getElementById('chainName').value.trim();
+	if (!name) { toast('Name it first', 'A chain needs a name so you can ask for it out loud.'); return; }
+	if (chainDraft.steps.some((st) => st.argsBad)) { toast('Fix the arguments', 'One step has arguments that are not valid JSON.'); return; }
+	if (!chainDraft.steps.length) { toast('No steps', 'Add at least one step before saving.'); return; }
+	const list = store.chains;
+	const clean = { id: chainDraft.id, name, steps: chainDraft.steps.map((st) => st.kind === 'say' ? { kind: 'say', text: st.text || '' } : { kind: 'tool', tool: st.tool, args: st.args || {} }) };
+	const i = list.findIndex((c) => c.id === clean.id);
+	if (i < 0) list.push(clean); else list[i] = clean;
+	store.chains = list;
+	document.getElementById('chainEditDlg').close();
+	renderChainList();
+	renderChainsPanel();
+}
+/* `nested` means the chain was triggered by the model mid-turn rather than by
+ * a click. It changes one thing and it matters: an instruction step cannot
+ * start a nested turn from inside a turn — submitCommand is guarded by `busy`
+ * and would simply drop it — so nested runs hand the instructions BACK as part
+ * of the tool result and let the model that called run_chain carry them out in
+ * its own reply. Clicked runs execute them as real turns. */
+async function runChain(id, opts) {
+	const nested = !!(opts && opts.nested);
+	const chain = chainById(id);
+	if (!chain) return { ok: false, message: 'No chain by that name.' };
+	if (busy && !nested) { toast('One at a time', 'Wait for the current reply to finish.'); return { ok: false, message: 'Busy.' }; }
+	logActivity('Ran the chain "' + chain.name + '".');
+	const done = [];
+	const instructions = [];
+	for (const st of chain.steps) {
+		if (st.kind === 'say') {
+			if (nested) { instructions.push(st.text); continue; }
+			await submitCommand(st.text);
+			done.push('said: ' + st.text.slice(0, 40));
+			continue;
+		}
+		showToolCap(st.tool);
+		const res = await runTool({ tool: st.tool, args: st.args || {} });
+		settleToolCap(res.ok);
+		done.push((res.ok ? 'ok ' : 'failed ') + st.tool);
+		if (!res.ok) {
+			toast('Chain stopped', '"' + chain.name + '" stopped at ' + st.tool + ': ' + res.message, 8000);
+			return { ok: false, message: 'Chain "' + chain.name + '" stopped at ' + st.tool + ': ' + res.message };
+		}
+	}
+	if (!nested) toast('Chain finished', '"' + chain.name + '" ran ' + chain.steps.length + ' step' + (chain.steps.length === 1 ? '' : 's') + '.');
+	return {
+		ok: true,
+		message: 'Chain "' + chain.name + '" ran: ' + (done.join(', ') || 'no tool steps') + '.' +
+			(instructions.length ? ' Now do the rest of it yourself, in order: ' + instructions.map((t, i) => (i + 1) + ') ' + t).join(' ') : ''),
+	};
+}
+function renderChainsPanel() {
+	const box = document.getElementById('panel-chains');
+	if (!box) return;
+	const list = store.chains;
+	if (!list.length) { box.innerHTML = '<div class="empty">No chains yet. Build one to run several steps in a row.</div>'; return; }
+	box.innerHTML = '';
+	list.forEach((c) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' + c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') + '</small></div>';
+		const run = document.createElement('button');
+		run.type = 'button'; run.className = 'ghost small'; run.textContent = 'Run';
+		run.addEventListener('click', () => runChain(c.id));
+		row.appendChild(run);
+		box.appendChild(row);
+	});
+}
+
+/* ---------------------------- conversations UI end ------------------------ */
+/* ================================= search ================================
+ * The palette both FINDS and DOES. A row with a `run` executes; a row without
+ * one navigates to where the thing lives, as before. Commands are listed
+ * first when they match, because someone typing "dark" wants the switch
+ * flipped, not the six notes that happen to contain the word.
+ *
+ * Nothing destructive is reachable from here — no "forget everything", no
+ * unlock, no delete. A fuzzy substring match on a half-typed word is the wrong
+ * gate for anything you cannot take back; those still go through Jarvis, who
+ * asks first. */
+function collectCommands() {
+	const cmds = [];
+	/* `keys` is the difference between a command list and a usable one. A
+	   command is named for what it does once, but reached for by whatever word
+	   is in your head at the time — someone already in dark mode still types
+	   "dark" to find the theme switch, and would otherwise get nothing. */
+	const add = (title, sub, run, keys) => cmds.push({ command: true, view: null, title, sub, text: title + ' ' + sub + ' ' + (keys || ''), run });
+	[['dashboard', 'Home', 'home main orb front'], ['overview', 'Overview', 'business summary quick access'],
+	 ['chat', 'Chat', 'transcript conversation messages log'], ['tasks', 'Tasks', 'reminders notes chains todo'],
+	 ['memory', 'Memory', 'facts remembered'], ['systems', 'Systems', 'devices lights smart home recordings transcripts'],
+	 ['apps', 'Connections', 'providers keys integrations']].forEach(([v, label, keys]) => {
+		add('Go to ' + label, 'Navigate', () => showView(v), keys);
+	});
+	add('New chat', 'Start a fresh conversation', () => { newConversation(); showView('chat'); }, 'new thread conversation clear reset start over');
+	add('Conversations', 'Switch, rename or delete a thread', openConvos, 'history threads chats switch rename delete');
+	add('Tokens and cost', 'Usage so far, and the calculator', openUsage, 'tokens cost price spend money billing usage calculator estimate');
+	add('Chains', 'Build and run multi-step chains', openChains, 'chain routine workflow macro automation steps');
+	add('Customize Jarvis', 'Body, rim, eyes, accessories', openSkin, 'skin colour color appearance orb hat face accessory preset');
+	add('Activity', 'What Jarvis is doing right now', openActivity, 'jobs progress running undo');
+	add(store.theme === 'light' ? 'Dark mode' : 'Light mode', 'Switch the theme', () => setTheme(store.theme === 'light' ? 'dark' : 'light'), 'dark light theme appearance night day');
+	add(store.muted ? 'Unmute Jarvis' : 'Mute Jarvis', 'Speech output', () => toggleMute(), 'mute unmute silence sound voice speech volume');
+	[['account', 'Account'], ['persona', 'Persona'], ['listening', 'Listening'], ['media', 'Media'],
+	 ['home', 'Smart home'], ['calendar', 'Calendar'], ['business', 'Business'], ['data', 'Data']].forEach(([tab, label]) => {
+		add('Settings: ' + label, 'Open settings', () => openSettings(tab));
+	});
+	store.chains.forEach((c) => add('Run chain: ' + c.name, c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's'), () => runChain(c.id)));
+	/* Devices and scenes are the commands worth having here — they are the ones
+	   you want in one keystroke rather than a sentence. Locks are excluded on
+	   purpose; unlocking has its own confirmation and should keep it. */
+	store.devices.forEach((d) => {
+		if (d.type === 'scene') { add('Run scene: ' + d.name, 'Smart home', () => runTool({ tool: 'run_scene', args: { name: d.name } })); return; }
+		if (d.type === 'light') {
+			add('Turn on ' + d.name, 'Smart home', () => runTool({ tool: 'set_device', args: { name: d.name, power: 'on' } }));
+			add('Turn off ' + d.name, 'Smart home', () => runTool({ tool: 'set_device', args: { name: d.name, power: 'off' } }));
+		}
+	});
+	return cmds;
+}
 function collectSearchIndex() {
 	const items = [];
 	store.memory.forEach((fact) => items.push({ view: 'memory', title: fact, sub: 'Memory', text: fact }));
@@ -4816,20 +5755,43 @@ function collectSearchIndex() {
 	});
 	return items;
 }
+/* Every word has to appear, in any order, rather than the whole query as one
+ * contiguous substring. People type what they want, not what it is called:
+ * "lights off" should reach "Turn off Kitchen Lights", and as one substring it
+ * reached nothing at all. */
+function makeMatcher(q) {
+	const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+	return (text) => { const t = text.toLowerCase(); return terms.every((w) => t.includes(w)); };
+}
 function runSearch(q) {
 	const box = document.getElementById('searchResults');
-	q = (q || '').trim().toLowerCase();
+	const raw = (q || '').trim();
+	q = raw.toLowerCase();
 	if (!q) { box.innerHTML = ''; searchIx = -1; return; }
-	const hits = collectSearchIndex().filter((it) => it.text.toLowerCase().includes(q)).slice(0, 40);
-	if (!hits.length) { box.innerHTML = '<div class="empty">No matches.</div>'; searchIx = -1; return; }
+	const match = makeMatcher(q);
+	const cmds = collectCommands().filter((it) => match(it.text));
+	const found = collectSearchIndex().filter((it) => match(it.text));
+	/* Always offered, last, and never filtered out: if the palette has nothing
+	   for what you typed, the assistant still might, and that beats a dead end. */
+	const askRow = {
+		command: true,
+		title: 'Ask ' + store.assistantName + ': ' + raw,
+		sub: 'Send this as a message',
+		run: () => { showView('dashboard'); submitCommand(raw); },
+	};
+	const hits = cmds.slice(0, 12).concat(found.slice(0, 30)).concat([askRow]);
 	box.innerHTML = '';
 	searchIx = -1;
 	hits.forEach((it) => {
 		const row = document.createElement('button');
 		row.type = 'button';
 		row.className = 'row-item';
-		row.innerHTML = '<div class="txt"><b>' + esc(it.title.slice(0, 90) || '(untitled)') + '</b><small>' + esc(it.sub) + '</small></div>';
-		row.addEventListener('click', () => { document.getElementById('searchDlg').close(); showView(it.view); });
+		row.innerHTML = '<div class="txt"><b>' + esc(it.title.slice(0, 90) || '(untitled)') + '</b><small>' + esc(it.sub) + '</small></div>' +
+			(it.command ? '<div class="pstate">Run</div>' : '');
+		row.addEventListener('click', () => {
+			document.getElementById('searchDlg').close();
+			if (it.run) it.run(); else showView(it.view);
+		});
 		box.appendChild(row);
 	});
 }
@@ -4949,6 +5911,123 @@ async function generateBriefing() {
 	if (!recording) speak(text);
 }
 
+/* ============================== onboarding ===============================
+ * First run used to open Settings — eight tabs, four key fields, no order and
+ * no explanation of why a key is being asked for at all. Three questions
+ * instead, in the order they actually matter, and every one of them skippable.
+ *
+ * The key is only shape-checked, never sent anywhere to be validated: a probe
+ * request would spend the user's money before they had agreed to anything, and
+ * a prefix check catches the mistake that actually happens, which is pasting
+ * the wrong provider's key.
+ */
+const ONBOARD_PROVIDERS = [
+	{
+		id: 'or', label: 'OpenRouter', sub: 'One key, 300+ models. The easiest start.',
+		field: 'key', prefix: 'sk-or-', where: 'openrouter.ai/keys',
+		note: 'OpenRouter passes your prompt on to whichever model you pick, so you only manage one key and one bill.',
+		model: 'anthropic/claude-sonnet-5',
+	},
+	{
+		id: 'cl', label: 'Anthropic', sub: 'Claude models directly.',
+		field: 'anthKey', prefix: 'sk-ant-', where: 'console.anthropic.com',
+		note: 'Called straight from this browser, with no server in between.',
+		model: 'claude:claude-sonnet-5',
+	},
+	{
+		id: 'gpt', label: 'OpenAI', sub: 'GPT models directly.',
+		field: 'oaiKey', prefix: 'sk-', where: 'platform.openai.com/api-keys',
+		note: 'Called straight from this browser, with no server in between.',
+		model: 'gpt:gpt-4o',
+	},
+	{
+		id: 'ge', label: 'Google Gemini', sub: 'Gemini models directly.',
+		field: 'geminiKey', prefix: 'AI', where: 'aistudio.google.com/apikey',
+		note: 'Called straight from this browser, with no server in between.',
+		model: 'gemini:gemini-2.5-flash',
+	},
+];
+let obPick = null;
+function obShow(step) {
+	document.querySelectorAll('#onboardDlg .obstep').forEach((el) => { el.hidden = Number(el.dataset.obstep) !== step; });
+	document.querySelectorAll('#obDots i').forEach((d, i) => d.classList.toggle('on', i === step - 1));
+}
+function startOnboarding() {
+	const dlg = document.getElementById('onboardDlg');
+	if (dlg.open) return;
+	obPick = null;
+	const box = document.getElementById('obProviders');
+	box.innerHTML = '';
+	ONBOARD_PROVIDERS.forEach((p) => {
+		const row = document.createElement('button');
+		row.type = 'button';
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(p.label) + '</b><small>' + esc(p.sub) + '</small></div>' +
+			(store[p.field] ? '<div class="pstate on">Connected</div>' : '');
+		row.addEventListener('click', () => {
+			obPick = p;
+			document.getElementById('obKeyTitle').textContent = 'Your ' + p.label + ' key';
+			document.getElementById('obKeyHelp').textContent = p.note + ' Create one at ' + p.where + '.';
+			const input = document.getElementById('obKeyInput');
+			input.value = store[p.field] || '';
+			const hint = document.getElementById('obKeyHint');
+			hint.textContent = '';
+			hint.className = 'obhint';
+			obShow(2);
+			setTimeout(() => input.focus(), 60);
+		});
+		box.appendChild(row);
+	});
+	document.getElementById('obUserName').value = store.userName || '';
+	document.getElementById('obAsstName').value = store.assistantName || 'Jarvis';
+	obShow(1);
+	dlg.showModal();
+}
+function obCheckKey() {
+	const hint = document.getElementById('obKeyHint');
+	const v = document.getElementById('obKeyInput').value.trim();
+	if (!v) { hint.className = 'obhint'; hint.textContent = 'You can skip this and add a key later in Settings.'; return 'empty'; }
+	if (!v.startsWith(obPick.prefix)) {
+		hint.className = 'obhint bad';
+		hint.textContent = 'That does not look like a ' + obPick.label + ' key — those start with “' + obPick.prefix + '”. It will still be saved if you continue.';
+		return 'odd';
+	}
+	hint.className = 'obhint good';
+	hint.textContent = 'Looks like a ' + obPick.label + ' key. It stays on this device.';
+	return 'ok';
+}
+function obSaveKey() {
+	if (!obPick) return;
+	const v = document.getElementById('obKeyInput').value.trim();
+	if (!v) return;
+	store[obPick.field] = v;
+	/* Lead with a model the key they just added can actually reach. Anything
+	 * already configured is left alone — this is a first run, not a reset. */
+	const models = store.models;
+	if (!models.includes(obPick.model)) store.models = [obPick.model].concat(models.filter((m) => m !== obPick.model)).slice(0, 4);
+}
+function finishOnboarding(skipped) {
+	if (!skipped) {
+		const user = document.getElementById('obUserName').value.trim();
+		const asst = document.getElementById('obAsstName').value.trim();
+		if (user) store.userName = user;
+		if (asst) store.assistantName = asst;
+		updateBrand();
+	}
+	store.onboarded = true;
+	document.getElementById('onboardDlg').close();
+	updateDashStatus();
+	setCaption(anyKey() ? 'Ready. Tap the mic, or type below.' : 'No key yet — add one in Settings whenever you are ready.');
+}
+document.getElementById('obKeyInput').addEventListener('input', obCheckKey);
+document.getElementById('obBack1').addEventListener('click', () => obShow(1));
+document.getElementById('obNext2').addEventListener('click', () => { obSaveKey(); obShow(3); setTimeout(() => document.getElementById('obUserName').focus(), 60); });
+document.getElementById('obBack2').addEventListener('click', () => obShow(2));
+document.getElementById('obFinish').addEventListener('click', () => finishOnboarding(false));
+document.getElementById('obSkip').addEventListener('click', () => finishOnboarding(true));
+document.getElementById('onboardDlg').addEventListener('cancel', () => { store.onboarded = true; });
+
+
 /* ============================ boot intro film ============================ */
 /* "Quiet Awakening" — plays once per browser, before the first key prompt or
    anything else. Genre: elegant, intimate, not a spectacle. Central metaphor:
@@ -4957,7 +6036,10 @@ async function generateBriefing() {
    revealed. Skippable at any point; never replays once seen; never shown at
    all under prefers-reduced-motion, rather than just speeding it up. */
 function maybePromptSettings() {
-	if (!anyKey()) setTimeout(openSettings, 300);
+	/* Waits for the intro rather than racing it — the same sequencing the bare
+	 * key prompt needed, for the same reason. */
+	if (!store.onboarded && !anyKey()) setTimeout(startOnboarding, 300);
+	else if (!anyKey()) setTimeout(openSettings, 300);
 }
 function initIntro() {
 	const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
