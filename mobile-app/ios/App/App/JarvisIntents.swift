@@ -58,7 +58,9 @@ struct AskJarvisIntent: AppIntent {
 	static var description = IntentDescription("Ask Jarvis a question or give it a command, out loud through Siri.")
 	static var openAppWhenRun: Bool = true
 
-	@Parameter(title: "Question")
+	/* Siri asks for this itself when the phrase does not carry it — see the
+	   note on `phrases` below for why it cannot. */
+	@Parameter(title: "Question", requestValueDialog: "What would you like to ask?")
 	var question: String
 
 	func perform() async throws -> some IntentResult {
@@ -88,11 +90,18 @@ struct SetJarvisReminderIntent: AppIntent {
 @available(iOS 16.0, *)
 struct JarvisShortcuts: AppShortcutsProvider {
 	static var appShortcuts: [AppShortcut] {
+		/* The question is deliberately NOT interpolated into these phrases.
+		   App Intents allows only an AppEntity or an AppEnum inside a phrase —
+		   a plain String parameter is a compile error ("Invalid parameter
+		   type. AppEntity and AppEnum are the only allowed types"). And an
+		   enum is the wrong shape here: the whole point is that you can ask
+		   anything, which is not a fixed list. So the phrase opens the app and
+		   Siri collects the question through requestValueDialog instead. */
 		AppShortcut(
 			intent: AskJarvisIntent(),
 			phrases: [
-				"Ask \(.applicationName) \(\.$question)",
 				"Ask \(.applicationName)",
+				"Talk to \(.applicationName)",
 			],
 			shortTitle: "Ask Jarvis",
 			systemImageName: "waveform.circle"
