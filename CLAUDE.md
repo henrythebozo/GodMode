@@ -65,6 +65,14 @@ process can). So:
 - The CLI's filesystem half is tested by running the real binary as a
   subprocess, which is the only honest way to cover argument parsing.
 
+**A top-level throw in `docs/jarvis.html` does not look like a broken page.**
+Function declarations hoist, so every function stays callable while every
+top-level `const` after the throw is missing and every `addEventListener` after
+it was never attached — a suite of behavioural tests can pass green on a page
+that is half dead. This happened for real: a `renderVaultFolder()` call placed
+above the `const FS_OK` it reads hit the temporal dead zone. Assert that
+evaluation reached the end (read a late const) before asserting anything else.
+
 Two harness bugs to avoid repeating: setting `animation-delay` does not re-seek
 a running animation in Chromium (`a.pause(); a.currentTime = …` does), and
 `getAnimations()` includes CSS *transitions*, so freezing everything at

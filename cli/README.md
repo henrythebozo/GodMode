@@ -130,6 +130,7 @@ format.
 | `jarvis mem show <title>` | the note, its links out, and its links in |
 | `jarvis mem link <a> <b>` | link both ways |
 | `jarvis mem rm <title>` / `mem open <title>` | delete, or open in `$EDITOR` |
+| `jarvis mem suggest [--apply]` | links you already wrote in prose without brackets |
 | `jarvis graph` | counts, the most-connected notes, the unlinked ones |
 | `jarvis graph <title> --depth N` | one note's neighbourhood, as a tree |
 | `jarvis graph --open` | render the whole vault and open it in a browser |
@@ -139,9 +140,18 @@ format.
 | `jarvis config [key [value]]` | show or set; keys print redacted |
 | `jarvis export [file]` / `jarvis import <file>` | the bridge to the web app |
 
-Asking a question hands the model an index of every note plus the handful whose
-words overlap your question. It can write and link notes back through the same
-`jarvis-action` protocol the web app uses.
+Asking a question hands the model an index of every note plus the handful that
+actually look relevant — scored by term frequency with a rarity weight, then
+expanded **one hop along the links** out of the best matches. That last part is
+what the graph is for: ask about Noah and you also get the project Noah's note
+points at, even though you never named it. It can write and link notes back
+through the same `jarvis-action` protocol the web app uses.
+
+`jarvis mem suggest` finds the links you have already written without meaning
+to — a note saying "APEX is the project Noah helps with" is describing an edge,
+it just has not got the brackets. `--apply` adds them all, both ways. A title
+quoted inside backticks does not count, so a note explaining the syntax does
+not invent links.
 
 **Ctrl-C stops the request, not the shell.** A second one really does quit.
 
@@ -164,6 +174,11 @@ same memory graph drawn in the same way. Neither can reach the other's storage
 — a browser cannot read your disk unprompted, and this cannot read
 localStorage — so the bridge is a file you move across, not a claim of sync:
 
+In Chrome or Edge the app can go one better: **Settings → Data → Vault folder**
+points the browser at this same directory through the File System Access API,
+and Sync moves whole notes both ways, most-recently-updated winning per note.
+Safari and Firefox do not have that API, so there the file is still the bridge:
+
 ```sh
 jarvis export vault.json          # then Settings → Data → Import in the app
 jarvis import jarvis-backup.json  # a backup exported from the app
@@ -182,6 +197,11 @@ sentence becoming its own note.
   catch anything about the real endpoints. Treat the first real call as the
   actual test.
 - `jarvis graph --open` writes a **snapshot**. Re-run it after editing the vault.
-- Relevance for context is word overlap, not embeddings. It picks the right
-  handful for a few hundred notes; it will not scale to thousands.
+- Relevance is lexical plus one hop through the graph, not embeddings. Those
+  need a model call per note and a vector store before you can ask anything;
+  at the size a personal vault reaches they would pick the same handful. It
+  will not scale to thousands of notes.
+- Folder sync moves whole notes and never merges inside a file. Edit the same
+  note in two places between syncs and the newer one wins outright. That is a
+  job for git, which is why the vault is a git-friendly folder.
 - There is no watch mode and no daemon. Every command is one shot.

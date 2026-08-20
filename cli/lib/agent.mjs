@@ -10,24 +10,54 @@ import path from 'node:path';
 import * as V from './vault.mjs';
 import * as P from './provider.mjs';
 
-/* Relevance by word overlap with the question, plus a nudge for well-connected
- * notes. Not embeddings — that would mean a model call and a vector store
- * before you could ask anything, and for a vault of a few hundred notes the
- * overlap score picks the same handful. */
-export function pickContext(notes, question, limit) {
-	const terms = String(question).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3);
-	if (!terms.length) return notes.slice(0, Math.min(limit, 6));
-	const scored = notes.map((n) => {
-		const hay = (n.title + ' ' + n.body + ' ' + n.links.join(' ')).toLowerCase();
+/* Which notes to put in front of the model.
+ *
+ * Term frequency with a rarity weight, a bonus for a hit in the title, and then
+ * ONE HOP along the links out of whatever scored well. That last part is the
+ * reason the graph exists: asking about Noah should also pull in the project
+ * Noah's note points at, even when the question never names it.
+ *
+ * Not embeddings. Those need a model call per note and a vector store before
+ * you can ask anything at all, and at the size a personal vault reaches they
+ * pick the same handful this does. The seam is here if that changes. */
+export function scoreNotes(notes, question) {
+	const terms = String(question || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+	if (!terms.length) return [];
+	/* A term in half the notes says nothing about which one you meant; one in a
+	 * single note says everything. The useful half of a ranking function. */
+	const rarity = {};
+	terms.forEach((t) => {
+		const hits = notes.filter((n) => (n.title + ' ' + n.body).toLowerCase().includes(t)).length;
+		rarity[t] = hits ? Math.log(1 + notes.length / hits) : 0;
+	});
+	return notes.map((n) => {
+		const title = n.title.toLowerCase(), body = n.body.toLowerCase();
 		let score = 0;
-		for (const t of terms) {
-			if (n.title.toLowerCase().includes(t)) score += 3;
-			if (hay.includes(t)) score += 1;
-		}
-		return { n, score: score + Math.min(2, n.links.length * 0.25) };
-	}).filter((s) => s.score > 0);
-	scored.sort((a, b) => b.score - a.score);
-	return scored.slice(0, limit).map((s) => s.n);
+		terms.forEach((t) => {
+			if (title.includes(t)) score += 3 * rarity[t];
+			if (body.includes(t)) score += rarity[t];
+		});
+		return { n, score };
+	}).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+}
+export function pickContext(notes, question, limit) {
+	const ranked = scoreNotes(notes, question);
+	const byTitle = new Map(notes.map((n) => [n.title.toLowerCase(), n]));
+	const picked = [];
+	const taken = new Set();
+	const take = (n) => { if (n && !taken.has(n.file)) { taken.add(n.file); picked.push(n); } };
+	ranked.slice(0, limit).forEach((x) => take(x.n));
+	/* One hop out, from the strongest few only — expanding from everything
+	 * would drag the whole vault back in and undo the point. */
+	ranked.slice(0, 4).forEach((x) => x.n.links.forEach((l) => {
+		if (picked.length < limit + 6) take(byTitle.get(l.toLowerCase()));
+	}));
+	/* Nothing matched: the notes touched most recently are a better guess than
+	 * silence, because they are usually what you are in the middle of. */
+	if (!picked.length) {
+		notes.slice().sort((a, b) => String(b.updated).localeCompare(String(a.updated))).slice(0, 6).forEach(take);
+	}
+	return picked;
 }
 
 export function systemPrompt(cfg, notes) {

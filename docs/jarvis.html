@@ -1191,6 +1191,23 @@
 		.graphlegend .graphhint { display: none; }
 	}
 
+	/* Save-to-memory sits inside the message and stays out of the way until you
+	   are on it — a control on every line of a transcript is visual noise, and
+	   this is one you reach for occasionally, not constantly. */
+	.logmsg { position: relative; }
+	.keepbtn {
+		position: absolute; top: 6px; right: 6px;
+		background: var(--panel-3); border: 1px solid var(--line); color: var(--dim);
+		border-radius: 999px; padding: 3px 9px; font-size: 10.5px; font-weight: 500;
+		cursor: pointer; opacity: 0; transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	}
+	.logmsg:hover .keepbtn, .keepbtn:focus-visible { opacity: 1; }
+	.keepbtn:hover { color: var(--ring); border-color: var(--ring); }
+	/* Hover does not exist on a touch screen, so there it is simply always on. */
+	@media (hover: none) { .keepbtn { opacity: 1; } }
+
+	#chainSchedTime { max-width: 150px; }
+
 	/* ---- conversations ---- */
 	.headtools { display: flex; gap: 8px; flex: none; }
 	.convohead { display: flex; align-items: center; gap: 8px; margin: -8px 0 12px; color: var(--dim); font-size: 12.5px; }
@@ -1767,6 +1784,7 @@
 						<h1>Graph</h1>
 						<div class="headtools">
 							<label class="graphtoggle"><input type="checkbox" id="graphFolders" checked /> Folders</label>
+							<button type="button" class="ghost small" id="graphSuggest">Suggest links</button>
 							<button type="button" class="ghost small" id="graphRelayout">Re-lay out</button>
 						</div>
 					</div>
@@ -2033,6 +2051,16 @@
 	</div>
 
 	<div class="settab" id="settab-data">
+		<h3>Vault folder</h3>
+		<p class="hint">Point this at the folder the <code>jarvis</code> CLI uses and both halves keep the same notes — the same markdown files Obsidian opens. Syncing is manual: nothing is read or written until you press it.</p>
+		<p class="hint" id="vaultFolderState"></p>
+		<div class="row">
+			<button class="ghost" id="vaultConnectBtn" type="button">Connect folder</button>
+			<button class="ghost" id="vaultSyncBtn" type="button" hidden>Sync now</button>
+			<button class="ghost" id="vaultForgetBtn" type="button" hidden>Forget</button>
+		</div>
+		<p class="hint" id="vaultSyncOut"></p>
+
 		<h3>Backup</h3>
 		<p class="hint">Export everything Jarvis knows on this device — memory, reminders, notes, chat history, recordings and devices — to a JSON file, and re-import it later or in another browser.</p>
 		<div class="row">
@@ -2088,6 +2116,16 @@
 		<button class="ghost small" id="skinRandom" type="button">Surprise me</button>
 		<button class="ghost small" id="skinReset" type="button">Reset</button>
 		<button class="primary" id="skinDone" type="button" style="margin-left:auto">Done</button>
+	</div>
+</dialog>
+
+<dialog id="suggestDlg">
+	<h2>Suggested links</h2>
+	<p>Notes that name each other in their text without being linked. Linking is two-way, and nothing here changes a word of what you wrote — it only adds the brackets.</p>
+	<div class="viewlist" id="suggestList" style="margin-top: 14px"></div>
+	<div class="row">
+		<button class="ghost small" type="button" id="suggestAll">Link all</button>
+		<button class="primary" type="button" id="suggestDone" style="margin-left:auto">Done</button>
 	</div>
 </dialog>
 
@@ -2154,6 +2192,9 @@
 	<h2 id="chainEditTitle">Edit chain</h2>
 	<label for="chainName">Name</label>
 	<input type="text" id="chainName" placeholder="Morning rundown" autocomplete="off" />
+	<label class="graphtoggle" style="margin-top: 14px"><input type="checkbox" id="chainSchedOn" /> Run it every day</label>
+	<input type="time" id="chainSchedTime" value="08:00" />
+	<div class="obhint" id="chainSchedHint"></div>
 	<div class="eyebrow" style="margin: 18px 0 8px">Steps</div>
 	<div id="chainSteps"></div>
 	<div class="row">
@@ -2394,7 +2435,12 @@ const store = {
 		});
 	},
 	get vault() { try { return JSON.parse(localStorage.getItem('jarvis.vault')) || legacyVault(); } catch { return legacyVault(); } },
-	set vault(v) { localStorage.setItem('jarvis.vault', JSON.stringify(v)); },
+	/* Through trySave, so a full store says so out loud. The alternative — and
+	 * what this used to do — was to drop the oldest notes to stay under a fixed
+	 * count, which in a GRAPH is not housekeeping but silent damage: evicting
+	 * one well-linked note turns every link into it into a hollow node, and
+	 * nothing tells you it happened. */
+	set vault(v) { trySave(() => localStorage.setItem('jarvis.vault', JSON.stringify(v))); },
 	get reminders() { try { return JSON.parse(localStorage.getItem('jarvis.reminders')) || []; } catch { return []; } },
 	set reminders(v) { localStorage.setItem('jarvis.reminders', JSON.stringify(v)); },
 	get notes() { try { return JSON.parse(localStorage.getItem('jarvis.notes')) || []; } catch { return []; } },
@@ -3742,6 +3788,18 @@ document.getElementById('memFilter').addEventListener('input', (e) => { memFilte
 document.getElementById('noteCancel').addEventListener('click', () => document.getElementById('noteDlg').close());
 document.getElementById('noteSave').addEventListener('click', saveOpenNote);
 document.getElementById('graphFolders').addEventListener('change', renderGraph);
+document.getElementById('graphSuggest').addEventListener('click', openSuggestions);
+document.getElementById('suggestDone').addEventListener('click', () => document.getElementById('suggestDlg').close());
+document.getElementById('suggestAll').addEventListener('click', applyAllSuggestions);
+document.getElementById('chainSchedOn').addEventListener('change', updateChainSchedHint);
+document.getElementById('vaultConnectBtn').addEventListener('click', connectVaultFolder);
+document.getElementById('vaultSyncBtn').addEventListener('click', syncVaultFolder);
+document.getElementById('vaultForgetBtn').addEventListener('click', disconnectVaultFolder);
+/* The first paint of this panel is NOT wired here. It reads FS_OK, a top-level
+ * const declared further down the file, and calling it from up here hit the
+ * temporal dead zone — which does not fail quietly: it throws during script
+ * evaluation, so every const and every listener below this line was silently
+ * never created. It is called at the end of the vault-folder section instead. */
 document.getElementById('graphRelayout').addEventListener('click', () => { graphState.selected = null; renderGraph(); });
 wireGraphStage();
 
@@ -3878,7 +3936,8 @@ function toolRemember(args) {
 	 * knows about bodies. */
 	const v = store.vault;
 	v.push(newNote(fact, args && args.folder, args && args.title));
-	store.vault = v.slice(-120);
+	store.vault = v;
+	warnIfVaultLarge(v.length);
 	renderMemory();
 	return { ok: true, message: 'Remembered: ' + fact };
 }
@@ -4664,9 +4723,69 @@ const TOOL_DOCS = [
 	'get_business_doc {"query": string} — read one of the business reference documents listed above; match on its filename. Leave query empty to get a list of what is available.',
 ].join('\n- ');
 
-function buildSystemPrompt() {
-	const mem = store.memory;
-	const memText = mem.length ? mem.map((f) => '- ' + f).join('\n') : '(nothing remembered yet)';
+/* Which notes to put in front of the model.
+ *
+ * Sending the whole vault every turn was fine when memory was a dozen
+ * sentences and is a bill when it is three hundred notes — the entire thing was
+ * re-sent on every single message. Below the threshold it still sends
+ * everything, because at that size retrieval can only lose information for no
+ * saving; above it, it scores and picks.
+ *
+ * Scoring is term frequency with a rarity weight, a bonus for a hit in the
+ * title, and then ONE HOP along the links out of whatever scored well. That
+ * last part is the reason the graph exists: asking about Noah should also bring
+ * in the project Noah's note points at, even when the question never names it.
+ * Not embeddings — those need a model call and a vector store before you can
+ * ask anything at all, and at this size they would pick the same handful.
+ */
+const VAULT_SEND_ALL_BELOW = 25;
+function scoreNotes(question, notes) {
+	const terms = String(question || '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+	if (!terms.length) return [];
+	/* A term in half the notes says nothing about which one you meant; one in a
+	 * single note says everything. This is the useful half of what a real
+	 * ranking function does, in one line. */
+	const rarity = {};
+	terms.forEach((t) => {
+		const hits = notes.filter((n) => (n.title + ' ' + n.body).toLowerCase().includes(t)).length;
+		rarity[t] = hits ? Math.log(1 + notes.length / hits) : 0;
+	});
+	return notes.map((n) => {
+		const title = n.title.toLowerCase(), body = n.body.toLowerCase();
+		let score = 0;
+		terms.forEach((t) => {
+			if (title.includes(t)) score += 3 * rarity[t];
+			if (body.includes(t)) score += rarity[t];
+		});
+		return { note: n, score };
+	}).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+}
+function pickNotes(question, limit) {
+	const notes = store.vault;
+	if (notes.length <= VAULT_SEND_ALL_BELOW) return notes;
+	const ranked = scoreNotes(question, notes);
+	const picked = [];
+	const taken = new Set();
+	const take = (n) => { if (n && !taken.has(n.id)) { taken.add(n.id); picked.push(n); } };
+	ranked.slice(0, limit).forEach((x) => take(x.note));
+	/* One hop out, from the strongest few only — expanding from everything
+	 * would drag half the vault back in and undo the point. */
+	ranked.slice(0, 4).forEach((x) => parseNoteLinks(x.note.body).forEach((l) => {
+		if (picked.length < limit + 6) take(findNoteByTitle(l));
+	}));
+	/* Nothing matched: the most recently touched notes are a better guess than
+	 * silence, because they are usually what you are in the middle of. */
+	if (!picked.length) notes.slice().sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 6).forEach(take);
+	return picked;
+}
+function buildSystemPrompt(question) {
+	const all = store.vault;
+	const chosen = pickNotes(question, 14);
+	const partial = chosen.length < all.length;
+	const memText = chosen.length
+		? chosen.map((n) => '- ' + (n.title && n.title !== n.body ? n.title + ' (' + n.folder + '): ' : '') + n.body).join('\n') +
+			(partial ? '\n(These are the ' + chosen.length + ' of ' + all.length + ' notes that look relevant. Use recall_memory or related_memory if you need more.)' : '')
+		: '(nothing remembered yet)';
 	const who = store.userName ? store.userName : 'the user';
 	return [
 		'You are ' + store.assistantName + ', a witty, unflappable, extremely capable voice-first personal assistant in the spirit of the AI from Iron Man.',
@@ -4908,6 +5027,11 @@ function friendlyActivity(tool, args) {
 }
 
 /* ================================ pipeline ================================ */
+/* What a THREAD keeps, which is not what the model is SENT — that is capped at
+ * 24 messages a few lines below. 40 was the old number, from when there was one
+ * conversation and older turns were genuinely disposable; with threads, losing
+ * the start of one is losing the thing you named it after. */
+const THREAD_CAP = 400;
 let busy = false;
 let turnAbort = null;
 /* The composer swaps send for stop rather than showing both: while a reply is
@@ -4955,12 +5079,16 @@ async function submitCommand(text, depth) {
 		turnAbort = new AbortController();
 		const hist = store.history;
 		hist.push({ role: 'user', content: text });
-		store.history = hist.slice(-40);
+		store.history = hist.slice(-THREAD_CAP);
 		setCaption(text);
 		logActivity('You asked: ' + (text.length > 70 ? text.slice(0, 70) + '…' : text));
 	}
 
-	const messages = [{ role: 'system', content: buildSystemPrompt() }];
+	/* The prompt is built around the question so the vault can be filtered to
+	 * what is relevant. At depth > 0 there is no new question — it is the tool
+	 * follow-up — so the last thing the user actually said stands in. */
+	const asked = text || [...store.history].reverse().find((m) => m.role === 'user')?.content || '';
+	const messages = [{ role: 'system', content: buildSystemPrompt(asked) }];
 	if (depth === 0 && store.teamMode && store.models.length > 1) {
 		setState('thinking', 'Consulting the team');
 		const teamNotes = await consultTeam(text, turnAbort && turnAbort.signal);
@@ -5009,7 +5137,7 @@ async function submitCommand(text, depth) {
 			if (kept) {
 				const h = store.history;
 				h.push({ role: 'assistant', content: kept + ' […stopped]' });
-				store.history = h.slice(-40);
+				store.history = h.slice(-THREAD_CAP);
 				if (currentView === 'chat') renderChatLog();
 			}
 			setCaption(kept ? kept + ' […stopped]' : 'Stopped.');
@@ -5025,7 +5153,7 @@ async function submitCommand(text, depth) {
 
 	const hist = store.history;
 	hist.push({ role: 'assistant', content: raw });
-	store.history = hist.slice(-40);
+	store.history = hist.slice(-THREAD_CAP);
 	if (currentView === 'chat') renderChatLog();
 
 	const { actions, cleaned } = stripActions(raw);
@@ -5045,7 +5173,7 @@ async function submitCommand(text, depth) {
 			const summary = results.map((r) => (r.result.ok ? 'OK: ' : 'ERROR: ') + r.result.message).join('\n');
 			const hist2 = store.history;
 			hist2.push({ role: 'user', content: '[Tool results — speak your reply now, plainly, with no further tool calls unless truly necessary]\n' + summary });
-			store.history = hist2.slice(-40);
+			store.history = hist2.slice(-THREAD_CAP);
 			return submitCommand(undefined, depth + 1);
 		}
 	}
@@ -5132,6 +5260,16 @@ function renderMemory() {
 	});
 }
 
+/* Nothing is ever deleted to make room. Past a point where a browser's few
+ * megabytes start to matter, it says so once and points at the place you can
+ * prune by hand — a warning you can act on beats a deletion you cannot see. */
+let vaultWarned = false;
+function warnIfVaultLarge(count) {
+	if (vaultWarned || count < 300) return;
+	vaultWarned = true;
+	toast('Memory is getting big', count + ' notes. Nothing is dropped automatically — if saving ever fails, prune a few in Memory.', 9000);
+}
+
 /* ------------------------------ note editor ------------------------------- */
 let editingNoteId = null;
 function openNote(id) {
@@ -5183,6 +5321,63 @@ function saveOpenNote() {
 	document.getElementById('noteDlg').close();
 	renderMemory();
 	if (currentView === 'graph') renderGraph();
+}
+
+/* Files a message as a note and opens it, rather than saving it silently: the
+ * title and folder are a judgement the message itself cannot make, and the
+ * moment you are looking at it is the moment you know the answer. */
+function noteFromMessage(text) {
+	const body = String(text || '').trim();
+	if (!body) { toast('Nothing to save', 'That message is empty.'); return; }
+	const note = newNote(body, 'Memory');
+	saveNote(note);
+	showView('memory');
+	openNote(note.id);
+	toast('Saved to memory', 'Give it a title and a folder, and link it to what it belongs with.');
+}
+
+/* ---------------------------- link suggestions ---------------------------- */
+function renderSuggestions() {
+	const box = document.getElementById('suggestList');
+	const list = suggestLinks();
+	document.getElementById('suggestAll').hidden = !list.length;
+	if (!list.length) {
+		box.innerHTML = '<div class="empty">' + (store.vault.length < 2
+			? 'Not enough notes yet to find connections between them.'
+			: 'Nothing to suggest — every note that names another is already linked to it.') + '</div>';
+		return;
+	}
+	box.innerHTML = '';
+	list.slice(0, 40).forEach((sug) => {
+		const row = document.createElement('div');
+		row.className = 'row-item';
+		row.innerHTML = '<div class="txt"><b>' + esc(sug.from) + ' → ' + esc(sug.to) + '</b><small>' + esc(sug.where) + '</small></div>';
+		const btn = document.createElement('button');
+		btn.type = 'button'; btn.className = 'ghost small'; btn.textContent = 'Link';
+		btn.addEventListener('click', () => { linkNotes(sug.from, sug.to); renderSuggestions(); renderMemory(); });
+		row.appendChild(btn);
+		box.appendChild(row);
+	});
+	if (list.length > 40) box.insertAdjacentHTML('beforeend', '<div class="empty">' + (list.length - 40) + ' more after these.</div>');
+}
+function openSuggestions() {
+	document.getElementById('suggestDlg').showModal();
+	renderSuggestions();
+}
+function applyAllSuggestions() {
+	/* Recomputed each round rather than applied from one snapshot: linking A to
+	 * B changes what is still worth suggesting, and a stale list would re-offer
+	 * links that now exist. Bounded so a pathological vault cannot spin. */
+	let done = 0;
+	for (let round = 0; round < 200; round++) {
+		const next = suggestLinks()[0];
+		if (!next) break;
+		linkNotes(next.from, next.to);
+		done++;
+	}
+	renderSuggestions();
+	renderMemory();
+	toast(done ? 'Linked' : 'Nothing to link', done ? 'Added ' + done + ' link' + (done === 1 ? '' : 's') + '.' : 'Everything that names another note already points at it.');
 }
 
 /* -------------------------------- graph view ------------------------------ */
@@ -5663,8 +5858,18 @@ function renderChatLog() {
 		role.className = 'role';
 		role.textContent = m.role === 'user' ? (store.userName || 'You') : store.assistantName;
 		const body = document.createElement('div');
-		body.textContent = stripActions(m.content).cleaned || m.content;
-		row.append(role, body);
+		const text = stripActions(m.content).cleaned || m.content;
+		body.textContent = text;
+		/* Threads and memory were two stores that never spoke. The useful thing
+		 * a conversation produces is usually one sentence in it, and until now
+		 * the only way to keep that sentence was to say "remember that…" again. */
+		const keep = document.createElement('button');
+		keep.type = 'button';
+		keep.className = 'keepbtn';
+		keep.title = 'Save this to memory';
+		keep.textContent = 'Save to memory';
+		keep.addEventListener('click', () => noteFromMessage(text));
+		row.append(role, body, keep);
 		box.appendChild(row);
 	});
 	box.scrollTop = box.scrollHeight;
@@ -5965,11 +6170,14 @@ function legacyVault() {
 	try { old = JSON.parse(localStorage.getItem('jarvis.memory')) || []; } catch {}
 	return old.filter((f) => typeof f === 'string').map((f) => newNote(f));
 }
+function stripNoteCode(body) {
+	return String(body || '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ');
+}
 function parseNoteLinks(body) {
 	/* Code comes out first. Without this, a note that merely quotes the link
 	 * syntax — a how-to, a snippet, this app's own welcome text — spawns nodes
 	 * nobody meant to create. Obsidian does the same. */
-	const text = String(body || '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ');
+	const text = stripNoteCode(body);
 	const out = [];
 	const re = /\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g;
 	let m;
@@ -6074,6 +6282,50 @@ function buildVaultGraph(opts) {
 		if (opts.folders !== false && n.folder) join(n.folder, n.title, 'folder');
 	});
 	return { nodes: [...nodes.values()], edges };
+}
+
+/* Links you have already written in prose without knowing it.
+ *
+ * A note that says "Noah is working on APEX" is describing an edge; it just
+ * has not got the brackets. This finds those — a note whose body names another
+ * note's title — and offers them, which is the difference between a graph that
+ * fills in over months and one that fills in this afternoon.
+ *
+ * Two rules keep it from being noise. A word boundary, so "APEX" does not match
+ * inside "apexes" and a title of "Work" does not match "network". And a floor
+ * on title length, because a two- or three-letter title matches everything and
+ * suggesting everything is the same as suggesting nothing.
+ */
+const SUGGEST_MIN_TITLE = 4;
+function suggestLinks() {
+	const notes = store.vault;
+	const out = [];
+	const linksOf = new Map(notes.map((n) => [n.id, parseNoteLinks(n.body).map((l) => l.toLowerCase())]));
+	/* Code is stripped for the same reason parseNoteLinks strips it: a title
+	 * inside a snippet is a quotation, not a reference. Without it, a note that
+	 * shows an example naming another note suggests a link to it. */
+	const proseOf = new Map(notes.map((n) => [n.id, stripNoteCode(n.body)]));
+	notes.forEach((from) => {
+		const body = proseOf.get(from.id);
+		notes.forEach((to) => {
+			if (to.id === from.id) return;
+			if (to.title.length < SUGGEST_MIN_TITLE) return;
+			if (linksOf.get(from.id).includes(to.title.toLowerCase())) return;
+			/* Both directions count as already-linked: offering the reverse of a
+			 * link you have is just asking the same question again. */
+			if (linksOf.get(to.id).includes(from.title.toLowerCase())) return;
+			const re = new RegExp('(^|[^\\w\\[])' + to.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^\\w\\]])', 'i');
+			if (!re.test(body)) return;
+			out.push({ fromId: from.id, from: from.title, to: to.title, where: excerptAround(body, to.title) });
+		});
+	});
+	return out;
+}
+function excerptAround(body, needle) {
+	const i = body.toLowerCase().indexOf(needle.toLowerCase());
+	if (i < 0) return body.slice(0, 70);
+	const start = Math.max(0, i - 30);
+	return (start ? '…' : '') + body.slice(start, i + needle.length + 40).replace(/\s+/g, ' ') + (i + needle.length + 40 < body.length ? '…' : '');
 }
 
 /* A force layout in forty lines of arithmetic: repulsion between every pair, a
@@ -6186,7 +6438,9 @@ function renderChainList() {
 	list.forEach((c) => {
 		const row = document.createElement('div');
 		row.className = 'row-item';
-		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' + c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') + ' · ' +
+		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' +
+			(c.schedule && c.schedule.time ? 'daily at ' + esc(c.schedule.time) + ' · ' : '') +
+			c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') + ' · ' +
 			esc(c.steps.map((st) => st.kind === 'say' ? 'say' : st.tool).join(' → ').slice(0, 70)) + '</small></div>';
 		const run = document.createElement('button');
 		run.type = 'button'; run.className = 'ghost small'; run.textContent = 'Run';
@@ -6210,6 +6464,9 @@ function openChainEditor(id) {
 		: { id: uid(), name: '', steps: [] };
 	document.getElementById('chainEditTitle').textContent = existing ? 'Edit chain' : 'New chain';
 	document.getElementById('chainName').value = chainDraft.name;
+	document.getElementById('chainSchedOn').checked = !!chainDraft.schedule;
+	document.getElementById('chainSchedTime').value = (chainDraft.schedule && chainDraft.schedule.time) || '08:00';
+	updateChainSchedHint();
 	document.getElementById('chainDelete').hidden = !existing;
 	renderChainSteps();
 	document.getElementById('chainEditDlg').showModal();
@@ -6275,12 +6532,19 @@ function saveChainDraft() {
 	if (!chainDraft.steps.length) { toast('No steps', 'Add at least one step before saving.'); return; }
 	const list = store.chains;
 	const clean = { id: chainDraft.id, name, steps: chainDraft.steps.map((st) => st.kind === 'say' ? { kind: 'say', text: st.text || '' } : { kind: 'tool', tool: st.tool, args: st.args || {} }) };
+	if (document.getElementById('chainSchedOn').checked) {
+		const prev = list.find((c) => c.id === clean.id);
+		/* lastRun is carried over rather than reset, so editing a chain at noon
+		 * does not make today's already-finished run eligible all over again. */
+		clean.schedule = { time: document.getElementById('chainSchedTime').value || '08:00', lastRun: (prev && prev.schedule && prev.schedule.lastRun) || '' };
+	}
 	const i = list.findIndex((c) => c.id === clean.id);
 	if (i < 0) list.push(clean); else list[i] = clean;
 	store.chains = list;
 	document.getElementById('chainEditDlg').close();
 	renderChainList();
 	renderChainsPanel();
+	scheduleChains();
 }
 /* `nested` means the chain was triggered by the model mid-turn rather than by
  * a click. It changes one thing and it matters: an instruction step cannot
@@ -6319,6 +6583,65 @@ async function runChain(id, opts) {
 			(instructions.length ? ' Now do the rest of it yourself, in order: ' + instructions.map((t, i) => (i + 1) + ') ' + t).join(' ') : ''),
 	};
 }
+/* Chains that run themselves.
+ *
+ * One timer for all of them rather than one each, re-armed after every firing,
+ * because a browser tab that has been asleep for six hours wakes with a pile of
+ * overdue timers and the honest thing is to recompute from the clock.
+ *
+ * lastRun is a DATE STRING, not a timestamp. A missed day then simply runs late
+ * instead of being skipped, and a tab left open across midnight cannot fire the
+ * same chain twice. */
+let chainTimer = null;
+function nextChainDue() {
+	const now = Date.now();
+	const today = new Date().toDateString();
+	let soonest = null;
+	store.chains.forEach((c) => {
+		if (!c.schedule || !c.schedule.time) return;
+		if (c.schedule.lastRun === today) {
+			const [h, m] = c.schedule.time.split(':').map(Number);
+			const tomorrow = new Date();
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			tomorrow.setHours(h || 0, m || 0, 0, 0);
+			if (!soonest || tomorrow.getTime() < soonest.at) soonest = { chain: c, at: tomorrow.getTime() };
+			return;
+		}
+		const [h, m] = c.schedule.time.split(':').map(Number);
+		const due = new Date();
+		due.setHours(h || 0, m || 0, 0, 0);
+		/* Already past today and not yet run: due now, not tomorrow. */
+		const at = due.getTime() <= now ? now : due.getTime();
+		if (!soonest || at < soonest.at) soonest = { chain: c, at };
+	});
+	return soonest;
+}
+function scheduleChains() {
+	clearTimeout(chainTimer);
+	chainTimer = null;
+	const next = nextChainDue();
+	if (!next) return;
+	const delay = Math.max(0, next.at - Date.now());
+	if (delay > 2147000000) return; // setTimeout overflow guard, same as reminders
+	chainTimer = setTimeout(async () => {
+		const list = store.chains;
+		const c = list.find((x) => x.id === next.chain.id);
+		if (c && c.schedule) {
+			c.schedule.lastRun = new Date().toDateString();
+			store.chains = list;
+			logActivity('Ran the scheduled chain "' + c.name + '".');
+			await runChain(c.id);
+		}
+		scheduleChains();
+	}, delay);
+}
+function updateChainSchedHint() {
+	const on = document.getElementById('chainSchedOn').checked;
+	document.getElementById('chainSchedTime').hidden = !on;
+	document.getElementById('chainSchedHint').textContent = on
+		? 'Runs once a day, but only while this app is open — a browser cannot wake itself. In the terminal, `jarvis chain run` plus cron runs it whether or not anything is open.'
+		: '';
+}
 function renderChainsPanel() {
 	const box = document.getElementById('panel-chains');
 	if (!box) return;
@@ -6328,7 +6651,8 @@ function renderChainsPanel() {
 	list.forEach((c) => {
 		const row = document.createElement('div');
 		row.className = 'row-item';
-		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' + c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') + '</small></div>';
+		row.innerHTML = '<div class="txt"><b>' + esc(c.name) + '</b><small>' + c.steps.length + ' step' + (c.steps.length === 1 ? '' : 's') +
+			(c.schedule && c.schedule.time ? ' · daily at ' + esc(c.schedule.time) : '') + '</small></div>';
 		const run = document.createElement('button');
 		run.type = 'button'; run.className = 'ghost small'; run.textContent = 'Run';
 		run.addEventListener('click', () => runChain(c.id));
@@ -6338,6 +6662,196 @@ function renderChainsPanel() {
 }
 
 /* ---------------------------- conversations UI end ------------------------ */
+/* ========================= the vault on your disk =========================
+ * The browser and the terminal keep the same notes in two places it cannot
+ * bridge on its own: localStorage and a folder. The File System Access API is
+ * the one route across — you hand the page a directory once, and from then on
+ * it reads and writes the same markdown files the CLI does and Obsidian opens.
+ *
+ * Three things this deliberately does NOT do:
+ *
+ * - It never syncs on a timer. A page writing to your disk while you are not
+ *   looking is not a feature; every sync is a button you pressed.
+ * - It never merges inside a file. Whole notes move, and the side that wrote
+ *   most recently wins, per note. Line-level merging of prose you edited in two
+ *   places is a job for git, which is why the vault is a git-friendly folder.
+ * - It is not available everywhere. Chromium and Edge have the API; Safari and
+ *   Firefox do not, and there the export/import pair below is still the answer.
+ *   The UI feature-detects rather than failing at the click.
+ *
+ * The directory handle is kept in IndexedDB because it is structured-cloneable
+ * and localStorage is not — a handle in JSON is just an empty object.
+ */
+const FS_OK = typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+const VAULT_DB = 'jarvis-fs', VAULT_STORE = 'handles';
+
+function idbHandle(mode, fn) {
+	return new Promise((resolve, reject) => {
+		if (!window.indexedDB) return resolve(null);
+		const req = indexedDB.open(VAULT_DB, 1);
+		req.onupgradeneeded = () => req.result.createObjectStore(VAULT_STORE);
+		req.onerror = () => reject(req.error);
+		req.onsuccess = () => {
+			const db = req.result;
+			const tx = db.transaction(VAULT_STORE, mode);
+			const out = fn(tx.objectStore(VAULT_STORE));
+			tx.oncomplete = () => { db.close(); resolve(out && out.result !== undefined ? out.result : null); };
+			tx.onerror = () => { db.close(); reject(tx.error); };
+		};
+	});
+}
+const saveVaultHandle = (h) => idbHandle('readwrite', (st) => st.put(h, 'vault'));
+const loadVaultHandle = () => idbHandle('readonly', (st) => st.get('vault'));
+const clearVaultHandle = () => idbHandle('readwrite', (st) => st.delete('vault'));
+
+let vaultDir = null;
+async function vaultDirReady(prompt) {
+	if (!vaultDir) vaultDir = await loadVaultHandle().catch(() => null);
+	if (!vaultDir) return null;
+	/* Permission does not survive a reload on its own. Querying is silent;
+	 * requesting needs a user gesture, so it only happens on a click. */
+	const opts = { mode: 'readwrite' };
+	if ((await vaultDir.queryPermission(opts)) === 'granted') return vaultDir;
+	if (!prompt) return null;
+	if ((await vaultDir.requestPermission(opts)) === 'granted') return vaultDir;
+	return null;
+}
+
+function noteFilename(title) {
+	/* Windows forbids more of these than POSIX does and a vault is meant to be
+	 * portable, so the stricter set applies everywhere. Matches the CLI. */
+	return String(title).replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'untitled';
+}
+function noteToMarkdown(n) {
+	const now = new Date(n.at || Date.now()).toISOString();
+	return ['---', 'title: ' + n.title, 'folder: ' + n.folder, 'created: ' + now, 'updated: ' + now, '---', '', n.body.trim(), ''].join('\n');
+}
+function markdownToNote(text, fallbackTitle, folder) {
+	let meta = {}, body = text;
+	if (text.startsWith('---\n')) {
+		const end = text.indexOf('\n---', 3);
+		if (end > 0) {
+			text.slice(4, end).split('\n').forEach((line) => {
+				const m = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+				if (m) meta[m[1]] = m[2].trim();
+			});
+			body = text.slice(end + 4).replace(/^\n/, '');
+		}
+	}
+	return {
+		id: uid(),
+		title: meta.title || fallbackTitle,
+		folder: meta.folder || folder || 'Memory',
+		body: body.trim(),
+		at: Date.parse(meta.updated) || Date.now(),
+	};
+}
+
+async function connectVaultFolder() {
+	if (!FS_OK) { toast('Not supported here', 'This browser cannot open a folder. Use Export and Import instead.', 8000); return; }
+	try {
+		const dir = await window.showDirectoryPicker({ id: 'jarvis-vault', mode: 'readwrite', startIn: 'documents' });
+		vaultDir = dir;
+		await saveVaultHandle(dir);
+		renderVaultFolder();
+		toast('Folder connected', dir.name + '. Press Sync to move notes across — nothing is written until you do.');
+	} catch (err) {
+		if (err && err.name === 'AbortError') return; // the picker was dismissed, which is not an error
+		toast('Could not open that folder', String(err && err.message ? err.message : err));
+	}
+}
+async function disconnectVaultFolder() {
+	vaultDir = null;
+	await clearVaultHandle().catch(() => {});
+	renderVaultFolder();
+	toast('Folder disconnected', 'The files are untouched — this only forgets where they were.');
+}
+
+async function readVaultFolder(dir) {
+	const out = [];
+	const walk = async (handle, folder) => {
+		for await (const [name, entry] of handle.entries()) {
+			if (name.startsWith('.')) continue;
+			if (entry.kind === 'directory') await walk(entry, folder || name);
+			else if (name.endsWith('.md')) {
+				const text = await (await entry.getFile()).text();
+				out.push(markdownToNote(text, name.replace(/\.md$/, ''), folder));
+			}
+		}
+	};
+	await walk(dir, '');
+	return out;
+}
+
+/* Per note, most-recently-updated wins. Notes are matched by TITLE, because
+ * that is what a [[link]] points at and what the filename is derived from —
+ * the ids are private to each side and would never match. */
+async function syncVaultFolder() {
+	const dir = await vaultDirReady(true);
+	if (!dir) { toast('No folder connected', 'Connect one first, or grant permission when asked.'); return; }
+	const out = document.getElementById('vaultSyncOut');
+	out.textContent = 'Reading…';
+	let onDisk;
+	try { onDisk = await readVaultFolder(dir); }
+	catch (err) { out.textContent = 'Could not read the folder: ' + (err && err.message ? err.message : err); return; }
+
+	const byTitle = new Map(onDisk.map((n) => [n.title.toLowerCase(), n]));
+	const mine = store.vault;
+	const merged = [];
+	let pulled = 0, pushed = 0;
+	mine.forEach((n) => {
+		const theirs = byTitle.get(n.title.toLowerCase());
+		if (theirs && (theirs.at || 0) > (n.at || 0)) { merged.push({ ...n, folder: theirs.folder, body: theirs.body, at: theirs.at }); pulled++; }
+		else { merged.push(n); if (!theirs || theirs.body !== n.body) pushed++; }
+		byTitle.delete(n.title.toLowerCase());
+	});
+	byTitle.forEach((n) => { merged.push(n); pulled++; });
+	store.vault = merged;
+
+	out.textContent = 'Writing…';
+	let wrote = 0;
+	try {
+		for (const n of merged) {
+			const folderHandle = await dir.getDirectoryHandle(n.folder || 'Memory', { create: true });
+			const fileHandle = await folderHandle.getFileHandle(noteFilename(n.title) + '.md', { create: true });
+			const w = await fileHandle.createWritable();
+			await w.write(noteToMarkdown(n));
+			await w.close();
+			wrote++;
+		}
+	} catch (err) {
+		out.textContent = 'Wrote ' + wrote + ' of ' + merged.length + ', then stopped: ' + (err && err.message ? err.message : err);
+		renderMemory();
+		return;
+	}
+	renderMemory();
+	out.textContent = merged.length + ' notes in step — ' + pulled + ' pulled in, ' + wrote + ' written out.';
+	toast('Vault synced', merged.length + ' notes. Open the folder in Obsidian to see the same graph.');
+}
+
+function renderVaultFolder() {
+	const box = document.getElementById('vaultFolderState');
+	if (!box) return;
+	if (!FS_OK) {
+		box.innerHTML = '<div class="empty">This browser cannot open a folder directly — that needs Chrome or Edge. Export and Import below do the same job by hand, and work everywhere.</div>';
+		document.getElementById('vaultConnectBtn').hidden = true;
+		document.getElementById('vaultSyncBtn').hidden = true;
+		document.getElementById('vaultForgetBtn').hidden = true;
+		return;
+	}
+	const on = !!vaultDir;
+	box.textContent = on
+		? 'Connected to “' + vaultDir.name + '”. Syncing is manual — nothing is read or written until you press it.'
+		: 'Not connected. Point this at the same folder the jarvis CLI uses (~/jarvis-vault by default) and both sides keep the same notes.';
+	document.getElementById('vaultConnectBtn').textContent = on ? 'Change folder' : 'Connect folder';
+	document.getElementById('vaultSyncBtn').hidden = !on;
+	document.getElementById('vaultForgetBtn').hidden = !on;
+}
+/* Restores the handle without asking for anything: queryPermission is silent,
+ * so a reconnected folder shows as connected and only the first write prompts. */
+renderVaultFolder();
+if (FS_OK) loadVaultHandle().then((h) => { if (h) { vaultDir = h; renderVaultFolder(); } }).catch(() => {});
+
 /* ================================= search ================================
  * The palette both FINDS and DOES. A row with a `run` executes; a row without
  * one navigates to where the thing lives, as before. Commands are listed
@@ -6362,6 +6876,7 @@ function collectCommands() {
 		add('Go to ' + label, 'Navigate', () => showView(v), keys);
 	});
 	add('Open the memory graph', 'See how your notes connect', () => showView('graph'), 'graph map notes links vault obsidian connections');
+	add('Suggest links', 'Find notes that name each other but are not linked', openSuggestions, 'suggest link connect graph tidy relate');
 	add('New note', 'Write something into memory', () => { showView('memory'); createNoteNamed('New note'); }, 'note memory remember write vault');
 	add('New chat', 'Start a fresh conversation', () => { newConversation(); showView('chat'); }, 'new thread conversation clear reset start over');
 	add('Conversations', 'Switch, rename or delete a thread', openConvos, 'history threads chats switch rename delete');
@@ -6769,6 +7284,7 @@ if ('serviceWorker' in navigator && !nativeShell && (location.protocol === 'http
 applyListenMode();
 showView('dashboard');
 scheduleBriefing();
+scheduleChains();
 initIntro();
 </script>
 </body>

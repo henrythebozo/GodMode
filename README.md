@@ -110,7 +110,15 @@ Click a node to read it, and everything it is not connected to fades back.
 
 Links live in the prose and nowhere else, so there is one copy of the truth and
 it cannot drift out of step with the text. Renaming a note rewrites every link
-pointing at it.
+pointing at it. **Suggest links** finds the ones you already wrote without
+meaning to — a note saying "APEX is the project Noah helps with" is describing
+an edge, it just has not got the brackets — and adds them both ways.
+
+Nothing is ever deleted to make room. Any message in a chat can be saved
+straight into memory with the button that appears on it. And rather than
+posting your whole vault to the model on every turn, Jarvis scores the notes
+against what you asked and follows one hop along their links, so asking about
+someone also brings in the project their note points at.
 
 ### ⌨️ Jarvis in the terminal
 
@@ -132,10 +140,11 @@ the same four providers, or point `baseUrl` at Ollama or any other
 OpenAI-compatible server for a local model. Keys live in `~/.jarvis/`, never in
 the vault, because the vault is the part you are meant to sync and share.
 
-The browser and the terminal cannot reach each other's storage, so the bridge
-is a file you move across rather than a claim of sync: `jarvis export`, then
-Settings → Data → Import — and the other way round. Full setup and command
-reference in [`cli/README.md`](cli/README.md).
+In Chrome or Edge, **Settings → Data → Vault folder** points the browser at
+that same directory and syncs whole notes both ways — one vault, both halves,
+Obsidian included. Elsewhere the bridge is a file you move across: `jarvis
+export`, then Settings → Data → Import, and the other way round. Full setup and
+command reference in [`cli/README.md`](cli/README.md).
 
 ### 📱 Jarvis for iOS
 

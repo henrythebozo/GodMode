@@ -22,7 +22,10 @@ import { runTurn } from './lib/agent.mjs';
 
 const args = process.argv.slice(2);
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
-const c = (code) => (s) => (useColor ? '[' + code + 'm' + s + '[0m' : String(s));
+/* Written as \u001b rather than a raw ESC byte: a literal control character
+ * in source makes the file look binary to git, to `file`, and to any tool
+ * that sniffs before reading. */
+const c = (code) => (s) => (useColor ? '\u001b[' + code + 'm' + s + '\u001b[0m' : String(s));
 const bold = c('1'), dim = c('2'), accent = c('38;5;209'), ok = c('32'), bad = c('31');
 
 function die(msg) { console.error(bad('✗ ') + msg); process.exit(1); }
@@ -46,6 +49,7 @@ ${bold('jarvis')} — ${dim('a linked markdown memory vault, and the assistant t
   ${bold('jarvis mem link')} <a> <b>                link two notes both ways
   ${bold('jarvis mem rm')} <title>                  delete a note
   ${bold('jarvis mem open')} <title>                open a note in $EDITOR
+  ${bold('jarvis mem suggest')} [--apply]             links you wrote in prose without brackets
 
   ${bold('jarvis graph')} [title] [--depth N]       what is connected to what
   ${bold('jarvis graph --open')}                    render the whole vault and open it
@@ -250,6 +254,37 @@ function cmdMem(cfg, sub, rest) {
 		if (!note) die('No note matches "' + rest.join(' ') + '".');
 		V.removeNote(note);
 		console.log(ok('✓') + ' deleted ' + note.title);
+		return;
+	}
+	if (sub === 'suggest') {
+		const apply = hasFlag('apply');
+		if (apply) {
+			/* Recomputed each round rather than applied from one snapshot:
+			 * linking A to B changes what is still worth suggesting, and a
+			 * stale list would re-offer links that now exist. */
+			let done = 0;
+			for (let round = 0; round < 500; round++) {
+				const next = V.suggestLinks(V.listNotes(vault))[0];
+				if (!next) break;
+				const a = V.findByTitle(vault, next.from);
+				if (!a) break;
+				V.addLink(vault, a, next.to);
+				const b = V.findByTitle(vault, next.to);
+				if (b) V.addLink(vault, V.readNote(b.file, vault), next.from);
+				console.log(ok('✓') + ' ' + next.from + ' ↔ ' + next.to);
+				done++;
+			}
+			console.log(dim('\n' + (done ? done + ' link' + (done === 1 ? '' : 's') + ' added.' : 'Nothing to add — every note that names another already points at it.')));
+			return;
+		}
+		const list = V.suggestLinks(V.listNotes(vault));
+		if (!list.length) return console.log(dim('Nothing to suggest — every note that names another already points at it.'));
+		list.slice(0, 40).forEach((sug) => {
+			console.log(bold(sug.from) + dim(' → ') + bold(sug.to));
+			console.log(dim('   ' + sug.where));
+		});
+		if (list.length > 40) console.log(dim('\n…and ' + (list.length - 40) + ' more.'));
+		console.log(dim('\n' + list.length + ' suggestion' + (list.length === 1 ? '' : 's') + ' · `jarvis mem suggest --apply` to add them all'));
 		return;
 	}
 	if (sub === 'open') {
