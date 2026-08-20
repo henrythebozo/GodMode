@@ -159,8 +159,23 @@ the vault, because the vault is the part you are meant to sync and share.
 In Chrome or Edge, **Settings → Data → Vault folder** points the browser at
 that same directory and syncs whole notes both ways — one vault, both halves,
 Obsidian included. Elsewhere the bridge is a file you move across: `jarvis
-export`, then Settings → Data → Import, and the other way round. Full setup and
-command reference in [`cli/README.md`](cli/README.md).
+export`, then Settings → Data → Import, and the other way round.
+
+Across **machines**, the vault syncs through git, because a folder of text
+files already has a perfectly good sync protocol:
+
+```sh
+jarvis vault init git@github.com:you/jarvis-vault.git
+jarvis vault sync            # pull, then push
+```
+
+A conflict keeps both notes rather than writing `<<<<<<<` markers into your
+prose — yours stays put, the other machine's becomes `Noah (conflict).md` with
+a title to match, so it shows up in the graph as something to deal with. And
+nothing is pushed until every file that would travel has been read for anything
+shaped like an API key, because a vault is very often pushed somewhere public.
+
+Full setup and command reference in [`cli/README.md`](cli/README.md).
 
 ### 📱 Jarvis for iOS
 

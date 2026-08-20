@@ -169,6 +169,48 @@ Obsidian → *Open folder as vault* → pick `~/jarvis-vault`. That is the whole
 setup. Its graph view and this one are the same graph, because it is the same
 format.
 
+### Sync it across machines, with git
+
+The vault is a folder of text files, which is what git is for. No server, no
+account beyond the one you already have, and every version of every note kept.
+
+```sh
+# once, on the first machine
+jarvis vault init git@github.com:you/jarvis-vault.git
+jarvis vault push
+
+# once, on the second
+git clone git@github.com:you/jarvis-vault.git ~/jarvis-vault
+
+# from then on, on either
+jarvis vault sync
+```
+
+`sync` is `pull` then `push`; the two exist separately for when you want one.
+`jarvis vault` on its own says what is uncommitted and how far ahead or behind
+the remote you are.
+
+**Conflicts keep both notes.** Git's normal answer is to write `<<<<<<<`
+markers into the file, which for a note means a mangled body and, if the clash
+reaches the top, frontmatter that no longer parses. Instead, your version stays
+where it is and the other machine's becomes `Noah (conflict).md` — retitled, so
+it is its own node in the graph rather than a second ambiguous `[[Noah]]`. Read
+both, keep what you want, delete the other.
+
+**Nothing is pushed until it has been read for keys.** Every file that would
+travel is checked against the same four key shapes the app matches a paste
+against, and a push carrying one stops with the file named. Keys live in
+`~/.jarvis/config.json`, outside the vault, exactly so this cannot happen — the
+scan is the second lock, and `--allow-secrets` is there for a false positive.
+
+`.jarvis/usage.json` and `.jarvis/graph.html` are gitignored: one machine's
+spend and one machine's rendered snapshot, which would conflict on every sync
+and mean nothing anywhere else. `chains.json` is deliberately *not* ignored.
+
+Obsidian's own Git plugin works on the same repo, so a phone running Obsidian
+mobile can join in — that is the one route the browser's folder sync cannot
+take, since no mobile browser has the File System Access API.
+
 ---
 
 ## Commands
@@ -194,6 +236,11 @@ format.
 | `jarvis key import` | store the ones already exported in this shell |
 | `jarvis key add [KEY]` | file a key by its shape; reads stdin if omitted |
 | `jarvis key rm <provider>` | forget one |
+| `jarvis vault` | uncommitted changes, and how far from the remote |
+| `jarvis vault init [git-url]` | put the vault in git and point it at a remote |
+| `jarvis vault push [-m "…"]` | commit everything and send it |
+| `jarvis vault pull` | bring in what other machines wrote |
+| `jarvis vault sync` | pull, then push — the everyday one |
 | `jarvis usage` | tokens and cost, measured not estimated |
 | `jarvis config [key [value]]` | show or set; keys print redacted |
 | `jarvis export [file]` / `jarvis import <file>` | the bridge to the web app |
@@ -272,4 +319,7 @@ sentence becoming its own note.
 - Two notes can share a title, and each gets its own file (`Noah.md`,
   `Noah (2).md`). Nothing is lost, but a `[[link]]` to that title can only
   resolve to one of them — `jarvis mem add` says so when it happens.
-- There is no watch mode and no daemon. Every command is one shot.
+- There is no watch mode and no daemon. Every command is one shot. `jarvis
+  vault sync` is something you run, or put on a timer yourself.
+- Git sync needs `git` on your PATH. Everything else in Jarvis works without
+  it, and says so rather than failing obscurely.

@@ -70,6 +70,27 @@ Four rules the vault design rests on, all learned the hard way:
    to the note that mentions it, and unresolved nodes silently vanish from the
    graph.
 
+## Syncing the vault: git, not a server
+
+`cli/lib/git.mjs` shells out to the real `git` rather than reimplementing any
+of it. Two things there are deliberate and worth keeping:
+
+- **A conflict keeps both notes.** Git's default is `<<<<<<<` markers in the
+  file, which for a note means a mangled body and — if the clash reaches the
+  top — frontmatter that no longer parses. Instead `theirs` becomes
+  `Name (conflict).md`, *retitled in its frontmatter too*, so it is a distinct
+  node in the graph rather than a second ambiguous `[[Name]]`. An edit always
+  beats a deletion: the edit is the newer intent and the deletion costs one
+  keystroke to repeat.
+- **Push scans for keys first**, reusing `identifyKey` from `config.mjs`. It
+  asks `git ls-files -co --exclude-standard` once for the exact set git would
+  take — walking the tree and running `check-ignore` per file is a subprocess
+  per note, and an ignored file cannot leak anyway.
+
+`initRepo` forces the branch to `main` **only on a repo it just created**.
+Renaming the branch of a folder somebody already had in git would strand their
+history on the old branch and push an empty `main` over the top of it.
+
 ## Signing in: only OpenRouter, and why
 
 Do not go looking for "Sign in with Claude" or "Sign in with Google" again —

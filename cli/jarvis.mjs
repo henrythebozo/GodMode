@@ -16,6 +16,7 @@ import readline from 'node:readline';
 import { spawn } from 'node:child_process';
 import { loadConfig, saveConfig, CONFIG_PATH, SECRET_KEYS, redact, envKeys, keyOrigins, identifyKey, labelFor, keyArticle } from './lib/config.mjs';
 import * as V from './lib/vault.mjs';
+import * as VG from './lib/git.mjs';
 import * as P from './lib/provider.mjs';
 import * as G from './lib/graph.mjs';
 import { runTurn } from './lib/agent.mjs';
@@ -65,6 +66,12 @@ ${bold('jarvis')} — ${dim('a linked markdown memory vault, and the assistant t
   ${bold('jarvis key import')}                      store the ones already in your environment
   ${bold('jarvis key add')} [KEY]                   file a key by its shape; reads stdin if omitted
   ${bold('jarvis key rm')} <provider>               forget one
+
+  ${bold('jarvis vault')}                           is the vault in step with its remote?
+  ${bold('jarvis vault init')} [git-url]            put the vault in git and point it at a remote
+  ${bold('jarvis vault push')} [-m "..."]           commit everything and send it
+  ${bold('jarvis vault pull')}                      bring in what other machines wrote
+  ${bold('jarvis vault sync')}                      pull, then push — the everyday one
 
   ${bold('jarvis usage')}                           tokens and cost so far
   ${bold('jarvis config')} [key [value]]            show or set configuration
@@ -727,6 +734,112 @@ function cmdImport(cfg, rest) {
 	console.log(ok('✓') + ' imported ' + n + ' note' + (n === 1 ? '' : 's') + ' into ' + vault);
 }
 
+
+/* ------------------------------ vault in git ------------------------------
+ * Sync, without a server and without anything new to trust: the vault is a
+ * folder of text files, which is exactly what git is for. What this adds on
+ * top of `git push` is the two things a person syncing NOTES needs and git
+ * does not do on its own — a conflict that leaves both notes readable instead
+ * of both corrupted, and a look through everything about to leave the machine
+ * for anything shaped like an API key.
+ */
+function needRepo(vault) {
+	if (!VG.isRepo(vault)) die('The vault is not in git yet. Run `jarvis vault init <git-url>` first.');
+}
+
+function reportConflicts(conflicts) {
+	if (!conflicts.length) return;
+	console.log('');
+	console.log(accent('! ') + conflicts.length + ' conflict' + (conflicts.length === 1 ? '' : 's') + ' — nothing was thrown away:');
+	conflicts.forEach((c) => {
+		if (c.copy) console.log(dim('  ' + c.file + '  →  the other machine\'s version is now ') + bold(c.copy));
+		else console.log(dim('  ' + c.file + '  —  ' + c.note));
+	});
+	console.log(dim('\n  Read both, keep what you want, delete the other. `jarvis graph` shows the copies as their own notes.'));
+}
+
+function cmdVault(cfg, sub, rest) {
+	const vault = vaultOf(cfg);
+	if (!VG.hasGit()) die('git is not installed, or not on PATH. Everything else in Jarvis works without it.');
+
+	if (sub === 'init') {
+		const remote = rest.filter((a) => !a.startsWith('-'))[0] || '';
+		const made = VG.initRepo(vault, remote);
+		console.log(ok('✓') + ' ' + vault + (made.length ? dim('  (' + made.join(', ') + ')') : dim('  (already set up)')));
+		const files = VG.commitAll(vault, 'Add the vault');
+		if (files) console.log(dim('  committed ' + files.length + ' file' + (files.length === 1 ? '' : 's')));
+		if (remote) console.log(dim('  origin  ' + remote) + '\n\nNow: ' + bold('jarvis vault push'));
+		else console.log(dim('\n  No remote yet. Create an empty repo and run:\n    jarvis vault init git@github.com:you/jarvis-vault.git'));
+		return;
+	}
+
+	if (sub === 'push' || sub === 'sync') {
+		needRepo(vault);
+		/* Look before pushing, every time. A key that has been pushed has to be
+		 * revoked; rewriting history afterwards does not make it untrue. */
+		const secrets = hasFlag('allow-secrets') ? [] : VG.scanForSecrets(vault);
+		if (secrets.length) {
+			console.error(bad('✗ ') + 'Something in the vault looks like an API key. Not pushing.');
+			secrets.slice(0, 8).forEach((h) => console.error(dim('  ' + h.file + '  ' + h.label + '  ' + h.shown)));
+			if (secrets.length > 8) console.error(dim('  …and ' + (secrets.length - 8) + ' more'));
+			console.error(dim('\n  Keys belong in ~/.jarvis/config.json, outside the vault. Remove it, or\n  pass --allow-secrets if it is genuinely not a key.'));
+			process.exit(1);
+		}
+		const message = (() => { const m = flag('message', 'm'); return m && m !== true ? m : 'Notes, ' + new Date().toISOString().slice(0, 16).replace('T', ' '); })();
+		const committed = VG.commitAll(vault, message);
+		console.log(committed ? ok('✓') + ' committed ' + committed.length + ' change' + (committed.length === 1 ? '' : 's') : dim('  nothing new to commit'));
+		if (!VG.remoteUrl(vault)) die('No remote. `jarvis vault init <git-url>` to add one.');
+		/* Pull first, always. Pushing on top of a stale copy is the one way to
+		 * get a rejection that a person then "fixes" with --force. */
+		const pulled = VG.pull(vault);
+		if (pulled.changed.length) console.log(ok('↓') + ' ' + pulled.changed.length + ' file' + (pulled.changed.length === 1 ? '' : 's') + ' pulled in first');
+		reportConflicts(pulled.conflicts);
+		VG.push(vault);
+		console.log(ok('↑') + ' pushed to ' + dim(VG.remoteUrl(vault)));
+		return;
+	}
+
+	if (sub === 'pull') {
+		needRepo(vault);
+		if (!VG.remoteUrl(vault)) die('No remote. `jarvis vault init <git-url>` to add one.');
+		const dirty = VG.pendingChanges(vault);
+		/* Uncommitted work would be clobbered by the merge, so it is committed
+		 * first rather than refused — losing it to a tidiness rule would be a
+		 * strange way to protect it. */
+		if (dirty.length) {
+			const files = VG.commitAll(vault, 'Notes, ' + new Date().toISOString().slice(0, 16).replace('T', ' '));
+			if (files) console.log(dim('  committed ' + files.length + ' local change' + (files.length === 1 ? '' : 's') + ' first'));
+		}
+		const pulled = VG.pull(vault);
+		if (pulled.empty) return console.log(dim('  the remote has nothing yet — `jarvis vault push` to seed it'));
+		console.log(pulled.changed.length ? ok('↓') + ' ' + pulled.changed.length + ' file' + (pulled.changed.length === 1 ? '' : 's') + ' changed' : dim('  already up to date'));
+		pulled.changed.slice(0, 12).forEach((f) => console.log(dim('    ' + f)));
+		reportConflicts(pulled.conflicts);
+		return;
+	}
+
+	if (!sub || sub === 'status') {
+		if (!VG.isRepo(vault)) {
+			console.log(dim('  ' + vault));
+			console.log(dim('  Not in git. `jarvis vault init <git-url>` to sync it across machines.'));
+			return;
+		}
+		const remote = VG.remoteUrl(vault);
+		const pending = VG.pendingChanges(vault);
+		const ab = VG.aheadBehind(vault);
+		console.log('\n' + bold(vault));
+		console.log(dim('  branch  ') + (VG.branchName(vault) || '(none)'));
+		console.log(dim('  origin  ') + (remote || dim('(none — `jarvis vault init <git-url>`)')));
+		console.log(dim('  local   ') + (pending.length ? pending.length + ' uncommitted change' + (pending.length === 1 ? '' : 's') : 'clean'));
+		pending.slice(0, 10).forEach((c) => console.log(dim('            ' + c.code.padEnd(2) + ' ' + c.file)));
+		if (ab) console.log(dim('  remote  ') + (ab.ahead || ab.behind ? [ab.ahead && ab.ahead + ' to push', ab.behind && ab.behind + ' to pull'].filter(Boolean).join(', ') : 'in step'));
+		else if (remote) console.log(dim('  remote  ') + 'never pushed');
+		console.log('');
+		return;
+	}
+	die('Unknown: `jarvis vault ' + sub + '`. Try init, status, push, pull or sync.');
+}
+
 /* --------------------------------- main ---------------------------------- */
 
 async function main() {
@@ -742,6 +855,7 @@ async function main() {
 	if (cmd === 'graph') { args.shift(); return cmdGraph(cfg, args); }
 	if (cmd === 'chain' || cmd === 'chains') { args.shift(); const sub = args.shift(); return cmdChain(cfg, sub, args); }
 	if (cmd === 'key' || cmd === 'keys') { args.shift(); const sub = args.shift(); return cmdKey(cfg, sub, args); }
+	if (cmd === 'vault') { args.shift(); const sub = args.shift(); return cmdVault(cfg, sub, args); }
 	if (cmd === 'usage') return cmdUsage(cfg);
 	if (cmd === 'config') { args.shift(); return cmdConfig(cfg, args); }
 	if (cmd === 'export') { args.shift(); return cmdExport(cfg, args); }
