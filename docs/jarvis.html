@@ -1634,7 +1634,11 @@
 		   30px past the right edge, the chain hung clear off the bottom of the
 		   sphere and the crown looked two sizes too big. The negative margin
 		   gives back the layout height a transform does not. */
-		#orbWrap { --orb-scale: 0.78; margin-bottom: -40px; }
+		/* The orb scales by transform, so its LAYOUT box stays 180px however
+		   small it is drawn — the margin cancels the difference. Deriving it
+		   from the scale rather than hand-tuning it (-40px, for 0.78) means
+		   changing the scale cannot leave a hole under the orb again. */
+		#orbWrap { --orb-scale: 0.78; margin-bottom: calc(180px * (var(--orb-scale) - 1)); }
 		.statusbig { font-size: 21px; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
@@ -1658,6 +1662,19 @@
 		/* on small screens the Activity drawer becomes a bottom sheet too, like every other dialog */
 		#activityDlg { max-width: none; height: auto; max-height: 80dvh; border-radius: 22px 22px 0 0; }
 	}
+	/* A tall phone had ~170px of dead space between the caption and the
+	   composer, and an iPhone SE has ~70px — so this grows the orb and the
+	   text only where there is room for it. Height, not width, is what decides.
+	   It has to come AFTER the plain max-width:900px block: same specificity,
+	   so the later rule wins and an earlier one is simply ignored. */
+	@media (max-width: 900px) and (min-height: 780px) {
+		#orbWrap { --orb-scale: 1.06; }
+		.orbstage { gap: 14px; padding: 24px 0 10px; }
+		#stateLabel { font-size: 13px; }
+		#caption { font-size: 17px; }
+		#caption.dim { font-size: 15.5px; }
+	}
+
 	@media (max-width: 420px) {
 		.qagrid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 		.gauges { gap: 4px; }
