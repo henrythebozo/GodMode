@@ -1152,6 +1152,49 @@
 	}
 	.usagechip:hover { background: var(--panel-2); color: var(--text); border-color: var(--ring); }
 
+	/* The one control people go looking for, so it is the first thing in
+	   Persona and it looks like something you want to touch. */
+	.stylepick { margin: 4px 0 2px; }
+	.stylepick input[type="range"] {
+		-webkit-appearance: none; appearance: none; width: 100%; height: 30px;
+		background: none; cursor: pointer; margin: 0; display: block;
+	}
+	.stylepick input[type="range"]::-webkit-slider-runnable-track {
+		height: 6px; border-radius: 999px;
+		background: linear-gradient(90deg, var(--ring) 0%, var(--ring) calc(var(--style-pos, 33%) ), var(--panel-3) calc(var(--style-pos, 33%)), var(--panel-3) 100%);
+	}
+	.stylepick input[type="range"]::-moz-range-track { height: 6px; border-radius: 999px; background: var(--panel-3); }
+	.stylepick input[type="range"]::-moz-range-progress { height: 6px; border-radius: 999px; background: var(--ring); }
+	.stylepick input[type="range"]::-webkit-slider-thumb {
+		-webkit-appearance: none; appearance: none;
+		width: 24px; height: 24px; margin-top: -9px; border-radius: 50%;
+		background: var(--text); border: 3px solid var(--ring);
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+		transition: transform 0.14s ease;
+	}
+	.stylepick input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
+	.stylepick input[type="range"]::-moz-range-thumb {
+		width: 22px; height: 22px; border-radius: 50%;
+		background: var(--text); border: 3px solid var(--ring); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+	}
+	.styleticks { display: flex; justify-content: space-between; margin-top: 2px; }
+	.styleticks button {
+		background: none; border: none; padding: 4px 2px; cursor: pointer;
+		font: inherit; font-size: 12px; font-weight: 500; color: var(--dim);
+		transition: color 0.15s ease;
+	}
+	.styleticks button:hover { color: var(--text); }
+	.styleticks button.on { color: var(--ring); font-weight: 650; }
+
+	/* Clear: bigger, calmer, everywhere — dialogs included, which is why this
+	   hangs off <html> rather than a view. */
+	:root[data-reply-style="clear"] { font-size: 17.5px; }
+	:root[data-reply-style="clear"] #caption { font-size: 19px; line-height: 1.45; }
+	:root[data-reply-style="clear"] .hint, :root[data-reply-style="clear"] small { font-size: 14px; }
+	:root[data-reply-style="clear"] .nextchip { font-size: 14.5px; padding: 9px 16px; }
+	:root[data-reply-style="clear"] .composer input { font-size: 16.5px; }
+	:root[data-reply-style="clear"] .row-item { padding-block: 14px; }
+
 	/* ---- the vault: memory list and graph ---- */
 	.memtoolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 	.memtoolbar input {
@@ -1899,9 +1942,15 @@
 							<input type="text" id="newDeviceName" placeholder="Device name" autocomplete="off" />
 							<select id="newDeviceType">
 								<option value="light">Light</option>
-								<option value="switch">Switch</option>
-								<option value="lock">Lock</option>
+								<option value="cover">Blinds / curtains</option>
+								<option value="coffee">Coffee maker</option>
 								<option value="thermostat">Thermostat</option>
+								<option value="lock">Lock</option>
+								<option value="fan">Fan</option>
+								<option value="plug">Plug</option>
+								<option value="media">Speaker / TV</option>
+								<option value="vacuum">Robot vacuum</option>
+								<option value="switch">Switch</option>
 							</select>
 							<button type="button" class="ghost small" id="addDeviceBtn">Add</button>
 						</div>
@@ -2008,6 +2057,13 @@
 	</div>
 
 	<div class="settab" id="settab-persona">
+		<h3>How should Jarvis answer?</h3>
+		<div class="stylepick" id="stylePick">
+			<input type="range" id="styleRange" min="0" max="3" step="1" value="1" aria-label="Reply style" />
+			<div class="styleticks" id="styleTicks"></div>
+		</div>
+		<p class="hint" id="styleHint"></p>
+
 		<h3>Appearance</h3>
 		<div class="seg2" id="themeSeg">
 			<button type="button" data-theme-opt="dark">Dark</button>
@@ -2505,6 +2561,10 @@ const store = {
 	set teamMode(v) { localStorage.setItem('jarvis.teamMode', v ? '1' : '0'); },
 	get assistantName() { return localStorage.getItem('jarvis.assistantName') || 'Jarvis'; },
 	set assistantName(v) { localStorage.setItem('jarvis.assistantName', v); },
+	/* 0 Simple · 1 Everyday · 2 Detailed · 3 Clear. Everyday is the default and
+	 * is exactly how Jarvis behaved before this existed. */
+	get replyStyle() { const n = parseInt(localStorage.getItem('jarvis.replyStyle'), 10); return Number.isInteger(n) && n >= 0 && n <= 3 ? n : 1; },
+	set replyStyle(v) { localStorage.setItem('jarvis.replyStyle', String(Math.max(0, Math.min(3, parseInt(v, 10) || 0)))); },
 	get userName() { return localStorage.getItem('jarvis.userName') || ''; },
 	set userName(v) { localStorage.setItem('jarvis.userName', v); },
 	get voiceName() { return localStorage.getItem('jarvis.voiceName') || ''; },
@@ -2682,6 +2742,23 @@ function seedDevices() {
 		{ id: uid(), name: 'Kitchen Lights', type: 'light', power: 'off', brightness: 100 },
 		{ id: uid(), name: 'Thermostat', type: 'thermostat', temp: 70 },
 		{ id: uid(), name: 'Front Door', type: 'lock', lockState: 'locked' },
+		{ id: uid(), name: 'Coffee Maker', type: 'coffee', power: 'off' },
+		{ id: uid(), name: 'Bedroom Blinds', type: 'cover', position: 0 },
+		{ id: uid(), name: 'Living Room Blinds', type: 'cover', position: 100 },
+		{ id: uid(), name: 'Bedroom Fan', type: 'fan', power: 'off' },
+		{ id: uid(), name: 'Desk Plug', type: 'plug', power: 'on' },
+		{ id: uid(), name: 'Living Room Speaker', type: 'media', power: 'off' },
+		{ id: uid(), name: 'Robot Vacuum', type: 'vacuum', power: 'off' },
+		{
+			/* The one the coffee maker exists for: start the brew, lift the
+			   blinds and warm the place up before anybody is vertical. */
+			id: uid(), name: 'Wake Up', type: 'scene', actions: [
+				{ name: 'Coffee Maker', power: 'on' },
+				{ name: 'Bedroom Blinds', position: 100 },
+				{ name: 'Bedroom Lights', power: 'on', brightness: 35 },
+				{ name: 'Thermostat', temp: 70 },
+			],
+		},
 		{
 			id: uid(), name: 'Good Night', type: 'scene', actions: [
 				{ name: 'Living Room Lights', power: 'off' },
@@ -3069,6 +3146,35 @@ applyTheme(store.theme);
 applySkin();
 /* Settings previews a theme without saving it, so applyTheme alone is not
  * enough for the palette — this is the persist-and-apply pair. */
+function renderReplyStyle() {
+	const range = document.getElementById('styleRange');
+	const ticks = document.getElementById('styleTicks');
+	const hint = document.getElementById('styleHint');
+	if (!range || !ticks || !hint) return;
+	const i = store.replyStyle;
+	range.value = String(i);
+	/* WebKit has no ::-webkit-slider-progress, so the filled half of the track
+	   is painted by a gradient stop that has to be told where the thumb is. */
+	range.parentElement.style.setProperty('--style-pos', (i / 3) * 100 + '%');
+	hint.textContent = REPLY_STYLES[i].hint;
+	ticks.innerHTML = '';
+	REPLY_STYLES.forEach((st, n) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.textContent = st.label;
+		b.className = n === i ? 'on' : '';
+		/* The labels are targets too — a 24px thumb is a poor way to pick the
+		   far end of a four-stop scale on a phone. */
+		b.addEventListener('click', () => setReplyStyle(n));
+		ticks.appendChild(b);
+	});
+}
+function setReplyStyle(n) {
+	store.replyStyle = n;
+	applyReplyStyle();
+	renderReplyStyle();
+}
+
 function setTheme(theme) {
 	store.theme = theme === 'light' ? 'light' : 'dark';
 	applyTheme(store.theme);
@@ -3373,6 +3479,7 @@ function openSettings(tab) {
 	document.getElementById('teamModeInput').checked = store.teamMode;
 	document.getElementById('assistantNameInput').value = store.assistantName;
 	document.getElementById('userNameInput').value = store.userName;
+	renderReplyStyle();
 	document.getElementById('rateInput').value = store.rate;
 	document.getElementById('pitchInput').value = store.pitch;
 	document.getElementById('rateVal').textContent = store.rate.toFixed(2) + 'x';
@@ -3418,6 +3525,9 @@ document.querySelectorAll('#themeSeg button').forEach((b) => {
 		applyTheme(b.dataset.themeOpt); // live preview, same as the glass slider
 	});
 });
+/* Live as you drag, not on release — the point of a slider is that you feel
+   it move, and the hint under it changes with each stop. */
+document.getElementById('styleRange').addEventListener('input', (e) => setReplyStyle(e.target.value));
 document.getElementById('rateInput').addEventListener('input', (e) => (document.getElementById('rateVal').textContent = parseFloat(e.target.value).toFixed(2) + 'x'));
 document.getElementById('pitchInput').addEventListener('input', (e) => (document.getElementById('pitchVal').textContent = parseFloat(e.target.value).toFixed(2)));
 document.getElementById('glassIntensityInput').addEventListener('input', (e) => {
@@ -4431,8 +4541,29 @@ async function toolGenerateVideo(args) {
 }
 
 /* ----------------------------- smart home ------------------------------ */
+/* A blind is the one device where "on" is meaningless and a percentage is
+ * the whole story, so it gets its own words rather than being squeezed into
+ * the on/off vocabulary. */
+function coverWord(p) {
+	const n = Math.max(0, Math.min(100, Math.round(p || 0)));
+	return n === 0 ? 'closed' : n === 100 ? 'open' : n + '% open';
+}
+const ON_OFF_TYPES = ['light', 'switch', 'plug', 'fan', 'coffee', 'media', 'vacuum'];
+/* describeDevice() names the device because a spoken reply needs to ("the
+ * coffee maker is brewing"). A row in the list has the name in bold directly
+ * above, so repeating it there just prints it twice — visible with five
+ * devices, silly with twelve. */
+function deviceState(d) {
+	const full = describeDevice(d);
+	const m = full.match(/^(.*) \((.*)\)$/);
+	return m && m[1] === d.name ? m[2] : full;
+}
 function describeDevice(d) {
-	if (d.type === 'light' || d.type === 'switch') return d.name + ' (' + d.power + (d.type === 'light' && d.power === 'on' ? ', ' + d.brightness + '% brightness' : '') + ')';
+	if (d.type === 'cover') return d.name + ' (' + coverWord(d.position) + ')';
+	if (d.type === 'coffee') return d.name + ' (' + (d.power === 'on' ? 'brewing' : 'off') + ')';
+	if (d.type === 'vacuum') return d.name + ' (' + (d.power === 'on' ? 'cleaning' : 'docked') + ')';
+	if (d.type === 'media') return d.name + ' (' + (d.power === 'on' ? 'playing' : 'stopped') + ')';
+	if (ON_OFF_TYPES.includes(d.type)) return d.name + ' (' + d.power + (d.type === 'light' && d.power === 'on' ? ', ' + d.brightness + '% brightness' : '') + ')';
 	if (d.type === 'lock') return d.name + ' (' + d.lockState + ')';
 	if (d.type === 'thermostat') return d.name + ' (set to ' + d.temp + '°F)';
 	if (d.type === 'scene') return d.name + ' (scene)';
@@ -4452,6 +4583,7 @@ function runSceneLocal(scene, list) {
 		if (typeof patch.brightness === 'number') target.brightness = patch.brightness;
 		if (typeof patch.temp === 'number') target.temp = patch.temp;
 		if (patch.lockState) target.lockState = patch.lockState;
+		if (typeof patch.position === 'number') target.position = patch.position;
 	});
 	store.devices = list;
 	renderHome();
@@ -4485,6 +4617,14 @@ async function toolSetDevice(args) {
 	if (typeof args.brightness === 'number' && d.type === 'light') d.brightness = Math.max(0, Math.min(100, Math.round(args.brightness)));
 	if (typeof args.temperature === 'number' && d.type === 'thermostat') d.temp = Math.round(args.temperature);
 	if (args.lock === 'locked' || args.lock === 'unlocked') d.lockState = args.lock;
+	if (d.type === 'cover') {
+		/* "open the blinds" arrives as power:on far more often than as a
+		   position, so both spellings work rather than one silently doing
+		   nothing. */
+		if (typeof args.position === 'number') d.position = Math.max(0, Math.min(100, Math.round(args.position)));
+		else if (args.power === 'on') d.position = 100;
+		else if (args.power === 'off') d.position = 0;
+	}
 	store.devices = list;
 	renderHome();
 	return { ok: true, message: describeDevice(d) };
@@ -4507,7 +4647,12 @@ async function haFetch(path, opts) {
 	if (!res.ok) throw new Error('Home Assistant returned ' + res.status + ' ' + res.statusText);
 	return res.json().catch(() => null);
 }
-const HA_DOMAINS = ['light', 'switch', 'lock', 'climate', 'scene', 'fan'];
+/* Home Assistant is the reason this list matters: it already speaks to Hue,
+ * SmartThings, Matter, Lutron, Zigbee, Z-Wave and several hundred other
+ * things, so widening the domains here is what actually reaches real
+ * hardware — Jarvis does not need a per-brand integration of its own.
+ * A smart coffee maker almost always appears as a `switch`. */
+const HA_DOMAINS = ['light', 'switch', 'lock', 'climate', 'scene', 'fan', 'cover', 'media_player', 'vacuum', 'input_boolean'];
 async function haListEntities() {
 	const states = await haFetch('/api/states');
 	return (states || []).filter((s) => HA_DOMAINS.includes(s.entity_id.split('.')[0]));
@@ -4517,6 +4662,7 @@ function haDescribe(e) {
 	const name = e.attributes.friendly_name || e.entity_id;
 	if (domain === 'climate') return name + ' (' + e.state + ', target ' + (e.attributes.temperature ?? '?') + '°)';
 	if (domain === 'lock') return name + ' (' + e.state + ')';
+	if (domain === 'cover') return name + ' (' + (typeof e.attributes.current_position === 'number' ? coverWord(e.attributes.current_position) : e.state) + ')';
 	return name + ' (' + e.state + (e.attributes.brightness ? ', ' + Math.round((e.attributes.brightness / 255) * 100) + '% brightness' : '') + ')';
 }
 async function haFindEntity(name) {
@@ -4553,7 +4699,20 @@ async function haSetDevice(args) {
 			await haCallService('climate', 'set_temperature', { entity_id: e.entity_id, temperature: args.temperature });
 		} else if (domain === 'scene') {
 			await haCallService('scene', 'turn_on', { entity_id: e.entity_id });
-		} else if (domain === 'light' || domain === 'switch' || domain === 'fan') {
+		} else if (domain === 'cover') {
+			/* set_cover_position is the precise one, but a cover that cannot
+			   be positioned still opens and closes — so fall back rather than
+			   refusing. */
+			if (typeof args.position === 'number') {
+				await haCallService('cover', 'set_cover_position', { entity_id: e.entity_id, position: Math.max(0, Math.min(100, Math.round(args.position))) });
+			} else {
+				await haCallService('cover', args.power === 'off' ? 'close_cover' : 'open_cover', { entity_id: e.entity_id });
+			}
+		} else if (domain === 'vacuum') {
+			await haCallService('vacuum', args.power === 'off' ? 'return_to_base' : 'start', { entity_id: e.entity_id });
+		} else if (domain === 'media_player') {
+			await haCallService('media_player', args.power === 'off' ? 'media_pause' : 'media_play', { entity_id: e.entity_id });
+		} else if (domain === 'light' || domain === 'switch' || domain === 'fan' || domain === 'input_boolean') {
 			if (args.power === 'off') {
 				await haCallService(domain, 'turn_off', { entity_id: e.entity_id });
 			} else if (args.power === 'on' || typeof args.brightness === 'number') {
@@ -4949,6 +5108,54 @@ async function streamWithFallback(messages, onDelta, signal) {
 	throw lastErr || new Error('No model is configured — add one in Settings.');
 }
 
+/* ============================ how to answer ==============================
+ * One slider, four stops, and it changes exactly two things: how long a reply
+ * is and what reading level it is pitched at.
+ *
+ * It is NOT a permissions dial. Jarvis will not do anything at "Simple" that
+ * it would refuse at "Detailed", and it will not refuse anything at "Simple"
+ * that it would do at "Detailed" — a setting that quietly changed what the
+ * assistant was willing to do would be a trapdoor wearing the costume of a
+ * preference, and nobody could see which way it was set from the answer.
+ *
+ * "Clear" is last on purpose. It is not "for old people" — it is short,
+ * plainly worded and larger on screen, which is what anyone wants when they
+ * are tired, in a hurry, or reading at arm's length.
+ */
+const REPLY_STYLES = [
+	{
+		id: 'simple', label: 'Simple', hint: 'Short answers in plain words, like explaining to a curious ten-year-old.',
+		/* Reading level and length, and nothing else. An earlier draft said
+		   "never refuse a question just because it is asked simply", which
+		   reads as style but is a nudge on WILLINGNESS — precisely what this
+		   slider must not carry. Ordering advice replaces it. */
+		prompt: 'Answer in plain, friendly words a ten-year-old would follow. One or two short sentences. Lead with the answer itself, then the why if it helps. No jargon; if a technical word is unavoidable, say what it means in three words.',
+	},
+	{
+		id: 'everyday', label: 'Everyday', hint: 'The normal balance — conversational, as much detail as the question needs.',
+		prompt: '',   // the default voice; adding nothing is what keeps it the default
+	},
+	{
+		id: 'detailed', label: 'Detailed', hint: 'Fuller answers, precise terms, the reasoning behind them.',
+		prompt: 'Give the fuller answer: precise terminology, the reasoning behind it, and the caveats that actually matter. Still speak it aloud like a person — structured, not a document.',
+	},
+	{
+		id: 'clear', label: 'Clear', hint: 'Short and direct, in careful everyday language. Larger type in the app.',
+		prompt: 'Be brief and direct: two or three short sentences, one idea each. Use careful everyday language — precise, never babyish, never patronising. Lead with the answer, then one line of why if it helps. Skip preamble entirely.',
+	},
+];
+function replyStyle() { return REPLY_STYLES[store.replyStyle] || REPLY_STYLES[1]; }
+/* Applied at definition rather than from a boot block: it only sets one
+ * attribute on <html>, and doing it here means there is no ordering to get
+ * wrong later. */
+setTimeout(() => applyReplyStyle(), 0);
+
+/* The last stop also calms the interface, since "hard to read" is rarely only
+ * about the words. Set on <html> so it reaches everything including dialogs. */
+function applyReplyStyle() {
+	document.documentElement.dataset.replyStyle = replyStyle().id;
+}
+
 const TOOL_DOCS = [
 	'get_time {} — current local date and time.',
 	'get_weather {"location": string optional, "days": number optional 1-7} — current weather; omit location to use the browser\'s location. Add "days" to also get a daily forecast (e.g. days 2 for tomorrow, days 7 for the week) — use it whenever asked about a future day, not just today.',
@@ -4971,7 +5178,7 @@ const TOOL_DOCS = [
 	'web_search {"query": string} — search the web for this query in a new tab.',
 	'list_devices {} — list smart home devices and their current state.',
 	'get_device {"name": string} — get one smart home device\'s current state.',
-	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock. Unlocking always pops an in-app confirmation the user must approve before it takes effect — mention that in your reply.',
+	'set_device {"name": string, "power": "on"|"off" optional, "brightness": number 0-100 optional, "temperature": number optional (thermostats, °F), "lock": "locked"|"unlocked" optional, "position": number 0-100 optional (blinds and curtains; 0 closed, 100 open)} — control a device; only include the fields that apply, and omit "power" when only changing brightness/temperature/lock/position. Covers lights, switches, plugs, fans, coffee makers, blinds, speakers, robot vacuums, locks and thermostats. Starting a coffee maker is just power "on". Unlocking always pops an in-app confirmation the user must approve before it takes effect — mention that in your reply.',
 	'run_scene {"name": string} — run a smart home scene, e.g. "Good Night" or "Good Morning".',
 	'list_transcripts {} — list recorded conversation/meeting transcripts with title and length.',
 	'get_transcript {"query": string} — get the text (and analysis, if any) of a recorded transcript matching this title; leave query empty for the most recent one.',
@@ -5066,6 +5273,9 @@ function buildSystemPrompt(question) {
 		'["Book the pottery class", "What else does she like?"]',
 		'```',
 		'Write them in the user\'s voice, under six words each, and only when they are genuinely useful next steps. Offer none rather than padding. This block is invisible and is never spoken.',
+		'',
+		/* Style only. Nothing here widens or narrows what Jarvis will do. */
+		replyStyle().prompt ? 'How to pitch your reply: ' + replyStyle().prompt : '',
 		'',
 		'Available tools:',
 		'- ' + TOOL_DOCS,
@@ -5895,16 +6105,25 @@ function deviceRow(d) {
 	row.className = 'row-item';
 	const txt = document.createElement('div');
 	txt.className = 'txt';
-	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(describeDevice(d)) + '</small>';
+	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(deviceState(d)) + '</small>';
 	const ctrl = document.createElement('div');
 	ctrl.className = 'devctrl';
-	if (d.type === 'light' || d.type === 'switch') {
+	if (ON_OFF_TYPES.includes(d.type)) {
 		const sw = document.createElement('button');
 		sw.type = 'button';
 		sw.className = 'toggle' + (d.power === 'on' ? ' on' : '');
 		sw.setAttribute('aria-label', 'Toggle ' + d.name);
 		sw.addEventListener('click', async () => { await toolSetDevice({ name: d.name, power: d.power === 'on' ? 'off' : 'on' }); renderHome(); });
 		ctrl.appendChild(sw);
+	} else if (d.type === 'cover') {
+		/* Open and shut, not on and off — and a slider would be a fiddly
+		   target on a phone for something people set to one end or the other. */
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'ghost small';
+		btn.textContent = (d.position || 0) > 50 ? 'Close' : 'Open';
+		btn.addEventListener('click', async () => { await toolSetDevice({ name: d.name, position: (d.position || 0) > 50 ? 0 : 100 }); renderHome(); });
+		ctrl.appendChild(btn);
 	} else if (d.type === 'lock') {
 		const btn = document.createElement('button');
 		btn.type = 'button';
@@ -5985,9 +6204,10 @@ document.getElementById('addDeviceBtn').addEventListener('click', () => {
 	const type = typeInput.value;
 	const d = { id: uid(), name, type };
 	if (type === 'light') { d.power = 'off'; d.brightness = 100; }
-	else if (type === 'switch') d.power = 'off';
+	else if (type === 'cover') d.position = 0;
 	else if (type === 'lock') d.lockState = 'locked';
 	else if (type === 'thermostat') d.temp = 70;
+	else d.power = 'off';   // every remaining type is a plain on/off thing
 	const list = store.devices;
 	list.push(d);
 	store.devices = list;
