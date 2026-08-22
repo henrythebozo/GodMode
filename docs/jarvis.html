@@ -1955,14 +1955,19 @@
 	   as an invisible hit pad (inset:-5px) to reach the 44px touch target
 	   from a 34px chip — putting the specular there collapsed six targets
 	   at once, and the touch-target suite caught it. */
-	.glassy::before, .primary::before, .ghost::before, .iconbtn::before, #micBtn::before, #textSend::before {
+	/* :not(.metal) — a metal button wears a chrome ring instead of a glass
+	   highlight, and #micBtn is an ID selector that would otherwise outrank
+	   .metal::before and paint the specular over it. */
+	.glassy:not(.metal)::before, .primary:not(.metal)::before, .ghost:not(.metal)::before,
+	.iconbtn:not(.metal)::before, #micBtn:not(.metal)::before, #textSend:not(.metal)::before {
 		content: ''; position: absolute; inset: 0; border-radius: inherit;
 		pointer-events: none; z-index: -1;
 		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.26), transparent 62%);
 		opacity: 0.9; transition: opacity 0.25s ease;
 	}
 	.glassy:active, .primary:active, .ghost:active, .iconbtn:active, #micBtn:active, #textSend:active { transform: scale(0.955); }
-	.glassy:active::before, .primary:active::before, .ghost:active::before, .iconbtn:active::before, #micBtn:active::before, #textSend:active::before { opacity: 0.5; }
+	.glassy:not(.metal):active::before, .primary:not(.metal):active::before, .ghost:not(.metal):active::before,
+	.iconbtn:not(.metal):active::before, #micBtn:not(.metal):active::before, #textSend:not(.metal):active::before { opacity: 0.5; }
 	.glassy:hover, .primary:hover, .iconbtn:hover, #micBtn:hover, #textSend:hover {
 		box-shadow:
 			inset 0 0 0 1px rgba(255, 255, 255, 0.2),
@@ -1985,7 +1990,9 @@
 			0 1px 2px rgba(40, 36, 32, 0.1),
 			0 6px 16px -6px rgba(40, 36, 32, 0.14);
 	}
-	:root[data-theme="light"] .glassy::before, :root[data-theme="light"] .primary::before, :root[data-theme="light"] .iconbtn::before, :root[data-theme="light"] #micBtn::before, :root[data-theme="light"] #textSend::before {
+	:root[data-theme="light"] .glassy:not(.metal)::before, :root[data-theme="light"] .primary:not(.metal)::before,
+	:root[data-theme="light"] .iconbtn:not(.metal)::before, :root[data-theme="light"] #micBtn:not(.metal)::before,
+	:root[data-theme="light"] #textSend:not(.metal)::before {
 		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.75), transparent 60%);
 	}
 
@@ -2005,6 +2012,115 @@
 	}
 	#gridBg.on { opacity: 1; }
 	#sidebar, #contentArea { position: relative; z-index: 1; }
+
+	/* ============================= liquid metal =============================
+	   From 21st.dev's "Liquid Metal Button". The effect is a chrome ring
+	   around a near-black core, with iridescent flecks — blue, gold, rose —
+	   caught at points along it, drifting as the light moves.
+
+	   That is one conic-gradient masked to a ring, so it needs no canvas and
+	   no library. It takes over ::before from the glass specular (a metal
+	   button wants a chrome rim, not a glass highlight) and leaves ::after
+	   alone, because ::after is this app's touch-target pad. */
+	@property --metal-spin {
+		syntax: '<angle>';
+		inherits: false;
+		initial-value: 0deg;
+	}
+	.metal {
+		background: linear-gradient(180deg, #17171a, #0d0d0f) !important;
+		color: #d6d8de !important;
+		border: none !important;
+	}
+	/* The CSS ring is the FALLBACK. Where WebGL works, a real liquid-metal
+	   shader paints the same ring — see mountLiquidMetal(). Where it does not,
+	   this conic gets very close for free, so nobody sees a plain button. */
+	.metal::before {
+		content: ''; position: absolute; inset: 0; border-radius: inherit;
+		padding: 1.6px; pointer-events: none; z-index: 0;
+		background: conic-gradient(from var(--metal-spin),
+			#6d7076, #e9ebf0, #aeb4bd, #f3f5f9, #8fa7c9, #f7e6cb,
+			#f0c6d4, #cdd1d8, #9aa0a8, #eceef3, #6d7076);
+		/* Ring, not disc: paint the border box, punch out the content box. */
+		-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+		-webkit-mask-composite: xor;
+		mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+		mask-composite: exclude;
+		animation: metalSpin 9s linear infinite;
+		opacity: 1;
+	}
+	/* Once the shader is up, the fallback ring gets out of its way. */
+	.metal.shaded::before { display: none; }
+	.metalcanvas {
+		position: absolute; inset: 0; width: 100%; height: 100%;
+		border-radius: inherit; display: block; pointer-events: none; z-index: 0;
+	}
+	/* The dark core, inset far enough to leave the shader showing as a rim.
+	   This is the reference's stacking exactly: metal underneath, a black pill
+	   over it, the label over that. */
+	.metalcore {
+		position: absolute; inset: 1.8px; border-radius: inherit; pointer-events: none; z-index: 1;
+		background: linear-gradient(180deg, #202020 0%, #000000 100%);
+		transition: box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.metal:active .metalcore {
+		box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.3);
+	}
+	/* The click ripple, straight from the reference: a soft white disc that
+	   scales out and fades over 600ms. */
+	.metalripple {
+		position: absolute; width: 20px; height: 20px; border-radius: 50%; z-index: 2;
+		pointer-events: none;
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+		animation: metalRipple 0.6s ease-out forwards;
+	}
+	@keyframes metalRipple {
+		0% { transform: translate(-50%, -50%) scale(0); opacity: 0.6; }
+		100% { transform: translate(-50%, -50%) scale(4); opacity: 0; }
+	}
+	@media (prefers-reduced-motion: reduce) { .metalripple { display: none; } }
+	/* Without @property the angle cannot be interpolated, so the ring simply
+	   holds still — chrome either way, just not flowing. */
+	@keyframes metalSpin { to { --metal-spin: 360deg; } }
+	@media (prefers-reduced-motion: reduce) { .metal::before { animation: none; } }
+	.metal > svg, .metal > .miclabel { position: relative; z-index: 2; }
+	.metal:hover { filter: brightness(1.14); }
+
+	/* The same chrome, poured into type. Used on the greeting, where the
+	   display size gives the gradient room to actually read as metal. */
+	.metaltext {
+		background: linear-gradient(96deg, #8d939c 0%, #f4f6fa 22%, #b6bcc6 40%,
+			#ffffff 54%, #9fb2cc 68%, #f2e3cd 80%, #c9ced7 100%);
+		background-size: 220% 100%;
+		-webkit-background-clip: text; background-clip: text;
+		color: transparent; -webkit-text-fill-color: transparent;
+		animation: metalSheen 11s ease-in-out infinite;
+	}
+	@keyframes metalSheen { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+	@media (prefers-reduced-motion: reduce) { .metaltext { animation: none; } }
+	/* The light theme has no room for a silver that bright — it would vanish
+	   into the page — so the same sweep runs through graphite instead. */
+	:root[data-theme="light"] .metaltext {
+		background-image: linear-gradient(96deg, #4a4f57 0%, #23262b 22%, #5d636c 40%,
+			#141618 54%, #46596f 68%, #6b5c45 80%, #3a3e45 100%);
+	}
+
+	/* ------------------------------ palettes ------------------------------
+	   The accent lives in four tokens and is read 47 times, so a palette is
+	   just those four rewritten on the root — the same trick applySkin() uses
+	   for the orb's glow. Every value is picked to clear WCAG AA against its
+	   own theme's background, because --ring is also the link colour. */
+	.swatchrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 2px; }
+	.swatch {
+		display: flex; align-items: center; gap: 8px;
+		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+		border-radius: 999px; padding: 6px 14px 6px 7px; font-size: 12.5px; font-weight: 550;
+		cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.14s ease;
+	}
+	.swatch:hover { background: var(--panel-3); }
+	.swatch:active { transform: scale(0.97); }
+	.swatch.on { border-color: var(--ring); background: var(--ring-soft); font-weight: 650; }
+	.swatch i { width: 15px; height: 15px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
 
 </style>
 </head>
@@ -2051,7 +2167,8 @@
 	<div class="voicecard">
 		<div id="sideBars" aria-hidden="true"></div>
 		<div class="vlabel" id="voiceModeLabel">Voice mode<br /><b>Standby</b></div>
-		<button id="micBtn" title="Talk to Jarvis" aria-label="Talk to Jarvis">
+		<button id="micBtn" class="metal" title="Talk to Jarvis" aria-label="Talk to Jarvis">
+			<canvas class="metalcanvas" aria-hidden="true"></canvas><span class="metalcore" aria-hidden="true"></span>
 			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
 			<span class="miclabel">Tap to Speak</span>
 		</button>
@@ -2073,7 +2190,7 @@
 							<div class="herotop">
 								<div>
 									<div class="heroeyebrow"><span id="dashDate">—</span><span class="sep">/</span><span id="dashClock">—</span></div>
-									<div class="statusbig" id="dashGreeting">Hello.</div>
+									<div class="statusbig metaltext" id="dashGreeting">Hello.</div>
 									<div class="statussub"><span class="dot ok" id="dashStatusDot"></span><span id="dashStatusSub">How can I help you today?</span></div>
 								</div>
 								<div class="herotools">
@@ -2389,6 +2506,10 @@
 		<p class="hint">Applies everywhere, including the boot intro.</p>
 		<label>Frosted glass<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
 		<p class="hint">Surfaces are flat by default. Raise this to blur and see through them.</p>
+
+		<h3>Accent</h3>
+		<div class="swatchrow" id="paletteRow"></div>
+		<p class="hint">Repaints everything the accent touches — buttons, links, the orb's rim and glow, and the grid behind the app. Every option is picked to stay readable in both themes.</p>
 
 		<h3>Backdrop</h3>
 		<div class="row">
@@ -3036,6 +3157,8 @@ const store = {
 	set navCollapsed(v) { localStorage.setItem('jarvis.navCollapsed', v ? '1' : '0'); },
 	get gridBg() { return localStorage.getItem('jarvis.gridBg') !== '0'; },   // on unless turned off
 	set gridBg(v) { localStorage.setItem('jarvis.gridBg', v ? '1' : '0'); },
+	get palette() { return localStorage.getItem('jarvis.palette') || 'chrome'; },
+	set palette(v) { localStorage.setItem('jarvis.palette', v); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
 	/* ---- the business Jarvis is focused on ---- */
@@ -3740,17 +3863,254 @@ function applyGridBackdrop() {
 }
 applyGridBackdrop();
 
+/* ================================ palettes ================================
+ * The accent is four tokens — --ring, --ring-rgb, --ring-soft, --on-accent —
+ * and --ring alone is read 47 times, so swapping a palette is rewriting those
+ * four on the root. Each entry carries a value per theme because the same hue
+ * cannot serve both: on the light page the accent is also the LINK colour and
+ * has to be dark enough to clear WCAG AA against near-white, and on the dark
+ * page it has to be light enough to clear it against near-black.
+ */
+const PALETTES = [
+	{ id: 'chrome', label: 'Chrome', light: '#55606e', dark: '#aab6c4' },
+	{ id: 'ember',  label: 'Ember',  light: '#b65334', dark: '#dd8163' },
+	{ id: 'iris',   label: 'Iris',   light: '#6448b4', dark: '#ab97e6' },
+	{ id: 'jade',   label: 'Jade',   light: '#1c7355', dark: '#5cc9a0' },
+	{ id: 'rose',   label: 'Rose',   light: '#ad3557', dark: '#e88fa8' },
+];
+function paletteById(id) { return PALETTES.find((p) => p.id === id) || PALETTES[0]; }
+
+function applyPalette() {
+	const p = paletteById(store.palette);
+	const dark = document.documentElement.dataset.theme !== 'light';
+	const hex = dark ? p.dark : p.light;
+	const n = parseInt(hex.slice(1), 16);
+	const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+	const root = document.documentElement.style;
+	root.setProperty('--ring', hex);
+	root.setProperty('--ring-rgb', r + ' ' + g + ' ' + b);
+	root.setProperty('--ring-soft', 'rgba(' + r + ',' + g + ',' + b + ',' + (dark ? 0.18 : 0.12) + ')');
+	/* The accent is a light colour on the dark theme and a dark one on the
+	 * light theme, so what sits ON it flips with it. */
+	root.setProperty('--on-accent', dark ? '#1f1e1d' : '#fff');
+	/* Everything downstream of the accent has to be told: the orb's glow, the
+	 * grid's lines, the backdrop of the moment. */
+	if (typeof applySkin === 'function') applySkin();
+	if (typeof applyGridBackdrop === 'function') applyGridBackdrop();
+	if (typeof applyLiquidMetal === 'function') applyLiquidMetal();
+}
+
+function renderPalettePicker() {
+	const box = document.getElementById('paletteRow');
+	if (!box) return;
+	box.innerHTML = '';
+	const dark = document.documentElement.dataset.theme !== 'light';
+	PALETTES.forEach((p) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'swatch' + (p.id === store.palette ? ' on' : '');
+		const dot = document.createElement('i');
+		dot.style.background = dark ? p.dark : p.light;
+		const name = document.createElement('span');
+		name.textContent = p.label;
+		b.append(dot, name);
+		b.addEventListener('click', () => {
+			store.palette = p.id;
+			applyPalette();
+			renderPalettePicker();
+		});
+		box.append(b);
+	});
+}
+
+/* ============================== liquid metal ==============================
+ * From 21st.dev's Liquid Metal Button, which drives @paper-design/shaders'
+ * liquidMetalFragmentShader through a ShaderMount. The package cannot come
+ * into a file with no build step, so the shader is written here — same idea,
+ * same parameters, carried over from the component's own call:
+ *
+ *   repetition 4 · softness 0.5 · shiftRed 0.3 · shiftBlue 0.3
+ *   angle 45 · scale 8 · offset (0.1, -0.1) · speed 0.6
+ *
+ * What makes it read as METAL rather than as a gradient is the chromatic
+ * split: the same band function is sampled three times at slightly different
+ * phases for red, green and blue, so every edge in the sweep throws off a
+ * thin colour fringe the way polished chrome does.
+ *
+ * Speed answers the pointer, exactly as the reference does it: 0.6 at rest,
+ * 1.0 hovered, and a 2.4 kick for 300ms on press.
+ */
+const LM_VERT = 'attribute vec2 p;varying vec2 uv;void main(){uv=p*0.5+0.5;gl_Position=vec4(p,0.0,1.0);}';
+const LM_FRAG = [
+	'precision mediump float;',
+	'varying vec2 uv;',
+	'uniform vec2 u_res;',
+	'uniform float u_time;',
+	'uniform vec4 u_tint;',   // rgb of the accent + how much of it to mix in
+	'const float REPETITION = 4.0;',
+	'const float SOFTNESS = 0.5;',
+	'const float SHIFT_R = 0.3;',
+	'const float SHIFT_B = 0.3;',
+	'const float ANGLE = 0.7853981;',   // 45 degrees
+	'const float SCALE = 8.0;',
+	'const vec2 OFFSET = vec2(0.1, -0.1);',
+	/* One band of the sweep. The angular term is what curves the highlight
+	   around the pill instead of running it straight across. */
+	'float band(vec2 p, float shift) {',
+	'  float a = atan(p.y, p.x);',
+	'  float r = length(p);',
+	'  float v = sin(r * SCALE + a * REPETITION + u_time + shift);',
+	'  v += 0.5 * sin(r * SCALE * 1.9 - a * 2.0 - u_time * 0.7 + shift);',
+	'  return smoothstep(-SOFTNESS, SOFTNESS, v);',
+	'}',
+	'void main() {',
+	'  vec2 p = uv - 0.5;',
+	/* Correct for the pill's aspect so the sweep is not stretched flat. */
+	'  p.x *= u_res.x / max(u_res.y, 1.0);',
+	'  float c = cos(ANGLE), s = sin(ANGLE);',
+	'  p = mat2(c, -s, s, c) * p + OFFSET;',
+	/* Three samples, three phases — the chromatic fringe that reads as metal. */
+	'  float r = band(p, SHIFT_R);',
+	'  float g = band(p, 0.0);',
+	'  float b = band(p, -SHIFT_B);',
+	'  vec3 col = vec3(r, g, b);',
+	/* Sit it in a steel range rather than pure black-to-white, then let the
+	   accent tint it so the button belongs to whatever palette is chosen. */
+	'  col = mix(vec3(0.30, 0.31, 0.34), vec3(0.97, 0.98, 1.0), col);',
+	'  col = mix(col, col * u_tint.rgb * 1.6, u_tint.a);',
+	'  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);',
+	'}',
+].join('\n');
+
+/* Mounts the shader into one element's canvas. Returns null wherever WebGL is
+ * unavailable, which leaves the CSS conic ring showing — the button is never
+ * plain. */
+function mountLiquidMetal(btn) {
+	const canvas = btn.querySelector('.metalcanvas');
+	if (!canvas) return null;
+	let gl = null;
+	try { gl = canvas.getContext('webgl', { antialias: true, alpha: false, depth: false }); } catch { gl = null; }
+	if (!gl) return null;
+
+	const sh = (type, src) => {
+		const o = gl.createShader(type);
+		gl.shaderSource(o, src); gl.compileShader(o);
+		if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn('liquid metal:', gl.getShaderInfoLog(o)); gl.deleteShader(o); return null; }
+		return o;
+	};
+	const vs = sh(gl.VERTEX_SHADER, LM_VERT), fs = vs && sh(gl.FRAGMENT_SHADER, LM_FRAG);
+	if (!vs || !fs) return null;
+	const prog = gl.createProgram();
+	gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+	gl.deleteShader(vs); gl.deleteShader(fs);
+	if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.warn('liquid metal:', gl.getProgramInfoLog(prog)); return null; }
+	gl.useProgram(prog);
+
+	const buf = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+	const loc = gl.getAttribLocation(prog, 'p');
+	gl.enableVertexAttribArray(loc);
+	gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+	const uRes = gl.getUniformLocation(prog, 'u_res');
+	const uTime = gl.getUniformLocation(prog, 'u_time');
+	const uTint = gl.getUniformLocation(prog, 'u_tint');
+
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	let speed = 0.6, target = 0.6, clock = 0, last = null, raf = 0, running = true;
+	let visible = document.visibilityState === 'visible';
+	let tint = [1, 1, 1, 0];
+
+	function readTint() {
+		const probe = document.createElement('span');
+		probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;color:var(--ring)';
+		document.body.append(probe);
+		const m = getComputedStyle(probe).color.match(/[\d.]+/g);
+		probe.remove();
+		if (!m) return;
+		const r = +m[0] / 255, g = +m[1] / 255, b = +m[2] / 255;
+		/* A neutral accent should leave the metal neutral, so the tint strength
+		 * follows how saturated the accent actually is. Chrome barely tints;
+		 * Jade or Rose visibly do. */
+		const sat = Math.max(r, g, b) - Math.min(r, g, b);
+		tint = [r, g, b, Math.min(0.55, sat * 1.3)];
+	}
+	readTint();
+
+	function size() {
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const w = Math.max(1, Math.round(btn.offsetWidth * dpr)), h = Math.max(1, Math.round(btn.offsetHeight * dpr));
+		if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
+	}
+	function frame(now) {
+		raf = 0;
+		if (!running) return;
+		const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1);
+		last = now;
+		speed += (target - speed) * (1 - Math.exp(-8 * dt));
+		clock += dt * speed;
+		size();
+		gl.uniform2f(uRes, canvas.width, canvas.height);
+		gl.uniform1f(uTime, still ? 0 : clock);
+		gl.uniform4f(uTint, tint[0], tint[1], tint[2], tint[3]);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+		/* Held still under reduced motion: one frame, then nothing. */
+		if (!still) request(); else last = null;
+	}
+	function request() { if (running && visible && raf === 0) raf = requestAnimationFrame(frame); }
+	function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; last = null; }
+
+	const onEnter = () => { target = 1.0; request(); };
+	const onLeave = () => { target = 0.6; request(); };
+	const onDown = (e) => {
+		target = 2.4;
+		setTimeout(() => { target = btn.matches(':hover') ? 1.0 : 0.6; }, 300);
+		if (!still) {
+			const r = btn.getBoundingClientRect();
+			const dot = document.createElement('span');
+			dot.className = 'metalripple';
+			dot.style.left = (e.clientX - r.left) + 'px';
+			dot.style.top = (e.clientY - r.top) + 'px';
+			btn.append(dot);
+			setTimeout(() => dot.remove(), 620);
+		}
+		request();
+	};
+	const onVis = () => { visible = document.visibilityState === 'visible'; if (visible) request(); else stop(); };
+	btn.addEventListener('pointerenter', onEnter);
+	btn.addEventListener('pointerleave', onLeave);
+	btn.addEventListener('pointerdown', onDown);
+	window.addEventListener('resize', request);
+	document.addEventListener('visibilitychange', onVis);
+
+	size();
+	btn.classList.add('shaded');
+	request();
+	return { retint() { readTint(); request(); } };
+}
+
+let liquidMetal = null;
+function applyLiquidMetal() {
+	const btn = document.getElementById('micBtn');
+	if (!btn) return;
+	if (!liquidMetal) liquidMetal = mountLiquidMetal(btn);
+	else liquidMetal.retint();
+}
+
 function applyTheme(theme) {
 	const dark = theme !== 'light';
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 	// keep the browser/OS chrome (iOS status bar, Android address bar) in step
 	const meta = document.querySelector('meta[name="theme-color"]');
 	if (meta) meta.setAttribute('content', dark ? '#262624' : '#faf9f7');
-	/* The grid draws in --text and --ring, both of which just changed. */
-	applyGridBackdrop();
+	/* The accent has a different value per theme, so it is repainted
+	   first — the grid and the orb both read --ring downstream of it. */
+	applyPalette();
 }
 applyTheme(store.theme);
 applySkin();
+applyPalette();
+applyLiquidMetal();
 /* Settings previews a theme without saving it, so applyTheme alone is not
  * enough for the palette — this is the persist-and-apply pair. */
 function renderReplyStyle() {
@@ -4116,6 +4476,7 @@ function openSettings(tab) {
 	document.getElementById('glassIntensityInput').value = store.glassIntensity;
 	document.getElementById('glassIntensityVal').textContent = store.glassIntensity + '%';
 	document.getElementById('gridBgInput').checked = store.gridBg;
+	renderPalettePicker();
 	renderGridHint();
 	document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x.dataset.units === store.units));
 	document.getElementById('keyInput').value = store.key;
