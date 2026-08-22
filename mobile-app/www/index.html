@@ -1551,7 +1551,14 @@
 		   would override the UA's `display: none` for the closed state and
 		   leave the dialog permanently on screen. */
 		#settings[open] { display: grid; }
-		#settings > h2 { grid-column: 1 / -1; }
+		/* The heading spans both columns. It used to be a direct <h2>; the close
+		   button wrapped it in .dlghead, which made this selector stop matching
+		   and dropped the title into the 158px sidebar column. Match the
+		   wrapper, and keep the bare h2 for a dialog that has no wrapper. */
+		#settings > h2, #settings > .dlghead { grid-column: 1 / -1; }
+		/* The sticky header's negative side margins are sized for the one-column
+		   sheet; in the grid they would hang outside the dialog. */
+		#settings > .dlghead { margin-inline: -24px; padding-inline: 24px; }
 		#settings .settabs { grid-template-columns: 1fr; margin: 10px 0 0; }
 		#settings .setbody { min-width: 0; }
 	}
