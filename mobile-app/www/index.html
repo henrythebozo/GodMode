@@ -2885,7 +2885,7 @@ const store = {
 	set navCollapsed(v) { localStorage.setItem('jarvis.navCollapsed', v ? '1' : '0'); },
 	get shaderBg() { return localStorage.getItem('jarvis.shaderBg') !== '0'; },   // on unless turned off
 	set shaderBg(v) { localStorage.setItem('jarvis.shaderBg', v ? '1' : '0'); },
-	get shaderStrength() { const v = parseInt(localStorage.getItem('jarvis.shaderStrength'), 10); return Number.isFinite(v) ? v : 45; },
+	get shaderStrength() { const v = parseInt(localStorage.getItem('jarvis.shaderStrength'), 10); return Number.isFinite(v) ? v : 38; },
 	set shaderStrength(v) { localStorage.setItem('jarvis.shaderStrength', String(v)); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
@@ -3351,18 +3351,47 @@ document.getElementById('skinRandom').addEventListener('click', () => {
 const SHADER_VERT = 'attribute vec2 a_position;void main(){gl_Position=vec4(a_position,0.0,1.0);}';
 
 const SHADER_FRAG = [
+	/* highp where it exists. The ribbons are wide, low-contrast gradients and
+	   mediump's ~10-bit mantissa stair-steps visibly across them. */
+	'#ifdef GL_FRAGMENT_PRECISION_HIGH',
+	'precision highp float;',
+	'#else',
 	'precision mediump float;',
+	'#endif',
 	'uniform vec3 u_colors[4];',
 	'uniform vec4 u_scene;',   // resolution.xy, time, colour count
-	'uniform vec4 u_shape;',   // scale, intensity, seed, drift
-	'uniform vec4 u_extra;',   // vignette, grain, pointer presence, pointer strength
+	'uniform vec4 u_field;',   // warp noise scale, warp amount, seed, evolve rate
+	'uniform vec4 u_finish;',  // vignette, grain, filament lift, ribbon width
+	'uniform vec4 u_point;',   // presence, strength, radius, gamma
 	'uniform vec2 u_mouse;',
-	/* Dave Hoskins' hash12. The cheaper multiply hash shows a faint
-	   axis-aligned mesh at integer fragment coords, which over a flat field
-	   reads as a net rather than as grain. */
+	'float hash21(vec2 p){p=fract(p*vec2(234.34,435.345));p+=dot(p,p+34.23);return fract(p.x*p.y);}',
+	/* Dave Hoskins' hash12 for the grain. The multiply hash above is fine
+	   inside value noise but shows a faint axis-aligned mesh at integer
+	   fragment coords, which over a flat field reads as a net. */
 	'float grainHash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}',
-	/* WebGL1 forbids indexing a uniform array by a non-constant in a fragment
-	   shader, hence the fixed loop with a guard rather than colors[i]. */
+	'float noise(vec2 p){',
+	'  vec2 i=floor(p),f=fract(p);',
+	'  vec2 u=f*f*(3.0-2.0*f);',
+	'  return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),u.x),',
+	'             mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),u.x),u.y);',
+	'}',
+	/* Three octaves at a 0.45 falloff, not the usual four at 0.5. This noise
+	   only bends the ribbons; carrying its fine detail into them turns silk
+	   into smoke, which is exactly what the first attempt looked like. */
+	'float fbm(vec2 p){',
+	'  float v=0.0,a=0.5;',
+	'  for(int i=0;i<3;i++){v+=a*noise(p);p=p*2.03+vec2(17.0,9.2);a*=0.45;}',
+	'  return v;',
+	'}',
+	/* One ribbon: a wavy line with a Gaussian falloff either side, so it has a
+	   bright core and no edge. Two sines at different rates keep it from
+	   reading as a plain sine wave. */
+	'float band(vec2 p,float ang,float off,float freq,float amp,float width,float phase){',
+	'  float c=cos(ang),s=sin(ang);',
+	'  vec2 q=mat2(c,-s,s,c)*p;',
+	'  float y=q.y-off-amp*sin(q.x*freq+phase)-amp*0.45*sin(q.x*freq*1.9-phase*0.7);',
+	'  return exp(-y*y/(width*width));',
+	'}',
 	'vec3 palette(float x){',
 	'  float n=max(u_scene.w-1.0,1.0);',
 	'  float f=clamp(x,0.0,1.0)*n;',
@@ -3377,20 +3406,44 @@ const SHADER_FRAG = [
 	'  float t=u_scene.z;',
 	'  vec2 screenUv=gl_FragCoord.xy/res;',
 	'  vec2 p=(gl_FragCoord.xy-0.5*res)/min(res.x,res.y);',
-	/* The pointer, in the same aspect-corrected space as p, so the push is
-	   even rather than stretched on a wide window. */
-	'  vec2 cursor=(0.5*u_mouse*res)/min(res.x,res.y);',
-	'  p+=cursor*u_extra.z*u_extra.w*0.55;',
-	'  p*=u_shape.x;',
-	'  p+=u_shape.w*vec2(sin(t*0.31),cos(t*0.23));',
-	'  float k=2.0+u_shape.y*6.0;',
-	'  float v=sin(p.x*k+t)+sin(p.y*k*0.8-t*0.7)+sin((p.x+p.y)*k*0.6+t*0.5)+sin(length(p)*k*1.2-t);',
-	'  vec3 col=palette(0.5+0.5*sin(v+u_shape.z));',
-	/* To --bg, not to black: in the light theme a black vignette turns the
-	   corners grey and the whole page looks dirty. */
+	/* A hint of whole-field parallax for depth. An earlier version used 0.55
+	   here and nothing else, which is why it read as one flat sheet sliding
+	   around rather than as anything responding. */
+	'  p+=u_mouse*u_point.x*0.045;',
+	/* The real pointer interaction: a Gaussian pocket that twists the ribbons
+	   passing under the cursor and fades to nothing a short way out. Gaussian
+	   rather than smoothstep so the pocket has no edge — a visible circle
+	   following the mouse looks like a bug rather than a light. */
+	'  vec2 cur=(0.5*u_mouse*res)/min(res.x,res.y);',
+	'  vec2 dv=p-cur;',
+	'  float dd=dot(dv,dv);',
+	'  float infl=u_point.x*exp(-dd/max(u_point.z*u_point.z,0.0001));',
+	'  float a=infl*u_point.y*1.5;',
+	'  float cs=cos(a),sn=sin(a);',
+	'  p=cur+mat2(cs,-sn,sn,cs)*dv;',
+	/* Time goes INSIDE the noise domain and into each ribbon's phase, at a
+	   different rate and direction for each. Advancing p instead only slides
+	   the picture about, which is the whole reason the first attempt looked
+	   like a moving photograph rather than something alive. */
+	'  float e=u_field.w*t;',
+	'  vec2 w=vec2(fbm(p*u_field.x+vec2(0.0,e*0.22)),',
+	'             fbm(p*u_field.x+vec2(3.7,1.9)-vec2(e*0.18,0.0)))-0.5;',
+	'  vec2 pw=p+w*u_field.y;',
+	'  float bw=u_finish.w;',
+	/* A dim wide wash so the field is never bare, then three narrow ribbons
+	   over it at crossing angles. Their weights sum well short of 1 so the
+	   overlaps read as brighter light rather than clipping to a flat plateau. */
+	'  float lum=band(pw,-0.20,0.05,0.70,0.34,bw*3.4,e*0.23)*0.15;',
+	'  lum+=band(pw,-0.34,0.10,1.25,0.30,bw,e*0.55)*0.85;',
+	'  lum+=band(pw,0.22,-0.22,0.95,0.26,bw*0.70,-e*0.42+2.1)*0.62;',
+	'  lum+=band(pw,0.62,0.30,1.65,0.20,bw*0.46,e*0.33+4.2)*0.46;',
+	'  lum+=infl*0.55;',
+	'  float v=pow(clamp(lum,0.0,1.0),u_point.w);',
+	'  vec3 col=palette(v);',
+	'  col+=(u_colors[3]-u_colors[0])*pow(v,3.5)*u_finish.z;',
 	'  float vd=length(screenUv-0.5)*1.41421356;',
-	'  col=mix(col,u_colors[0],u_extra.x*smoothstep(0.30,1.0,vd));',
-	'  col+=(grainHash(gl_FragCoord.xy+vec2(u_shape.z*17.0,u_shape.z*31.0))-0.5)*u_extra.y;',
+	'  col=mix(col,u_colors[0],u_finish.x*smoothstep(0.30,1.0,vd));',
+	'  col+=(grainHash(gl_FragCoord.xy+vec2(u_field.z*17.0,u_field.z*31.0))-0.5)*u_finish.y;',
 	'  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);',
 	'}',
 ].join('\n');
@@ -3413,17 +3466,46 @@ function cssRgb(token) {
 }
 const mixRgb = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
-/* Four stops from the app's own two colours. The first is the background
- * itself, so roughly half the field is indistinguishable from a plain page
- * and only the peaks carry any accent — which is what keeps text on top of it
- * readable. Everything scales with one strength, so turning it down turns it
- * down evenly rather than washing out one stop first. */
+/* A single hue makes a ramp; two make a field with somewhere to travel.
+ * The second is the accent rotated round the wheel a little — far enough to
+ * read as a different light, close enough that it cannot clash with a skin
+ * whose accent this is derived from. */
+function rotateHue(rgb, turn) {
+	const [r, g, b] = rgb;
+	const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+	const dl = max - min;
+	let h = 0;
+	const sat = dl === 0 ? 0 : dl / (1 - Math.abs(2 * l - 1));
+	if (dl !== 0) {
+		if (max === r) h = ((g - b) / dl) % 6;
+		else if (max === g) h = (b - r) / dl + 2;
+		else h = (r - g) / dl + 4;
+	}
+	h = (((h / 6) + turn) % 1 + 1) % 1;
+	const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs(((h * 6) % 2) - 1)), m = l - c / 2;
+	const seg = Math.floor(h * 6);
+	const t = seg === 0 ? [c, x, 0] : seg === 1 ? [x, c, 0] : seg === 2 ? [0, c, x]
+		: seg === 3 ? [0, x, c] : seg === 4 ? [x, 0, c] : [c, 0, x];
+	return [t[0] + m, t[1] + m, t[2] + m];
+}
+
+/* Four stops from the app's own colours. The first IS the page background,
+ * because the field spends most of its range down there — that is what keeps
+ * text on top of it readable. Everything scales with one strength so turning
+ * it down turns it down evenly rather than washing out a stop at a time. */
 function shaderPalette() {
-	const k = Math.max(0, Math.min(100, store.shaderStrength)) / 100;
 	const bg = cssRgb('--bg');
+	/* A light ground has far less headroom: anything mixed off a near-white
+	 * background is DARKER than it, so the same strength that reads as light
+	 * on the dark theme reads as a stain on the light one. Judge it from the
+	 * background's own luminance rather than from the theme name, so a skin
+	 * that lightens --bg gets the same treatment. */
+	const headroom = 0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2] > 0.5 ? 0.5 : 1;
+	const k = (Math.max(0, Math.min(100, store.shaderStrength)) / 100) * headroom;
 	const ring = cssRgb('--ring');
-	const lift = mixRgb(ring, cssRgb('--text'), 0.28);
-	return [bg, mixRgb(bg, ring, 0.10 * k), mixRgb(bg, ring, 0.30 * k), mixRgb(bg, lift, 0.34 * k)];
+	const second = rotateHue(ring, -0.085);
+	const lift = mixRgb(ring, cssRgb('--text'), 0.30);
+	return [bg, mixRgb(bg, second, 0.16 * k), mixRgb(bg, ring, 0.42 * k), mixRgb(bg, lift, 0.72 * k)];
 }
 
 let shaderHandle = null;
@@ -3476,13 +3558,24 @@ function initShaderBackdrop() {
 	const uni = {
 		colors: gl.getUniformLocation(prog, 'u_colors'),
 		scene: gl.getUniformLocation(prog, 'u_scene'),
-		shape: gl.getUniformLocation(prog, 'u_shape'),
-		extra: gl.getUniformLocation(prog, 'u_extra'),
+		field: gl.getUniformLocation(prog, 'u_field'),
+		finish: gl.getUniformLocation(prog, 'u_finish'),
+		point: gl.getUniformLocation(prog, 'u_point'),
 		mouse: gl.getUniformLocation(prog, 'u_mouse'),
 	};
 
-	const SCALE = 1.5, INTENSITY = 0.48, SEED = 7, DRIFT = 0.156;
-	const VIGNETTE = 0.55, GRAIN = 0.03, PUSH = 0.65, TIME_SCALE = 0.86;
+	const SCALE = 1.3, WARP = 0.55, SEED = 7, EVOLVE = 0.30;
+	/* Ribbon width is in the same units as the field, where the short edge of
+	 * the window spans 1.0 — so 0.085 is a narrow streak. An early pass used
+	 * 0.30 and the ribbons filled the screen and clipped to a flat slab. */
+	const VIGNETTE = 0.55, GRAIN = 0.028, FILAMENT = 0.55, BAND_WIDTH = 0.085;
+	/* Radius is in those units too, so the pocket under the pointer is a
+	 * circle whatever shape the window is. Strength 0.35 bends the ribbons;
+	 * 1.0 made a whirlpool that followed the mouse around. */
+	/* Gamma pushes the mid-range down so the ribbons read as light on a
+	 * dark page rather than as a painted wash across it. At 1.05 the field
+	 * was legible everywhere and competed with the content. */
+	const POINT_STRENGTH = 0.35, POINT_RADIUS = 0.38, GAMMA = 1.55, TIME_SCALE = 1.0, FRAME_MS = 1000 / 30;
 
 	let targetX = 0, targetY = 0, targetOn = 0;
 	let mx = 0, my = 0, presence = 0;
@@ -3494,13 +3587,18 @@ function initShaderBackdrop() {
 	pushPalette();
 
 	function sizeCanvas() {
-		const dpr = Math.min(window.devicePixelRatio || 1, 2);
-		/* Capped at two megapixels. A full-screen fragment shader at native
-		 * resolution on a 3x phone is most of a frame budget for something
-		 * nobody is looking at directly. */
+		/* 1.5x, not the device's full ratio. Every feature in this field is a
+		 * soft gradient wider than a hundred pixels; there is nothing in it
+		 * that a retina buffer would resolve and the grain hides the
+		 * resampling. */
+		const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+		/* And capped at 1.2 megapixels on top of that. A full-screen fragment
+		 * shader is most of a frame budget for something nobody is looking at
+		 * directly, and this one runs two three-octave fbms and four
+		 * exponentials per pixel. */
 		const rawW = Math.max(1, Math.round(window.innerWidth * dpr));
 		const rawH = Math.max(1, Math.round(window.innerHeight * dpr));
-		const fit = Math.min(1, Math.sqrt(2000000 / Math.max(1, rawW * rawH)));
+		const fit = Math.min(1, Math.sqrt(1200000 / Math.max(1, rawW * rawH)));
 		const w = Math.max(1, Math.round(rawW * fit));
 		const h = Math.max(1, Math.round(rawH * fit));
 		if (canvas.width !== w || canvas.height !== h) {
@@ -3513,6 +3611,12 @@ function initShaderBackdrop() {
 	function draw(now) {
 		raf = 0;
 		if (!running) return;
+		/* Half the frames. Nothing here moves fast enough to tell 30fps from
+		 * 60 — the ribbons take the better part of a minute to cross the
+		 * screen — and it halves what a backdrop costs a battery. The pointer
+		 * easing is written against dt, so it follows at the same speed
+		 * either way. */
+		if (last !== null && now - last < FRAME_MS) { request(); return; }
 		const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1);
 		last = now;
 		/* Framerate-independent easing. A plain `+= delta * 0.1` chases the
@@ -3523,8 +3627,9 @@ function initShaderBackdrop() {
 		presence += (targetOn - presence) * follow;
 		sizeCanvas();
 		gl.uniform4f(uni.scene, canvas.width, canvas.height, still ? 0 : ((now - start) / 1000) * TIME_SCALE, 4);
-		gl.uniform4f(uni.shape, SCALE, INTENSITY, SEED, still ? 0 : DRIFT);
-		gl.uniform4f(uni.extra, VIGNETTE, GRAIN, presence, PUSH);
+		gl.uniform4f(uni.field, SCALE, WARP, SEED, still ? 0 : EVOLVE);
+		gl.uniform4f(uni.finish, VIGNETTE, GRAIN, FILAMENT, BAND_WIDTH);
+		gl.uniform4f(uni.point, presence, POINT_STRENGTH, POINT_RADIUS, GAMMA);
 		gl.uniform2f(uni.mouse, mx, my);
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
 		const settling = Math.abs(targetX - mx) > 0.001 || Math.abs(targetY - my) > 0.001 || Math.abs(targetOn - presence) > 0.001;
