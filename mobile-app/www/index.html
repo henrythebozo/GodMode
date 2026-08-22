@@ -398,7 +398,45 @@
 	.dsec { padding: 20px 26px; }
 	.dcol .dsec + .dsec { border-top: 1px solid var(--line-soft); }
 	.herotop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-	.statusbig { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin-top: 6px; }
+
+	/* ------------------------- the editorial hero -------------------------
+	   Studied off a 21st.dev editorial layout, then rebuilt in this app's own
+	   language rather than installed: the moves that read as considered there
+	   are a real type SCALE (one display size against one micro size, nothing
+	   in between), letterspaced caps for metadata, hairline rules doing the
+	   dividing instead of boxes, and generous space around a single focal
+	   point. None of that needs a component — it needs restraint. */
+	.heroeyebrow {
+		display: flex; align-items: center; gap: 9px;
+		font-size: 10.5px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase;
+		/* --dim, not --dim-2. Faint tiny caps are the signature premium move
+		   and they fail WCAG AA outright: --dim-2 measured 3.19:1 on dark and
+		   2.31:1 on light against the 4.5 these sizes need. --dim clears it at
+		   6.2 and 5.1 and looks no different at a glance. */
+		color: var(--dim); margin-bottom: 9px;
+	}
+	.heroeyebrow .sep { opacity: 0.5; font-weight: 400; }
+	/* 44px against the 10.5px eyebrow is the contrast that does the work. At
+	   the old 26px everything on this screen sat within one size of everything
+	   else, which is exactly what made it read as unconsidered. */
+	.statusbig { font-size: 44px; font-weight: 680; letter-spacing: -0.035em; line-height: 1.02; margin-top: 0; }
+	/* The instrument strip. It fills the ~200px of dead space that used to sit
+	   between the caption and the composer, and it earns the room by being
+	   live: what Jarvis is running on, what it remembers, what you have spent. */
+	.instrument {
+		display: flex; width: 100%; max-width: 640px; margin: 0 auto;
+		border-top: 1px solid var(--line-soft);
+		margin-bottom: 18px;
+	}
+	.instrument > div { flex: 1; min-width: 0; padding: 15px 20px; border-left: 1px solid var(--line-soft); }
+	.instrument > div:first-child { border-left: none; padding-left: 0; }
+	.instrument > div:last-child { padding-right: 0; }
+	.ikey { font-size: 9.5px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); }
+	.ival {
+		font-size: 15px; font-weight: 560; letter-spacing: -0.012em; margin-top: 6px; color: var(--text);
+		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+	}
+	.ival .unit { color: var(--dim); font-weight: 450; font-size: 12.5px; letter-spacing: 0; margin-left: 3px; }
 	.statussub { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--dim); font-size: 12.5px; }
 	/* 10px, not 8px: both children are .iconbtn, whose hit areas each extend
 	   5px past the painted chip — an 8px gap left them overlapping by 2px. */
@@ -1813,7 +1851,12 @@
 		   from the scale rather than hand-tuning it (-40px, for 0.78) means
 		   changing the scale cannot leave a hole under the orb again. */
 		#orbWrap { --orb-scale: 0.78; margin-bottom: calc(180px * (var(--orb-scale) - 1)); }
-		.statusbig { font-size: 21px; }
+		.statusbig { font-size: 30px; letter-spacing: -0.03em; }
+		.heroeyebrow { font-size: 9.5px; gap: 7px; margin-bottom: 7px; }
+		.instrument > div { padding: 12px 12px; }
+		.instrument > div:first-child { padding-left: 0; }
+		.ikey { font-size: 8.5px; letter-spacing: 0.12em; }
+		.ival { font-size: 13px; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
 		.gauge svg { width: 50px; height: 50px; }
@@ -1936,6 +1979,7 @@
 					<div class="heroscreen">
 							<div class="herotop">
 								<div>
+									<div class="heroeyebrow"><span id="dashDate">—</span><span class="sep">/</span><span id="dashClock">—</span></div>
 									<div class="statusbig" id="dashGreeting">Hello.</div>
 									<div class="statussub"><span class="dot ok" id="dashStatusDot"></span><span id="dashStatusSub">How can I help you today?</span></div>
 								</div>
@@ -1970,6 +2014,11 @@
 									<button type="button" id="retryBtn" class="ghost small" hidden>Retry</button>
 									<button type="button" id="usageChip" class="usagechip" hidden title="Tokens and cost"></button>
 								</div>
+							</div>
+							<div class="instrument" aria-label="Session status">
+								<div><div class="ikey">Running on</div><div class="ival" id="metaModel">—</div></div>
+								<div><div class="ikey">Remembers</div><div class="ival" id="metaMemory">—</div></div>
+								<div><div class="ikey">Spent</div><div class="ival" id="metaSpend">—</div></div>
 							</div>
 							<div class="composer">
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
@@ -6888,7 +6937,45 @@ function updateDashStatus() {
 	document.getElementById('dashGreeting').textContent = greetingPhrase();
 	document.getElementById('dashStatusSub').textContent = ok ? 'How can I help you today?' : 'Add an API key in Settings to get started.';
 	document.getElementById('dashStatusDot').className = 'dot ' + (ok ? 'ok' : 'warn');
+	updateDashMeta();
 }
+/* The hero's live metadata. Deliberately three things and no more: a fourth
+ * column turns a considered strip into a dashboard of its own. */
+function updateDashMeta() {
+	const d = new Date();
+	const date = document.getElementById('dashDate');
+	const clock = document.getElementById('dashClock');
+	if (date) date.textContent = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+	if (clock) clock.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+	const model = document.getElementById('metaModel');
+	if (model) model.textContent = store.models.length ? shortModelName(store.models[0]) : 'No model yet';
+
+	const mem = document.getElementById('metaMemory');
+	if (mem) {
+		const n = store.vault.length;
+		mem.innerHTML = '';
+		mem.append(String(n));
+		const u = document.createElement('span');
+		u.className = 'unit';
+		u.textContent = n === 1 ? 'note' : 'notes';
+		mem.append(u);
+	}
+
+	const spend = document.getElementById('metaSpend');
+	if (spend) {
+		/* store.usage is ONE cumulative record since the last reset, not a list
+		 * of calls — the first cut filtered it as an array, threw, and left the
+		 * column showing its placeholder for ever. There is no per-day figure
+		 * in there, so this says "spent" and means all of it. */
+		const cost = (store.usage && store.usage.cost) || 0;
+		spend.textContent = '$' + cost.toFixed(cost > 0 && cost < 1 ? 4 : 2);
+	}
+}
+/* Once a minute is enough for a clock showing minutes, and it costs nothing
+ * when the tab is hidden because the browser throttles it there anyway. */
+setInterval(updateDashMeta, 30000);
+
 
 const ICON_WEATHER = '<path d="M17 15a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.7A4 4 0 0 0 7 16h10Z" />';
 const ICON_REMIND = '<circle cx="12" cy="13" r="7" /><path d="M12 9v4l2.5 1.5M9 3h6" />';
