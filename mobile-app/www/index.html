@@ -413,7 +413,7 @@
 		transform: scale(var(--orb-scale, 1)); transform-origin: top center;
 		/* The body overflows the 180px box by ~50px; the margin reserves it so
 		   the shadow pool and the state label sit below the feet, not the chin. */
-		margin-bottom: calc(230px * var(--orb-scale, 1) - 180px);
+		margin-bottom: calc(240px * var(--orb-scale, 1) - 180px);
 	}
 
 	/* a calm dark glass sphere with a glowing rim — the "body" */
@@ -421,7 +421,7 @@
 		position: absolute;
 		inset: 16px;
 		border-radius: 50%;
-		background: radial-gradient(circle at 50% 42%, var(--skin-body-a, #16161a) 0%, var(--skin-body-b, #060607) 68%, #000 100%);
+		background: radial-gradient(circle at 38% 26%, #3d3d44 0%, var(--skin-body-a, #16161a) 30%, var(--skin-body-b, #060607) 70%, #000 100%);
 		border: 2px solid var(--skin-rim, rgba(255, 255, 255, 0.92));
 		box-shadow: var(--orb-halo);
 		transition: border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
@@ -430,58 +430,120 @@
 	/* The look vars live INSIDE the keyframes: an inline transform on #core
 	   would be overridden by this animation every frame, so the animation
 	   carries the gaze itself. Custom properties resolve per frame. */
+	/* The helmet's gloss: one blurred specular streak. ::after belongs to the
+	   idle shimmer, so this lives on ::before. */
+	#core::before {
+		content: ''; position: absolute; left: 14%; top: 5%; width: 46%; height: 30%;
+		border-radius: 50%; pointer-events: none;
+		background: linear-gradient(155deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0) 68%);
+		filter: blur(3px); transform: rotate(-12deg);
+	}
 	@keyframes breathe {
 		0%, 100% { transform: translate(var(--look-x, 0px), var(--look-y, 0px)) rotate(var(--look-r, 0deg)) scale(0.985); }
 		50% { transform: translate(var(--look-x, 0px), var(--look-y, 0px)) rotate(var(--look-r, 0deg)) scale(1.015); }
 	}
 
 	/* ------------------------------ the body ------------------------------ */
-	/* The head is untouched: every scene, prop and geometry test keys off the
-	   180px wrap and the sphere at inset 16px, so the robot is built BELOW
-	   that box and the wrap reserves the extra height with a margin. Skin
-	   tokens do the colouring, so the customizer recolours the body for free. */
-	#robot { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--rb-lean, 0deg)); transform-origin: 50% 160px; }
+	/* A humanoid this time — helmet head, broad shoulders, arms held out,
+	   hips and thighs fading into the light pool — after the first attempt's
+	   mascot proportions were (rightly) rejected. The head is still the same
+	   #core the scenes, hats and geometry tests target: it is wrapped in a
+	   #head group and the whole GROUP is transformed, so every accessory and
+	   eye scales and moves with it and no prop needed new coordinates. */
+	#head { position: absolute; inset: 0; transform: translate(0, -50px) scale(0.47, 0.58); transform-origin: 90px 90px; }
+	/* The backlight from the reference: a soft disc of the glow colour behind
+	   the figure, so the silhouette reads as lit from behind. */
+	#backGlow {
+		position: absolute; left: 50%; top: -26px; width: 224px; height: 224px; margin-left: -112px;
+		border-radius: 50%; pointer-events: none;
+		background: radial-gradient(circle, rgb(var(--skin-glow) / 0.34) 0%, rgb(var(--skin-glow) / 0.10) 42%, transparent 70%);
+	}
+	#robot { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--rb-lean, 0deg)); transform-origin: 50% 140px; }
+	/* Neck struts and a collar between helmet and shell. */
+	.rb-strut {
+		position: absolute; top: 72px; width: 5px; height: 24px; border-radius: 3px;
+		background: linear-gradient(180deg, #34343a, #101013);
+	}
+	.rb-strut.rs-l { left: 80px; transform: rotate(10deg); }
+	.rb-strut.rs-r { left: 95px; transform: rotate(-10deg); }
 	.rb-neck {
-		position: absolute; left: 50%; top: 149px; width: 26px; height: 16px; margin-left: -13px;
+		position: absolute; left: 50%; top: 90px; width: 34px; height: 11px; margin-left: -17px;
 		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
 		border: 2px solid var(--skin-rim, #dd8163); border-radius: 7px;
 		transition: border-color 0.5s ease;
 	}
+	/* Shoulder pads sit behind the torso's top corners. */
+	.rb-shoulder {
+		position: absolute; top: 98px; width: 30px; height: 34px; border-radius: 14px;
+		background: radial-gradient(circle at 40% 28%, var(--skin-body-a, #16161a), var(--skin-body-b, #060607) 80%);
+		border: 2px solid var(--skin-rim, #dd8163);
+		transition: border-color 0.5s ease;
+	}
+	.rb-shoulder.rs-l { left: 50%; margin-left: -64px; transform: rotate(-20deg); }
+	.rb-shoulder.rs-r { left: 50%; margin-left: 32px; transform: rotate(20deg); }
+	/* Broad chest tapering to the waist — the asymmetric border-radius is
+	   what gives it shoulders without a clip-path. */
 	.rb-torso {
-		position: absolute; left: 50%; top: 160px; width: 96px; height: 62px; margin-left: -48px;
-		background: radial-gradient(circle at 50% 30%, var(--skin-body-a, #16161a) 0%, var(--skin-body-b, #060607) 74%, #000 100%);
-		border: 2px solid var(--skin-rim, #dd8163); border-radius: 32px 32px 24px 24px;
-		box-shadow: 0 10px 26px rgb(var(--skin-glow) / 0.16), inset 0 0 22px rgba(0, 0, 0, 0.55);
-		/* Recolours on the head's clock, so a skin change sweeps the whole
-		   robot at once instead of the torso snapping ahead of the face. */
+		position: absolute; left: 50%; top: 98px; width: 110px; height: 80px; margin-left: -55px;
+		background: radial-gradient(circle at 50% 24%, var(--skin-body-a, #16161a) 0%, var(--skin-body-b, #060607) 70%, #000 100%);
+		border: 2px solid var(--skin-rim, #dd8163);
+		border-radius: 52px 52px 30px 30px / 58px 58px 26px 26px;
+		box-shadow: 0 12px 28px rgb(var(--skin-glow) / 0.16), inset 0 -14px 24px rgba(0, 0, 0, 0.6), inset 0 10px 18px rgba(255, 255, 255, 0.05);
 		transition: border-color 0.5s ease, box-shadow 0.5s ease;
 	}
-	/* The chest light breathes on the same clock as the head, so the two read
-	   as one machine rather than two idle loops that happen to overlap. */
 	.rb-chest {
-		position: absolute; left: 50%; top: 20px; width: 13px; height: 13px; margin-left: -6.5px;
+		position: absolute; left: 50%; top: 22px; width: 12px; height: 12px; margin-left: -6px;
 		border-radius: 50%; background: var(--skin-eye, #fff);
 		box-shadow: 0 0 12px 3px rgb(var(--skin-eye-glow) / 0.5);
 		animation: chestPulse 4.5s ease-in-out infinite;
 	}
 	@keyframes chestPulse { 0%, 100% { transform: scale(0.9); opacity: 0.82; } 50% { transform: scale(1.08); opacity: 1; } }
+	/* Two-segment arms — upper arm out from the shoulder, forearm bent back
+	   down at the elbow — because a single rotated capsule reads as a flipper,
+	   which is exactly what the first cut looked like. The mitt is a rounded
+	   block, not fingers: fingers at 20px are noise. */
 	.rb-arm {
-		/* Hung from the shoulder, not floated beside the head: the tops sit
-		   just under the torso's top edge so nothing pokes past the shoulder
-		   line and reads as a spike. */
-		position: absolute; top: 173px; width: 12px; height: 34px; border-radius: 999px;
+		position: absolute; top: 106px; width: 15px; height: 36px; border-radius: 999px;
 		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
 		border: 2px solid var(--skin-rim, #dd8163);
 		transition: opacity 0.4s ease, border-color 0.5s ease;
+		transform-origin: top center;
 	}
-	.rb-arm.rb-l { left: 50%; margin-left: -60px; transform: rotate(7deg); transform-origin: top center; }
-	.rb-arm.rb-r { left: 50%; margin-left: 48px; transform: rotate(-7deg); transform-origin: top center; }
+	.rb-arm.rb-l { left: 50%; margin-left: -72px; transform: rotate(34deg); }
+	.rb-arm.rb-r { left: 50%; margin-left: 57px; transform: rotate(-34deg); }
+	.rb-arm .rb-fore {
+		position: absolute; left: 0; top: 30px; width: 14px; height: 34px; border-radius: 999px;
+		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163);
+		transform-origin: 7px 4px;
+		transition: border-color 0.5s ease;
+	}
+	.rb-arm.rb-l .rb-fore { transform: rotate(-44deg); }
+	.rb-arm.rb-r .rb-fore { transform: rotate(44deg); }
 	.rb-arm i {
-		position: absolute; left: 50%; bottom: -8px; width: 15px; height: 15px; margin-left: -7.5px;
-		border-radius: 50%; background: radial-gradient(circle at 40% 32%, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		position: absolute; left: 50%; bottom: -14px; width: 21px; height: 18px; margin-left: -10.5px;
+		border-radius: 8px; background: radial-gradient(circle at 40% 30%, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
 		border: 2px solid var(--skin-rim, #dd8163);
 		transition: border-color 0.5s ease;
 	}
+	/* Hip block, joints, and thighs that fade out rather than ending in feet:
+	   the figure is cropped by light, the way the reference card crops it. */
+	.rb-hip {
+		position: absolute; left: 50%; top: 176px; width: 46px; height: 15px; margin-left: -23px;
+		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163); border-radius: 8px;
+		transition: border-color 0.5s ease;
+	}
+	.rb-leg {
+		position: absolute; top: 190px; width: 21px; height: 44px; border-radius: 10px;
+		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163);
+		-webkit-mask-image: linear-gradient(#000 45%, transparent 96%);
+		mask-image: linear-gradient(#000 45%, transparent 96%);
+		transition: border-color 0.5s ease;
+	}
+	.rb-leg.rl-l { left: 50%; margin-left: -27px; }
+	.rb-leg.rl-r { left: 50%; margin-left: 6px; }
 	/* The scenes pop out their own arms (to hold the holo, throw the ball,
 	   feed). Two pairs of arms is a spider, so the body's own retire for the
 	   duration and come back when the scene ends. */
@@ -490,10 +552,16 @@
 	#orbWrap.idle[data-scene="eat"] .rb-arm { opacity: 0; }
 
 	/* the "face" — two soft eyes, expressive per state */
-	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; transform: translate(var(--gaze-x, 0px), var(--gaze-y, 0px)); }
+	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10%; transform: translate(var(--gaze-x, 0px), var(--gaze-y, 0px)); }
 	.eye {
-		width: 11%; height: 28%; border-radius: 999px; background: var(--skin-eye, #fff);
-		box-shadow: 0 0 10px 2px rgb(var(--skin-eye-glow) / 0.55);
+		/* Dot-matrix panels, like the reference — drawn as a repeating dot
+		   gradient so the skin's eye colour still paints them. Wider than
+		   tall now; the blink/squint animations scale them the same way. */
+		width: 14%; height: 12%; border-radius: 5px;
+		background-color: rgba(0, 0, 0, 0.35);
+		background-image: radial-gradient(circle, var(--skin-eye, #fff) 30%, transparent 42%);
+		background-size: 7px 7px; background-position: center;
+		box-shadow: 0 0 10px 2px rgb(var(--skin-eye-glow) / 0.45);
 		transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
 		animation: blink 5.5s ease-in-out infinite;
 	}
@@ -1875,7 +1943,7 @@
 		   small it is drawn — the margin cancels the difference. Deriving it
 		   from the scale rather than hand-tuning it (-40px, for 0.78) means
 		   changing the scale cannot leave a hole under the orb again. */
-		#orbWrap { --orb-scale: 0.72; margin-bottom: calc(230px * var(--orb-scale) - 180px); }
+		#orbWrap { --orb-scale: 0.72; margin-bottom: calc(240px * var(--orb-scale) - 180px); }
 		.statusbig { font-size: 21px; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
@@ -2031,9 +2099,10 @@
 							</div>
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
-									<div id="robot"><span class="rb-neck"></span><span class="rb-arm rb-l"><i></i></span><span class="rb-arm rb-r"><i></i></span><span class="rb-torso"><i class="rb-chest"></i></span></div>
-									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
-									<div id="orbKit"><span class="ac ac-hat"></span><span class="ac ac-face"></span><span class="ac ac-neck"></span></div>
+									<span id="backGlow"></span>
+									<div id="robot"><span class="rb-strut rs-l"></span><span class="rb-strut rs-r"></span><span class="rb-neck"></span><span class="rb-shoulder rs-l"></span><span class="rb-shoulder rs-r"></span><span class="rb-arm rb-l"><span class="rb-fore"><i></i></span></span><span class="rb-arm rb-r"><span class="rb-fore"><i></i></span></span><span class="rb-torso"><i class="rb-chest"></i></span><span class="rb-hip"></span><span class="rb-leg rl-l"></span><span class="rb-leg rl-r"></span></div>
+									<div id="head"><div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
+									<div id="orbKit"><span class="ac ac-hat"></span><span class="ac ac-face"></span><span class="ac ac-neck"></span></div></div>
 									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
 									<div class="handarm arm-l"><span class="hand"></span></div>
 									<div class="handarm arm-r"><span class="hand"><i class="sc-food"></i></span></div>
@@ -4204,11 +4273,13 @@ applyNavCollapsed();
 const gaze = { tx: 0, ty: 0, x: 0, y: 0, raf: 0, last: null, known: false };
 
 function gazeApply() {
-	orbWrap.style.setProperty('--gaze-x', (gaze.x * 8).toFixed(2) + 'px');
-	orbWrap.style.setProperty('--gaze-y', (gaze.y * 5).toFixed(2) + 'px');
-	orbWrap.style.setProperty('--look-x', (gaze.x * 6).toFixed(2) + 'px');
-	orbWrap.style.setProperty('--look-y', (gaze.y * 4).toFixed(2) + 'px');
-	orbWrap.style.setProperty('--look-r', (gaze.x * 5).toFixed(2) + 'deg');
+	/* The head group renders at roughly half scale, so the pixel shares are
+	 * set in HEAD space at about double what should reach the screen. */
+	orbWrap.style.setProperty('--gaze-x', (gaze.x * 14).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--gaze-y', (gaze.y * 9).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-x', (gaze.x * 11).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-y', (gaze.y * 7).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-r', (gaze.x * 7).toFixed(2) + 'deg');
 	orbWrap.style.setProperty('--rb-lean', (gaze.x * 2.2).toFixed(2) + 'deg');
 }
 
