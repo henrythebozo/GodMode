@@ -1851,9 +1851,31 @@
 		.qagrid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
 		.gauges { gap: 4px; }
 	}
+	/* ========================= the shader backdrop ==========================
+	   One WebGL canvas behind the whole window. It sits ABOVE body's flat
+	   --bg and BELOW the shell, so the sidebar (which paints its own --bg)
+	   stays a calm solid rail and the field shows behind the orb — which is
+	   the "behind Jarvis" that was asked for.
+
+	   z-index 0/1 is all it takes: dialogs are in the top layer and the intro
+	   is at 999, so nothing else in the stack has to move. */
+	#bgShader {
+		position: fixed; inset: 0; width: 100%; height: 100%;
+		z-index: 0; display: block; pointer-events: none;
+		opacity: 0; transition: opacity 0.8s ease;
+	}
+	#bgShader.on { opacity: 1; }
+	#sidebar, #contentArea { position: relative; z-index: 1; }
+
 </style>
 </head>
 <body>
+
+<!-- Painted by initShaderBackdrop(). aria-hidden and pointer-events:none:
+     it is a backdrop, not content, and must never take a tap meant for the
+     app underneath. -->
+<canvas id="bgShader" aria-hidden="true"></canvas>
+
 
 <div id="introOverlay" hidden>
 	<button type="button" id="introSkip">Skip</button>
@@ -2220,6 +2242,13 @@
 		<p class="hint">Applies everywhere, including the boot intro.</p>
 		<label>Frosted glass<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
 		<p class="hint">Surfaces are flat by default. Raise this to blur and see through them.</p>
+
+		<h3>Backdrop</h3>
+		<div class="row">
+			<label class="inline"><input type="checkbox" id="shaderBgInput" /> Living backdrop — a slow field behind the app that follows your pointer</label>
+		</div>
+		<label>Backdrop strength<div class="rangerow"><input type="range" id="shaderStrengthInput" min="0" max="100" step="1" /><span id="shaderStrengthVal"></span></div></label>
+		<p class="hint" id="shaderHint">Drawn on the GPU from your accent colour, so it follows the theme and the skin. It pauses whenever the tab is in the background, and turns itself off entirely if your device asks for reduced motion.</p>
 
 		<h3>Units</h3>
 		<div class="seg2" id="unitsSeg">
@@ -2854,6 +2883,10 @@ const store = {
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
 	get navCollapsed() { return localStorage.getItem('jarvis.navCollapsed') === '1'; },
 	set navCollapsed(v) { localStorage.setItem('jarvis.navCollapsed', v ? '1' : '0'); },
+	get shaderBg() { return localStorage.getItem('jarvis.shaderBg') !== '0'; },   // on unless turned off
+	set shaderBg(v) { localStorage.setItem('jarvis.shaderBg', v ? '1' : '0'); },
+	get shaderStrength() { const v = parseInt(localStorage.getItem('jarvis.shaderStrength'), 10); return Number.isFinite(v) ? v : 45; },
+	set shaderStrength(v) { localStorage.setItem('jarvis.shaderStrength', String(v)); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
 	/* ---- the business Jarvis is focused on ---- */
@@ -3285,12 +3318,313 @@ document.getElementById('skinRandom').addEventListener('click', () => {
 	setSkin(pick);
 });
 
+/* ==========================================================================
+ * The shader backdrop.
+ *
+ * Ported from a 21st.dev Shader Builder "Plasma" component. That one is React
+ * around plain WebGL, so the GLSL and the context setup came across unchanged
+ * in shape — there was never a library to drop, which is the only reason a
+ * shader belongs in a single file with no build step at all.
+ *
+ * Four things were deliberately cut rather than carried:
+ *
+ *  - The domain warp, and with it fbm(), noise() and two hashes. The preset
+ *    ships warp at 0.0, so every one of those functions was dead code that
+ *    still had to compile on a phone.
+ *  - The five-tap blur. It shades the field five times for a softening this
+ *    palette does not need, and this runs full-screen on a battery.
+ *  - OKLab mixing and the hue rotation. Both exist to fix up a palette chosen
+ *    in the builder; the colours here are read from the app's own tokens, so
+ *    there is nothing to correct.
+ *  - Cursor effects 1–4 (repel, swirl, ripple, glow). "Moves from your mouse
+ *    or finger" is the push: the whole field parallaxes toward the pointer.
+ *    The others distort a patch under it, which is a different thing.
+ *
+ * What was added: the palette comes from --bg and --ring, so the backdrop
+ * follows the theme and every skin instead of being the builder's blue; the
+ * vignette falls to --bg rather than to black, which is the difference
+ * between a soft edge and a grubby one in the light theme; and grain stays,
+ * because a smooth low-contrast gradient bands badly on an 8-bit screen and
+ * a little noise is what dithers it.
+ * ========================================================================== */
+
+const SHADER_VERT = 'attribute vec2 a_position;void main(){gl_Position=vec4(a_position,0.0,1.0);}';
+
+const SHADER_FRAG = [
+	'precision mediump float;',
+	'uniform vec3 u_colors[4];',
+	'uniform vec4 u_scene;',   // resolution.xy, time, colour count
+	'uniform vec4 u_shape;',   // scale, intensity, seed, drift
+	'uniform vec4 u_extra;',   // vignette, grain, pointer presence, pointer strength
+	'uniform vec2 u_mouse;',
+	/* Dave Hoskins' hash12. The cheaper multiply hash shows a faint
+	   axis-aligned mesh at integer fragment coords, which over a flat field
+	   reads as a net rather than as grain. */
+	'float grainHash(vec2 p){vec3 p3=fract(vec3(p.xyx)*0.1031);p3+=dot(p3,p3.yzx+33.33);return fract((p3.x+p3.y)*p3.z);}',
+	/* WebGL1 forbids indexing a uniform array by a non-constant in a fragment
+	   shader, hence the fixed loop with a guard rather than colors[i]. */
+	'vec3 palette(float x){',
+	'  float n=max(u_scene.w-1.0,1.0);',
+	'  float f=clamp(x,0.0,1.0)*n;',
+	'  vec3 col=u_colors[0];',
+	'  for(int i=0;i<3;i++){',
+	'    if(float(i)<n) col=mix(col,u_colors[i+1],smoothstep(0.0,1.0,clamp(f-float(i),0.0,1.0)));',
+	'  }',
+	'  return col;',
+	'}',
+	'void main(){',
+	'  vec2 res=u_scene.xy;',
+	'  float t=u_scene.z;',
+	'  vec2 screenUv=gl_FragCoord.xy/res;',
+	'  vec2 p=(gl_FragCoord.xy-0.5*res)/min(res.x,res.y);',
+	/* The pointer, in the same aspect-corrected space as p, so the push is
+	   even rather than stretched on a wide window. */
+	'  vec2 cursor=(0.5*u_mouse*res)/min(res.x,res.y);',
+	'  p+=cursor*u_extra.z*u_extra.w*0.55;',
+	'  p*=u_shape.x;',
+	'  p+=u_shape.w*vec2(sin(t*0.31),cos(t*0.23));',
+	'  float k=2.0+u_shape.y*6.0;',
+	'  float v=sin(p.x*k+t)+sin(p.y*k*0.8-t*0.7)+sin((p.x+p.y)*k*0.6+t*0.5)+sin(length(p)*k*1.2-t);',
+	'  vec3 col=palette(0.5+0.5*sin(v+u_shape.z));',
+	/* To --bg, not to black: in the light theme a black vignette turns the
+	   corners grey and the whole page looks dirty. */
+	'  float vd=length(screenUv-0.5)*1.41421356;',
+	'  col=mix(col,u_colors[0],u_extra.x*smoothstep(0.30,1.0,vd));',
+	'  col+=(grainHash(gl_FragCoord.xy+vec2(u_shape.z*17.0,u_shape.z*31.0))-0.5)*u_extra.y;',
+	'  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);',
+	'}',
+].join('\n');
+
+/* Resolving a custom property through a probe rather than parsing the token
+ * by hand: getPropertyValue('--ring') hands back whatever was authored (a
+ * hex here, but a skin may set rgb() or a colour name), while `color` on a
+ * real element is always resolved to rgb(). */
+let shaderProbe = null;
+function cssRgb(token) {
+	if (!shaderProbe) {
+		shaderProbe = document.createElement('span');
+		shaderProbe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;pointer-events:none';
+		document.body.append(shaderProbe);
+	}
+	shaderProbe.style.color = 'var(' + token + ')';
+	const m = getComputedStyle(shaderProbe).color.match(/[\d.]+/g);
+	if (!m) return [0, 0, 0];
+	return [+m[0] / 255, +m[1] / 255, +m[2] / 255];
+}
+const mixRgb = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+
+/* Four stops from the app's own two colours. The first is the background
+ * itself, so roughly half the field is indistinguishable from a plain page
+ * and only the peaks carry any accent — which is what keeps text on top of it
+ * readable. Everything scales with one strength, so turning it down turns it
+ * down evenly rather than washing out one stop first. */
+function shaderPalette() {
+	const k = Math.max(0, Math.min(100, store.shaderStrength)) / 100;
+	const bg = cssRgb('--bg');
+	const ring = cssRgb('--ring');
+	const lift = mixRgb(ring, cssRgb('--text'), 0.28);
+	return [bg, mixRgb(bg, ring, 0.10 * k), mixRgb(bg, ring, 0.30 * k), mixRgb(bg, lift, 0.34 * k)];
+}
+
+let shaderHandle = null;
+
+function initShaderBackdrop() {
+	const canvas = document.getElementById('bgShader');
+	/* Every reason not to run: turned off, no WebGL (an old browser, a
+	 * blocked context, a headless run), or a machine that asked for less
+	 * motion. In each case the page keeps the flat --bg it has always had. */
+	if (!store.shaderBg) return null;
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	let gl = null;
+	try { gl = canvas.getContext('webgl', { antialias: false, depth: false, stencil: false, alpha: false }); } catch { gl = null; }
+	if (!gl) return null;
+
+	const compile = (type, src) => {
+		const sh = gl.createShader(type);
+		gl.shaderSource(sh, src);
+		gl.compileShader(sh);
+		if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+			/* A silent compile failure paints black over the whole app, which
+			 * is far worse than no backdrop at all. */
+			console.warn('shader backdrop:', gl.getShaderInfoLog(sh));
+			gl.deleteShader(sh);
+			return null;
+		}
+		return sh;
+	};
+	const vs = compile(gl.VERTEX_SHADER, SHADER_VERT);
+	const fs = vs && compile(gl.FRAGMENT_SHADER, SHADER_FRAG);
+	if (!vs || !fs) return null;
+	const prog = gl.createProgram();
+	gl.attachShader(prog, vs);
+	gl.attachShader(prog, fs);
+	gl.linkProgram(prog);
+	gl.deleteShader(vs);
+	gl.deleteShader(fs);
+	if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.warn('shader backdrop:', gl.getProgramInfoLog(prog)); return null; }
+	gl.useProgram(prog);
+
+	/* One oversized triangle rather than two triangles for a quad: same
+	 * coverage, no seam down the diagonal, three vertices instead of six. */
+	const buf = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+	const attr = gl.getAttribLocation(prog, 'a_position');
+	gl.enableVertexAttribArray(attr);
+	gl.vertexAttribPointer(attr, 2, gl.FLOAT, false, 0, 0);
+
+	const uni = {
+		colors: gl.getUniformLocation(prog, 'u_colors'),
+		scene: gl.getUniformLocation(prog, 'u_scene'),
+		shape: gl.getUniformLocation(prog, 'u_shape'),
+		extra: gl.getUniformLocation(prog, 'u_extra'),
+		mouse: gl.getUniformLocation(prog, 'u_mouse'),
+	};
+
+	const SCALE = 1.5, INTENSITY = 0.48, SEED = 7, DRIFT = 0.156;
+	const VIGNETTE = 0.55, GRAIN = 0.03, PUSH = 0.65, TIME_SCALE = 0.86;
+
+	let targetX = 0, targetY = 0, targetOn = 0;
+	let mx = 0, my = 0, presence = 0;
+	let raf = 0, last = null, running = true;
+	let visible = document.visibilityState === 'visible';
+	const start = performance.now();
+
+	function pushPalette() { gl.uniform3fv(uni.colors, new Float32Array(shaderPalette().flat())); }
+	pushPalette();
+
+	function sizeCanvas() {
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		/* Capped at two megapixels. A full-screen fragment shader at native
+		 * resolution on a 3x phone is most of a frame budget for something
+		 * nobody is looking at directly. */
+		const rawW = Math.max(1, Math.round(window.innerWidth * dpr));
+		const rawH = Math.max(1, Math.round(window.innerHeight * dpr));
+		const fit = Math.min(1, Math.sqrt(2000000 / Math.max(1, rawW * rawH)));
+		const w = Math.max(1, Math.round(rawW * fit));
+		const h = Math.max(1, Math.round(rawH * fit));
+		if (canvas.width !== w || canvas.height !== h) {
+			canvas.width = w;
+			canvas.height = h;
+			gl.viewport(0, 0, w, h);
+		}
+	}
+
+	function draw(now) {
+		raf = 0;
+		if (!running) return;
+		const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1);
+		last = now;
+		/* Framerate-independent easing. A plain `+= delta * 0.1` chases the
+		 * pointer at a different speed on a 120Hz screen than a 60Hz one. */
+		const follow = 1 - Math.exp(-12 * dt);
+		mx += (targetX - mx) * follow;
+		my += (targetY - my) * follow;
+		presence += (targetOn - presence) * follow;
+		sizeCanvas();
+		gl.uniform4f(uni.scene, canvas.width, canvas.height, still ? 0 : ((now - start) / 1000) * TIME_SCALE, 4);
+		gl.uniform4f(uni.shape, SCALE, INTENSITY, SEED, still ? 0 : DRIFT);
+		gl.uniform4f(uni.extra, VIGNETTE, GRAIN, presence, PUSH);
+		gl.uniform2f(uni.mouse, mx, my);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+		const settling = Math.abs(targetX - mx) > 0.001 || Math.abs(targetY - my) > 0.001 || Math.abs(targetOn - presence) > 0.001;
+		if (!still || settling) request();
+		else last = null;
+	}
+	function request() {
+		if (running && visible && raf === 0) raf = requestAnimationFrame(draw);
+	}
+	function stop() {
+		if (raf) cancelAnimationFrame(raf);
+		raf = 0;
+		last = null;
+	}
+
+	/* Pointer events cover mouse, pen and touch in one listener — "finger" is
+	 * a pointermove with pointerType 'touch', which only fires while the
+	 * finger is down, and that is the right behaviour: a drag moves it. */
+	const onMove = (e) => {
+		targetX = (e.clientX / Math.max(1, window.innerWidth)) * 2 - 1;
+		targetY = -((e.clientY / Math.max(1, window.innerHeight)) * 2 - 1);
+		if (targetOn === 0 && presence < 0.01) { mx = targetX; my = targetY; }
+		targetOn = 1;
+		request();
+	};
+	const onLeave = () => { targetOn = 0; request(); };
+	const onVisibility = () => {
+		visible = document.visibilityState === 'visible';
+		if (visible) request(); else stop();
+	};
+	function bind() {
+		window.addEventListener('pointermove', onMove, { passive: true });
+		window.addEventListener('pointerdown', onMove, { passive: true });
+		window.addEventListener('pointercancel', onLeave);
+		window.addEventListener('blur', onLeave);
+		document.documentElement.addEventListener('pointerleave', onLeave);
+		window.addEventListener('resize', request);
+		document.addEventListener('visibilitychange', onVisibility);
+	}
+	function unbind() {
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerdown', onMove);
+		window.removeEventListener('pointercancel', onLeave);
+		window.removeEventListener('blur', onLeave);
+		document.documentElement.removeEventListener('pointerleave', onLeave);
+		window.removeEventListener('resize', request);
+		document.removeEventListener('visibilitychange', onVisibility);
+	}
+	bind();
+
+	sizeCanvas();
+	request();
+	canvas.classList.add('on');
+
+	return {
+		repaint() { pushPalette(); request(); },
+		/* Pause, not destroy. Releasing the context with WEBGL_lose_context is
+		 * a one-way door: getContext() on the same canvas afterwards hands
+		 * back the same lost context rather than a new one, so switching the
+		 * setting off and on again left a permanently blank canvas until the
+		 * page was reloaded. One idle context costs almost nothing; the frame
+		 * loop is what costs a battery, and that is what stops here. */
+		pause() {
+			if (!running) return;
+			running = false;
+			stop();
+			canvas.classList.remove('on');
+			unbind();
+		},
+		resume() {
+			if (running) return;
+			running = true;
+			bind();
+			canvas.classList.add('on');
+			request();
+		},
+	};
+}
+
+/* The one entry point everything else calls: the setting, the theme switch
+ * and the skin picker all just say "the backdrop may have changed". */
+function applyShaderBackdrop() {
+	if (!store.shaderBg) {
+		if (shaderHandle) shaderHandle.pause();
+		return;
+	}
+	/* Created at most once per page — see the note on pause(). */
+	if (!shaderHandle) shaderHandle = initShaderBackdrop();
+	else { shaderHandle.resume(); shaderHandle.repaint(); }
+}
+applyShaderBackdrop();
+
 function applyTheme(theme) {
 	const dark = theme !== 'light';
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 	// keep the browser/OS chrome (iOS status bar, Android address bar) in step
 	const meta = document.querySelector('meta[name="theme-color"]');
 	if (meta) meta.setAttribute('content', dark ? '#262624' : '#faf9f7');
+	/* The backdrop reads --bg and --ring, both of which just changed. */
+	applyShaderBackdrop();
 }
 applyTheme(store.theme);
 applySkin();
@@ -3655,6 +3989,10 @@ function openSettings(tab) {
 	document.querySelectorAll('#themeSeg button').forEach((x) => x.classList.toggle('on', x.dataset.themeOpt === store.theme));
 	document.getElementById('glassIntensityInput').value = store.glassIntensity;
 	document.getElementById('glassIntensityVal').textContent = store.glassIntensity + '%';
+	document.getElementById('shaderBgInput').checked = store.shaderBg;
+	document.getElementById('shaderStrengthInput').value = store.shaderStrength;
+	document.getElementById('shaderStrengthVal').textContent = store.shaderStrength + '%';
+	renderShaderHint();
 	document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x.dataset.units === store.units));
 	document.getElementById('keyInput').value = store.key;
 	document.getElementById('oaiKeyInput').value = store.oaiKey;
@@ -3961,6 +4299,30 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 	e.target.value = '';
 	if (file) importBackup(file);
 });
+/* Both controls apply as you move them. A backdrop is judged by looking at
+ * it, and a strength slider you have to press Save to see is a slider you
+ * cannot actually set. */
+function renderShaderHint() {
+	const hint = document.getElementById('shaderHint');
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	const off = !document.getElementById('shaderBgInput').checked;
+	hint.textContent = off
+		? 'Off — the app keeps its plain background.'
+		: still
+			? 'Your device asks for reduced motion, so the field is drawn once and held still. It still follows your pointer.'
+			: 'Drawn on the GPU from your accent colour, so it follows the theme and the skin. It pauses whenever the tab is in the background.';
+}
+document.getElementById('shaderBgInput').addEventListener('change', () => {
+	store.shaderBg = document.getElementById('shaderBgInput').checked;
+	applyShaderBackdrop();
+	renderShaderHint();
+});
+document.getElementById('shaderStrengthInput').addEventListener('input', (e) => {
+	store.shaderStrength = parseInt(e.target.value, 10);
+	document.getElementById('shaderStrengthVal').textContent = store.shaderStrength + '%';
+	applyShaderBackdrop();
+});
+
 document.getElementById('resetJarvisBtn').addEventListener('click', async () => {
 	const ok = await confirmAction('Reset Jarvis?', 'This erases everything stored on this device — memory, reminders, notes, history, recordings, devices, keys and preferences — and cannot be undone.');
 	if (ok) resetJarvis();
@@ -3972,6 +4334,9 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	if (document.getElementById('keyInput').value.trim() !== store.key) store.keySource = '';
 	store.theme = document.querySelector('#themeSeg button.on')?.dataset.themeOpt || store.theme;
 	store.glassIntensity = parseInt(document.getElementById('glassIntensityInput').value, 10);
+	store.shaderBg = document.getElementById('shaderBgInput').checked;
+	store.shaderStrength = parseInt(document.getElementById('shaderStrengthInput').value, 10);
+	applyShaderBackdrop();
 	store.key = document.getElementById('keyInput').value.trim();
 	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
 	store.anthKey = document.getElementById('anthKeyInput').value.trim();
