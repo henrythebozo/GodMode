@@ -1186,8 +1186,14 @@
 	.composer input { flex: 1; background: none; border: none; color: var(--text); font: inherit; padding: 8px 0; }
 	.composer input:focus { outline: none; }
 	.composer input::placeholder { color: var(--dim); }
+	/* --panel-2, matching #micBtn. Both carry the chrome rim, and the mic has
+	   been the app's grey since the rim went on every button; leaving Send
+	   filled with the raw accent left the two primary actions in the same
+	   corner of the screen disagreeing — a pale blue-grey disc next to a dark
+	   pill. The accent moves to the icon, which keeps Send reading as the
+	   action without painting the whole button with it. */
 	.composer button {
-		background: var(--ring); color: var(--on-accent); border: none; border-radius: 50%; width: 38px; height: 38px;
+		background: var(--panel-2); color: var(--ring); border: none; border-radius: 50%; width: 38px; height: 38px;
 		flex: none; cursor: pointer; display: grid; place-items: center; position: relative;
 		transition: filter 0.15s ease, transform 0.14s ease;
 	}
@@ -2029,9 +2035,15 @@
 	.iconbtn::before, #textSend::before, .sheetact .destroy::before, .swatch::before {
 		content: ''; position: absolute; inset: 0; border-radius: inherit;
 		padding: 1.6px; pointer-events: none; z-index: 0;
+		/* Every stop is neutral on purpose. The first version borrowed the
+		   shader's chromatic fringe as literal colour stops — a steel blue, a
+		   warm cream and a pink — which at 1.6px wide stops reading as chrome
+		   and starts reading as an oil slick, with an orange smear along the
+		   bottom edge of every button. Polished metal reflects the room, and
+		   this room is grey. The variation that sells it is value, not hue. */
 		background: conic-gradient(from var(--metal-spin),
-			#6d7076, #e9ebf0, #aeb4bd, #f3f5f9, #8fa7c9, #f7e6cb,
-			#f0c6d4, #cdd1d8, #9aa0a8, #eceef3, #6d7076);
+			#6d7076, #eceef2, #a9adb4, #f4f5f7, #8e9298, #dcdee2,
+			#c2c5ca, #cbced3, #979aa0, #e8eaee, #6d7076);
 		/* Ring, not disc: paint the border box, punch out the content box. */
 		-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
 		-webkit-mask-composite: xor;
@@ -4068,8 +4080,13 @@ const LM_FRAG = [
 	'uniform vec4 u_tint;',   // rgb of the accent + how much of it to mix in
 	'const float REPETITION = 4.0;',
 	'const float SOFTNESS = 0.5;',
-	'const float SHIFT_R = 0.3;',
-	'const float SHIFT_B = 0.3;',
+	/* The reference's 0.3 assumes a big flat button where the fringe has room
+	   to spread. Here the shader only shows through as a rim a couple of pixels
+	   wide, and at that width a 0.3 phase split between the R, G and B samples
+	   is not a fringe — it is a saturated orange smear along the bottom edge
+	   and a blue one along the top. */
+	'const float SHIFT_R = 0.1;',
+	'const float SHIFT_B = 0.1;',
 	'const float ANGLE = 0.7853981;',   // 45 degrees
 	'const float SCALE = 8.0;',
 	'const vec2 OFFSET = vec2(0.1, -0.1);',
@@ -4093,6 +4110,10 @@ const LM_FRAG = [
 	'  float g = band(p, 0.0);',
 	'  float b = band(p, -SHIFT_B);',
 	'  vec3 col = vec3(r, g, b);',
+	/* And a hard ceiling on how far the three can diverge, so no future tweak
+	   to the shift can put a rainbow back on the rim. Chrome reflects a grey
+	   room; the fringe is a hint that it is metal, not the point of it. */
+	'  col = mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, 0.35);',
 	/* Sit it in a steel range rather than pure black-to-white, then let the
 	   accent tint it so the button belongs to whatever palette is chosen. */
 	'  col = mix(vec3(0.30, 0.31, 0.34), vec3(0.97, 0.98, 1.0), col);',
