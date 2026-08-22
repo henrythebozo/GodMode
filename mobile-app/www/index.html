@@ -1955,19 +1955,7 @@
 	   as an invisible hit pad (inset:-5px) to reach the 44px touch target
 	   from a 34px chip — putting the specular there collapsed six targets
 	   at once, and the touch-target suite caught it. */
-	/* :not(.metal) — a metal button wears a chrome ring instead of a glass
-	   highlight, and #micBtn is an ID selector that would otherwise outrank
-	   .metal::before and paint the specular over it. */
-	.glassy:not(.metal)::before, .primary:not(.metal)::before, .ghost:not(.metal)::before,
-	.iconbtn:not(.metal)::before, #micBtn:not(.metal)::before, #textSend:not(.metal)::before {
-		content: ''; position: absolute; inset: 0; border-radius: inherit;
-		pointer-events: none; z-index: -1;
-		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.26), transparent 62%);
-		opacity: 0.9; transition: opacity 0.25s ease;
-	}
 	.glassy:active, .primary:active, .ghost:active, .iconbtn:active, #micBtn:active, #textSend:active { transform: scale(0.955); }
-	.glassy:not(.metal):active::before, .primary:not(.metal):active::before, .ghost:not(.metal):active::before,
-	.iconbtn:not(.metal):active::before, #micBtn:not(.metal):active::before, #textSend:not(.metal):active::before { opacity: 0.5; }
 	.glassy:hover, .primary:hover, .iconbtn:hover, #micBtn:hover, #textSend:hover {
 		box-shadow:
 			inset 0 0 0 1px rgba(255, 255, 255, 0.2),
@@ -1989,11 +1977,6 @@
 			inset 0 5px 8px -6px rgba(0, 0, 0, 0.12),
 			0 1px 2px rgba(40, 36, 32, 0.1),
 			0 6px 16px -6px rgba(40, 36, 32, 0.14);
-	}
-	:root[data-theme="light"] .glassy:not(.metal)::before, :root[data-theme="light"] .primary:not(.metal)::before,
-	:root[data-theme="light"] .iconbtn:not(.metal)::before, :root[data-theme="light"] #micBtn:not(.metal)::before,
-	:root[data-theme="light"] #textSend:not(.metal)::before {
-		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.75), transparent 60%);
 	}
 
 	/* ======================= the interactive backdrop =======================
@@ -2028,14 +2011,22 @@
 		initial-value: 0deg;
 	}
 	.metal {
-		background: linear-gradient(180deg, #17171a, #0d0d0f) !important;
-		color: #d6d8de !important;
+		background: var(--panel-2) !important;
+		color: var(--text) !important;
 		border: none !important;
 	}
 	/* The CSS ring is the FALLBACK. Where WebGL works, a real liquid-metal
 	   shader paints the same ring — see mountLiquidMetal(). Where it does not,
 	   this conic gets very close for free, so nobody sees a plain button. */
-	.metal::before {
+	/* The rim, on every clickable button. It replaces the glass specular
+	   that used to live here — ::after is the hit pad, so ::before is the
+	   only slot a button has, and a chrome rim is worth more than a
+	   highlight. The bevel shadow stack underneath still does the depth.
+	   Nav items and settings tabs are deliberately NOT in this list: they
+	   are navigation, and ringing eleven of them turns the sidebar into a
+	   string of fairy lights. */
+	.metal::before, .glassy::before, .primary::before, .ghost::before,
+	.iconbtn::before, #textSend::before, .sheetact .destroy::before, .swatch::before {
 		content: ''; position: absolute; inset: 0; border-radius: inherit;
 		padding: 1.6px; pointer-events: none; z-index: 0;
 		background: conic-gradient(from var(--metal-spin),
@@ -2046,7 +2037,7 @@
 		-webkit-mask-composite: xor;
 		mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
 		mask-composite: exclude;
-		animation: metalSpin 9s linear infinite;
+		animation: metalSpin 6s linear infinite;
 		opacity: 1;
 	}
 	/* Once the shader is up, the fallback ring gets out of its way. */
@@ -2060,7 +2051,9 @@
 	   over it, the label over that. */
 	.metalcore {
 		position: absolute; inset: 1.8px; border-radius: inherit; pointer-events: none; z-index: 1;
-		background: linear-gradient(180deg, #202020 0%, #000000 100%);
+		/* --panel-2, the same grey every other button and panel uses. Pure
+		   black read as a hole punched in the page rather than as a control. */
+		background: var(--panel-2);
 		transition: box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 	.metal:active .metalcore {
