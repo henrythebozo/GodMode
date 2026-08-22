@@ -71,6 +71,7 @@
 		   on it measured 4.23:1 as a button fill, and the same colour used as
 		   accent *text* on --bg came out 4.02:1. Both need 4.5. */
 		--ring: #b65334;
+		--ring-rgb: 182 83 52;
 		--on-accent: #fff;
 		--ring-soft: rgba(182, 83, 52, 0.12);
 		/* accessible, deepened tones — for text/icons read against light glass */
@@ -128,6 +129,7 @@
 		   4.5 AA bar. Used as a fill it still needs dark ink — white on this
 		   terracotta is ~2.8:1, dark ink on it ~5.9:1. */
 		--ring: #dd8163;
+		--ring-rgb: 221 129 99;
 		--on-accent: #1f1e1d;
 		--ring-soft: rgba(221, 129, 99, 0.18);
 		/* on dark, the vivid system tones are already legible as text — no need
@@ -409,6 +411,9 @@
 	#orbWrap {
 		position: relative; width: 180px; height: 180px; flex: none;
 		transform: scale(var(--orb-scale, 1)); transform-origin: top center;
+		/* The body overflows the 180px box by ~50px; the margin reserves it so
+		   the shadow pool and the state label sit below the feet, not the chin. */
+		margin-bottom: calc(230px * var(--orb-scale, 1) - 180px);
 	}
 
 	/* a calm dark glass sphere with a glowing rim — the "body" */
@@ -422,10 +427,70 @@
 		transition: border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease;
 		animation: breathe 4.5s ease-in-out infinite;
 	}
-	@keyframes breathe { 0%, 100% { transform: scale(0.985); } 50% { transform: scale(1.015); } }
+	/* The look vars live INSIDE the keyframes: an inline transform on #core
+	   would be overridden by this animation every frame, so the animation
+	   carries the gaze itself. Custom properties resolve per frame. */
+	@keyframes breathe {
+		0%, 100% { transform: translate(var(--look-x, 0px), var(--look-y, 0px)) rotate(var(--look-r, 0deg)) scale(0.985); }
+		50% { transform: translate(var(--look-x, 0px), var(--look-y, 0px)) rotate(var(--look-r, 0deg)) scale(1.015); }
+	}
+
+	/* ------------------------------ the body ------------------------------ */
+	/* The head is untouched: every scene, prop and geometry test keys off the
+	   180px wrap and the sphere at inset 16px, so the robot is built BELOW
+	   that box and the wrap reserves the extra height with a margin. Skin
+	   tokens do the colouring, so the customizer recolours the body for free. */
+	#robot { position: absolute; inset: 0; pointer-events: none; transform: rotate(var(--rb-lean, 0deg)); transform-origin: 50% 160px; }
+	.rb-neck {
+		position: absolute; left: 50%; top: 149px; width: 26px; height: 16px; margin-left: -13px;
+		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163); border-radius: 7px;
+		transition: border-color 0.5s ease;
+	}
+	.rb-torso {
+		position: absolute; left: 50%; top: 160px; width: 96px; height: 62px; margin-left: -48px;
+		background: radial-gradient(circle at 50% 30%, var(--skin-body-a, #16161a) 0%, var(--skin-body-b, #060607) 74%, #000 100%);
+		border: 2px solid var(--skin-rim, #dd8163); border-radius: 32px 32px 24px 24px;
+		box-shadow: 0 10px 26px rgb(var(--skin-glow) / 0.16), inset 0 0 22px rgba(0, 0, 0, 0.55);
+		/* Recolours on the head's clock, so a skin change sweeps the whole
+		   robot at once instead of the torso snapping ahead of the face. */
+		transition: border-color 0.5s ease, box-shadow 0.5s ease;
+	}
+	/* The chest light breathes on the same clock as the head, so the two read
+	   as one machine rather than two idle loops that happen to overlap. */
+	.rb-chest {
+		position: absolute; left: 50%; top: 20px; width: 13px; height: 13px; margin-left: -6.5px;
+		border-radius: 50%; background: var(--skin-eye, #fff);
+		box-shadow: 0 0 12px 3px rgb(var(--skin-eye-glow) / 0.5);
+		animation: chestPulse 4.5s ease-in-out infinite;
+	}
+	@keyframes chestPulse { 0%, 100% { transform: scale(0.9); opacity: 0.82; } 50% { transform: scale(1.08); opacity: 1; } }
+	.rb-arm {
+		/* Hung from the shoulder, not floated beside the head: the tops sit
+		   just under the torso's top edge so nothing pokes past the shoulder
+		   line and reads as a spike. */
+		position: absolute; top: 173px; width: 12px; height: 34px; border-radius: 999px;
+		background: linear-gradient(180deg, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163);
+		transition: opacity 0.4s ease, border-color 0.5s ease;
+	}
+	.rb-arm.rb-l { left: 50%; margin-left: -60px; transform: rotate(7deg); transform-origin: top center; }
+	.rb-arm.rb-r { left: 50%; margin-left: 48px; transform: rotate(-7deg); transform-origin: top center; }
+	.rb-arm i {
+		position: absolute; left: 50%; bottom: -8px; width: 15px; height: 15px; margin-left: -7.5px;
+		border-radius: 50%; background: radial-gradient(circle at 40% 32%, var(--skin-body-a, #16161a), var(--skin-body-b, #060607));
+		border: 2px solid var(--skin-rim, #dd8163);
+		transition: border-color 0.5s ease;
+	}
+	/* The scenes pop out their own arms (to hold the holo, throw the ball,
+	   feed). Two pairs of arms is a spider, so the body's own retire for the
+	   duration and come back when the scene ends. */
+	#orbWrap.idle[data-scene="work"] .rb-arm,
+	#orbWrap.idle[data-scene="hoops"] .rb-arm,
+	#orbWrap.idle[data-scene="eat"] .rb-arm { opacity: 0; }
 
 	/* the "face" — two soft eyes, expressive per state */
-	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; }
+	#eyes { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 15%; transform: translate(var(--gaze-x, 0px), var(--gaze-y, 0px)); }
 	.eye {
 		width: 11%; height: 28%; border-radius: 999px; background: var(--skin-eye, #fff);
 		box-shadow: 0 0 10px 2px rgb(var(--skin-eye-glow) / 0.55);
@@ -1670,7 +1735,7 @@
 	   each other, and the narrow-window rule below already owns the transform.
 	   Origin and margin are reset because in here the orb is centred in a box
 	   rather than sitting in a column above its shadow. */
-	.skinstage #orbWrap { --orb-scale: 0.86; transform-origin: center; margin-bottom: 0; }
+	.skinstage #orbWrap { --orb-scale: 0.74; transform-origin: center; margin-bottom: 0; }
 	.skinpresets { display: flex; flex-wrap: wrap; gap: 6px; }
 	.skinpresets button {
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
@@ -1810,7 +1875,7 @@
 		   small it is drawn — the margin cancels the difference. Deriving it
 		   from the scale rather than hand-tuning it (-40px, for 0.78) means
 		   changing the scale cannot leave a hole under the orb again. */
-		#orbWrap { --orb-scale: 0.78; margin-bottom: calc(180px * (var(--orb-scale) - 1)); }
+		#orbWrap { --orb-scale: 0.72; margin-bottom: calc(230px * var(--orb-scale) - 180px); }
 		.statusbig { font-size: 21px; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
@@ -1840,7 +1905,9 @@
 	   It has to come AFTER the plain max-width:900px block: same specificity,
 	   so the later rule wins and an earlier one is simply ignored. */
 	@media (max-width: 900px) and (min-height: 780px) {
-		#orbWrap { --orb-scale: 1.06; }
+		/* 0.92, not the old 1.06: the body already fills the height the scale
+		   was raised to fill, and 1.06 of the full robot would overflow it. */
+		#orbWrap { --orb-scale: 0.92; }
 		.orbstage { gap: 14px; padding: 24px 0 10px; }
 		#stateLabel { font-size: 13px; }
 		#caption { font-size: 17px; }
@@ -1964,6 +2031,7 @@
 							</div>
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
+									<div id="robot"><span class="rb-neck"></span><span class="rb-arm rb-l"><i></i></span><span class="rb-arm rb-r"><i></i></span><span class="rb-torso"><i class="rb-chest"></i></span></div>
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
 									<div id="orbKit"><span class="ac ac-hat"></span><span class="ac ac-face"></span><span class="ac ac-neck"></span></div>
 									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
@@ -2662,7 +2730,7 @@
  * outright — anything stored as a class there is wiped on the next state
  * change. Inline style and data attributes both survive it.
  */
-const SKIN_DEFAULT = { body: 'obsidian', rim: 'white', eye: 'white', eyes: 'capsule', hat: 'none', face: 'none', neck: 'none' };
+const SKIN_DEFAULT = { body: 'obsidian', rim: 'accent', eye: 'accent', eyes: 'capsule', hat: 'none', face: 'none', neck: 'none' };
 const SKIN_CATALOGUE = [
 	{ slot: 'body', label: 'Body', kind: 'swatch', items: [
 		{ id: 'obsidian', label: 'Obsidian', a: '#16161a', b: '#060607' },
@@ -2678,6 +2746,9 @@ const SKIN_CATALOGUE = [
 	   glow are box-shadows built from `rgb(<triplet> / <alpha>)`, and CSS has no
 	   way to take a hex colour apart, so the split has to live here. */
 	{ slot: 'rim', label: 'Rim', kind: 'swatch', items: [
+		/* Follows --ring, so it matches the backdrop, the buttons and the
+		   light theme's deeper accent without storing a colour of its own. */
+		{ id: 'accent', label: 'Accent', a: 'var(--ring)', g: 'var(--ring-rgb)' },
 		{ id: 'white',  label: 'White',  a: 'rgba(255,255,255,0.92)', g: '255 255 255' },
 		{ id: 'clay',   label: 'Clay',   a: '#dd8163', g: '221 129 99' },
 		{ id: 'mint',   label: 'Mint',   a: '#5fd6a4', g: '95 214 164' },
@@ -2688,6 +2759,7 @@ const SKIN_CATALOGUE = [
 		{ id: 'lime',   label: 'Lime',   a: '#b6da5e', g: '182 218 94' },
 	] },
 	{ slot: 'eye', label: 'Eye colour', kind: 'swatch', items: [
+		{ id: 'accent', label: 'Accent', a: 'var(--ring)', g: 'var(--ring-rgb)' },
 		{ id: 'white',  label: 'White',  a: '#ffffff', g: '255 255 255' },
 		{ id: 'clay',   label: 'Clay',   a: '#f0a077', g: '240 160 119' },
 		{ id: 'mint',   label: 'Mint',   a: '#7ce8bc', g: '124 232 188' },
@@ -2723,6 +2795,7 @@ const SKIN_CATALOGUE = [
 	] },
 ];
 const SKIN_PRESETS = [
+	{ label: 'Signature', skin: { body: 'obsidian', rim: 'accent', eye: 'accent', eyes: 'capsule', hat: 'none', face: 'none', neck: 'none' } },
 	{ label: 'Classic',  skin: { body: 'obsidian', rim: 'white',  eye: 'white',  eyes: 'capsule', hat: 'none',   face: 'none',   neck: 'none' } },
 	{ label: 'Midnight', skin: { body: 'ink',      rim: 'ice',    eye: 'ice',    eyes: 'round',   hat: 'none',   face: 'none',   neck: 'none' } },
 	{ label: 'Sunset',   skin: { body: 'clay',     rim: 'gold',   eye: 'gold',   eyes: 'capsule', hat: 'none',   face: 'shades', neck: 'none' } },
@@ -4115,6 +4188,69 @@ document.getElementById('navToggle').addEventListener('click', () => {
 	applyNavCollapsed();
 });
 applyNavCollapsed();
+
+/* ============================ mouse tracking ============================ */
+/* The interaction from the Spline robot demo, without the 3D engine: the
+ * head turns toward your pointer and the eyes lead it, because that is the
+ * order a creature looks at things in — eyes first, head after. Everything
+ * is driven through four custom properties, and the head's share rides
+ * inside the breathe keyframes (see the note there), so nothing fights the
+ * animations that already run.
+ *
+ * The angle comes from the pointer's position relative to the ORB, not the
+ * window, so walking the cursor around the robot makes it follow you round
+ * rather than mapping screen corners to fixed poses.
+ */
+const gaze = { tx: 0, ty: 0, x: 0, y: 0, raf: 0, last: null, known: false };
+
+function gazeApply() {
+	orbWrap.style.setProperty('--gaze-x', (gaze.x * 8).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--gaze-y', (gaze.y * 5).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-x', (gaze.x * 6).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-y', (gaze.y * 4).toFixed(2) + 'px');
+	orbWrap.style.setProperty('--look-r', (gaze.x * 5).toFixed(2) + 'deg');
+	orbWrap.style.setProperty('--rb-lean', (gaze.x * 2.2).toFixed(2) + 'deg');
+}
+
+function gazeStep(now) {
+	gaze.raf = 0;
+	const dt = gaze.last === null ? 0 : Math.min((now - gaze.last) / 1000, 0.1);
+	gaze.last = now;
+	/* Framerate-independent spring, same shape as the backdrop's follow. */
+	const k = 1 - Math.exp(-10 * dt);
+	gaze.x += (gaze.tx - gaze.x) * k;
+	gaze.y += (gaze.ty - gaze.y) * k;
+	gazeApply();
+	if (Math.abs(gaze.tx - gaze.x) > 0.002 || Math.abs(gaze.ty - gaze.y) > 0.002) gazeRun();
+	else gaze.last = null;
+}
+function gazeRun() {
+	if (gaze.raf === 0 && document.visibilityState === 'visible') gaze.raf = requestAnimationFrame(gazeStep);
+}
+
+const GAZE_STILL = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (!GAZE_STILL) {
+	const gazeAt = (cx, cy) => {
+		const r = orbWrap.getBoundingClientRect();
+		if (!r.width) return;
+		const ox = r.left + r.width / 2, oy = r.top + r.height * 0.38;   // the head, not the wrap's middle
+		/* Full deflection by ~260px out, clamped — a pointer at the far edge
+		 * of a big monitor should not twist the head off its neck. */
+		gaze.tx = Math.max(-1, Math.min(1, (cx - ox) / 260));
+		gaze.ty = Math.max(-1, Math.min(1, (cy - oy) / 260));
+		gaze.known = true;
+		gazeRun();
+	};
+	window.addEventListener('pointermove', (e) => gazeAt(e.clientX, e.clientY), { passive: true });
+	window.addEventListener('pointerdown', (e) => gazeAt(e.clientX, e.clientY), { passive: true });
+	/* Gone means gone: the gaze drifts back to centre rather than staring at
+	 * the last place you were. */
+	const gazeHome = () => { gaze.tx = 0; gaze.ty = 0; gazeRun(); };
+	window.addEventListener('blur', gazeHome);
+	window.addEventListener('pointercancel', gazeHome);
+	document.documentElement.addEventListener('pointerleave', gazeHome);
+	document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') gazeRun(); });
+}
 
 /* ============================== settings ============================== */
 const settingsDlg = document.getElementById('settings');
