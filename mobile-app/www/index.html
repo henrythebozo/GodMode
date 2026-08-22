@@ -1509,6 +1509,65 @@
 	@starting-style {
 		dialog[open] { opacity: 0; transform: translateY(14px) scale(0.98); }
 	}
+
+	/* ------------------------ a sheet that changes size ------------------- */
+	/* Ported from a React drawer that animated its height with useMeasure +
+	   motion.div. Neither library exists here and neither is coming, so the
+	   same effect is three lines of layout and one transition: the views are
+	   stacked one-at-a-time inside a wrapper whose height is animated between
+	   the measured old and new values. See sheetMorph() for why it needs two
+	   frames rather than one. */
+	.sheetmorph { overflow: hidden; transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+	/* Nothing here for prefers-reduced-motion: the global rule further down
+	   already flattens every transition-duration to 0.001ms with !important,
+	   so a local `transition: none` would be dead code that reads like a
+	   working guard. sheetMorph() skips the pin-and-reflow separately. */
+	.sheetview { display: flex; flex-direction: column; gap: 12px; }
+	.sheettitle { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; margin: 0; }
+	.sheetsub { color: var(--dim); font-size: 13.5px; line-height: 1.5; margin: 0; }
+	/* One tappable destination. The whole row is the target, not a link
+	   inside it — this is a sheet on a phone before it is anything else. */
+	.sheetrow {
+		display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+		border-radius: 14px; padding: 12px 14px; cursor: pointer; font: inherit;
+		transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
+	}
+	.sheetrow:hover { background: var(--panel-3); }
+	.sheetrow:active { transform: scale(0.985); }
+	.sheetrow .srtext { flex: 1; min-width: 0; }
+	/* Both are spans, so both need to be told to be blocks — left inline they
+	   run together into "Anthropicnot stored", which every assertion about
+	   their textContent passes cleanly. */
+	.sheetrow .srname { display: block; font-weight: 600; font-size: 14px; }
+	.sheetrow .srsub { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+	.sheetrow .srchev { color: var(--dim); flex: none; }
+	.sheetrow .sricon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--panel-3); color: var(--dim); }
+	.sheetrow.danger { background: var(--err-soft); border-color: transparent; color: var(--err); }
+	.sheetrow.danger .sricon { background: rgba(0, 0, 0, 0.06); color: var(--err); }
+	/* The mono face is for masked keys; on the destructive row the sub is a
+	   sentence, and a sentence set in mono reads as a filename. */
+	.sheetrow.danger .srsub { color: var(--err); opacity: 0.85; font-family: inherit; }
+	.sheetrow.danger:hover { filter: brightness(1.06); }
+	.sheetrow[disabled] { opacity: 0.55; cursor: default; }
+	.sheetrow[disabled]:hover { background: var(--panel-2); }
+	.sheetrow[disabled]:active { transform: none; }
+	/* The three things worth saying about a secret, in the sheet that holds it. */
+	.sheetassure { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+	.sheetassure div { display: flex; align-items: center; gap: 12px; color: var(--dim); font-size: 13.5px; }
+	.sheetassure svg { flex: none; color: var(--dim); }
+	.sheetact { display: flex; gap: 10px; flex-wrap: wrap; }
+	.sheetact button { flex: 1 1 130px; }
+	.sheetact .destroy { background: var(--err); color: #fff; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease, transform 0.14s ease; }
+	.sheetact .destroy:hover { filter: brightness(1.08); }
+	.sheetact .destroy:active { transform: scale(0.97); }
+	/* The key itself. Wraps rather than scrolls — a key you have to scroll to
+	   read is a key you cannot check against the one in your other window. */
+	.keyval {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+		background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px;
+		padding: 12px 14px; overflow-wrap: anywhere; user-select: all;
+	}
 	dialog::backdrop {
 		background: transparent; backdrop-filter: blur(0);
 		transition: background 0.22s ease, backdrop-filter 0.22s ease, display 0.22s allow-discrete, overlay 0.22s allow-discrete;
@@ -2029,6 +2088,20 @@
 
 <div id="toasts" role="status" aria-live="polite"></div>
 
+<!-- Keys on this device.
+     A stack of views in one sheet, rather than four more rows in Settings:
+     reading a secret and deleting one each want the whole surface and a
+     deliberate second step. The sheet changes height as you move between
+     them — see sheetMorph(). -->
+<dialog id="keysSheet">
+	<h2 id="keysTitle">Keys on this device</h2>
+	<div class="sheetmorph" id="keysMorph">
+		<div class="sheetview" data-keysview="list"></div>
+		<div class="sheetview" data-keysview="one" hidden></div>
+		<div class="sheetview" data-keysview="remove" hidden></div>
+	</div>
+</dialog>
+
 <dialog id="settings">
 	<h2>Configure Jarvis</h2>
 	<div class="settabs" id="setTabs">
@@ -2077,6 +2150,8 @@
 		<label><span>Gemini key <a class="keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">get one ↗</a> <span class="hint">(enables model id <code>gemini:gemini-2.5-flash</code> etc.)</span></span>
 			<input type="password" id="geminiKeyInput" placeholder="AIza…" autocomplete="off" />
 		</label>
+		<button type="button" class="ghost small" id="keysSheetBtn">Keys on this device →</button>
+		<p class="hint">See what is actually stored, and remove any of it.</p>
 		<h3>Models <span class="hint">— add more than one and Jarvis can consult them together</span></h3>
 		<div id="modelRows"></div>
 		<div class="addrow">
@@ -8093,6 +8168,301 @@ async function finishOpenRouterLogin() {
 	}
 }
 
+/* ==========================================================================
+ * Keys on this device — a sheet that changes size as you move through it.
+ *
+ * Ported from a React drawer built on vaul + motion + react-use-measure. None
+ * of those three can come into a file with no build step, and none of them has
+ * to: the whole mechanism is sheetMorph() below, which is the vanilla form of
+ * `useMeasure()` feeding `motion.div animate={{ height }}`.
+ *
+ * The content is this app's own version of the drawer's problem. Settings had
+ * four password boxes and nothing else: no way to see what was actually
+ * stored, no way to remove one, and no statement anywhere of where a key goes.
+ * ========================================================================== */
+
+/* A transition needs a start value the browser actually rendered, so this
+ * cannot be done in one pass: measure where we are, apply the change, measure
+ * where we are going, put the old height back, force a reflow, then set the
+ * new one. Without that reflow both writes are coalesced and nothing animates.
+ *
+ * The height is released again afterwards on a timer rather than on
+ * transitionend, because transitionend does not fire at all when the height
+ * did not change or when motion is reduced — and a sheet left pinned to a
+ * stale pixel height clips its own content after a rotation. */
+function sheetMorph(wrap, mutate) {
+	const from = wrap.getBoundingClientRect().height;
+	mutate();
+	wrap.style.height = 'auto';
+	const to = wrap.getBoundingClientRect().height;
+	clearTimeout(wrap.dataset.morphTimer);
+	if (!from || Math.abs(to - from) < 1 || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		wrap.style.height = '';
+		return;
+	}
+	wrap.style.height = from + 'px';
+	void wrap.offsetHeight;
+	wrap.style.height = to + 'px';
+	wrap.dataset.morphTimer = setTimeout(() => { wrap.style.height = ''; }, 380);
+}
+
+const SHEET_ICONS = {
+	lock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>',
+	shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8.2-7 9-4-.8-7-4.6-7-9V6z" /></svg>',
+	noshare: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></svg>',
+	nocloud: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 3.5 3.5 0 0 0 7 18z" /><path d="M4 4l16 16" /></svg>',
+	trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" /></svg>',
+	warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2v.1" /></svg>',
+	chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7" /></svg>',
+};
+
+/* Derived from KEY_SHAPES rather than listed again — a second copy of the
+ * provider list is a second thing to forget when a fifth provider arrives.
+ * Its order is load-bearing for matching, not for display, but the order it
+ * already has reads perfectly well here. */
+function keyEntries() {
+	return KEY_SHAPES.map((s) => ({
+		field: s.field, label: s.label, model: s.model,
+		page: KEY_PAGES[s.field] || '', value: store[s.field] || '',
+	}));
+}
+
+/* Enough to tell two keys apart, never enough to use one. */
+function maskKey(v) {
+	const s = String(v || '');
+	if (!s) return '';
+	if (s.length <= 12) return '•'.repeat(s.length);
+	return s.slice(0, 7) + '…' + s.slice(-4);
+}
+
+const keysSheet = { view: 'list', field: '', shown: false, all: false };
+
+function keysView(name) { return document.querySelector('#keysMorph [data-keysview="' + name + '"]'); }
+
+function sheetRow(opts) {
+	const b = document.createElement('button');
+	b.type = 'button';
+	b.className = 'sheetrow' + (opts.danger ? ' danger' : '');
+	const ico = document.createElement('span');
+	ico.className = 'sricon';
+	ico.innerHTML = SHEET_ICONS[opts.icon] || SHEET_ICONS.lock;
+	const text = document.createElement('span');
+	text.className = 'srtext';
+	const name = document.createElement('span');
+	name.className = 'srname';
+	name.textContent = opts.name;
+	text.append(name);
+	if (opts.sub) {
+		const sub = document.createElement('span');
+		sub.className = 'srsub';
+		sub.textContent = opts.sub;          // a key never goes through innerHTML
+		text.append(sub);
+	}
+	const chev = document.createElement('span');
+	chev.className = 'srchev';
+	chev.innerHTML = SHEET_ICONS.chev;
+	b.append(ico, text, chev);
+	b.addEventListener('click', opts.onClick);
+	return b;
+}
+
+function sheetText(cls, txt) {
+	const p = document.createElement('p');
+	p.className = cls;
+	p.textContent = txt;
+	return p;
+}
+
+function sheetActions(buttons) {
+	const row = document.createElement('div');
+	row.className = 'sheetact';
+	buttons.forEach((b) => row.append(b));
+	return row;
+}
+
+function sheetButton(cls, label, onClick) {
+	const b = document.createElement('button');
+	b.type = 'button';
+	b.className = cls;
+	b.textContent = label;
+	b.addEventListener('click', onClick);
+	return b;
+}
+
+function renderKeysList() {
+	const view = keysView('list');
+	view.innerHTML = '';
+	const entries = keyEntries();
+	const stored = entries.filter((e) => e.value);
+	view.append(sheetText('sheetsub', stored.length
+		? 'Kept in this browser and nowhere else. Jarvis has no server to send them to — each one goes only to the provider it belongs to.'
+		: 'Nothing stored yet. Copy a key from any provider and paste it anywhere in Jarvis: it works out whose it is and files it for you.'));
+	entries.forEach((e) => {
+		view.append(sheetRow({
+			icon: 'lock',
+			name: e.label,
+			sub: e.value ? maskKey(e.value) : 'not stored',
+			onClick: () => keysGo('one', { field: e.field }),
+		}));
+	});
+	if (stored.length) {
+		view.append(sheetRow({
+			icon: 'trash', danger: true,
+			name: stored.length === 1 ? 'Remove the stored key' : 'Remove all ' + stored.length + ' keys',
+			sub: 'Jarvis stops answering until you add another',
+			onClick: () => keysGo('remove', { all: true }),
+		}));
+	}
+}
+
+function renderKeyOne() {
+	const view = keysView('one');
+	view.innerHTML = '';
+	const e = keyEntries().find((x) => x.field === keysSheet.field);
+	if (!e) { keysGo('list'); return; }
+	const back = sheetButton('ghost', 'Back', () => keysGo('list'));
+	if (!e.value) {
+		view.append(sheetText('sheetsub', 'No ' + e.label + ' key is stored on this device.'));
+		view.append(sheetText('sheetsub', 'Paste one anywhere in Jarvis and it files itself — there is no field to hunt for. It enables the model id ' + e.model + '.'));
+		const get = document.createElement('a');
+		get.className = 'primary';
+		get.style.textAlign = 'center';
+		get.href = e.page;
+		get.target = '_blank';
+		get.rel = 'noreferrer';
+		/* "an Anthropic key", "a Gemini key" — three of the four labels start
+		   with a vowel, which is how a hardcoded "a" survives review. */
+		get.textContent = 'Get ' + keyArticle(e.label) + ' ' + e.label + ' key ↗';
+		view.append(sheetActions([back, get]));
+		return;
+	}
+	view.append(sheetText('sheetsub', 'Enables the model id ' + e.model + '. Treat it the way you would treat the password to the account that pays for it.'));
+	const val = document.createElement('div');
+	val.className = 'keyval';
+	val.textContent = keysSheet.shown ? e.value : maskKey(e.value);
+	view.append(val);
+
+	const assure = document.createElement('div');
+	assure.className = 'sheetassure';
+	[
+		['shield', 'Stored in this browser, never on a server'],
+		['noshare', 'Sent only to ' + e.label + ', never anywhere else'],
+		['nocloud', 'Nobody can recover it for you — not even ' + store.assistantName],
+	].forEach(([icon, text]) => {
+		const line = document.createElement('div');
+		const ico = document.createElement('span');
+		ico.innerHTML = SHEET_ICONS[icon];
+		const t = document.createElement('span');
+		t.textContent = text;
+		line.append(ico, t);
+		assure.append(line);
+	});
+	view.append(assure);
+
+	/* Revealing re-renders through the morph, because the full key is three
+	 * wrapped lines where the mask is one — the sheet has to grow to fit it. */
+	const toggle = sheetButton('primary', keysSheet.shown ? 'Hide' : 'Show key', () => {
+		keysSheet.shown = !keysSheet.shown;
+		sheetMorph(document.getElementById('keysMorph'), renderKeyOne);
+	});
+	view.append(sheetActions([back, toggle]));
+	view.append(sheetRow({
+		icon: 'trash', danger: true,
+		name: 'Remove this key',
+		sub: e.label + ' stops working on this device',
+		onClick: () => keysGo('remove', { field: e.field }),
+	}));
+}
+
+function renderKeysRemove() {
+	const view = keysView('remove');
+	view.innerHTML = '';
+	const all = keysSheet.all;
+	const e = all ? null : keyEntries().find((x) => x.field === keysSheet.field);
+	const icon = document.createElement('div');
+	icon.style.color = 'var(--err)';
+	icon.innerHTML = SHEET_ICONS.warn.replace('width="17" height="17"', 'width="30" height="30"');
+	view.append(icon);
+	view.append(sheetText('sheetsub', all
+		? 'Every key goes from this device. Jarvis cannot answer anything until you add another one — memory, notes and reminders are untouched.'
+		: 'The ' + (e ? e.label : '') + ' key goes from this device. Nothing else is touched.'));
+	view.append(sheetText('sheetsub', 'This only forgets it here. The key stays live at the provider until you revoke it there — which is worth doing if it has been anywhere it should not have been.'));
+	view.append(sheetActions([
+		sheetButton('ghost', 'Cancel', () => keysGo(all ? 'list' : 'one', { field: keysSheet.field })),
+		sheetButton('destroy', all ? 'Remove them all' : 'Remove', () => {
+			removeStoredKeys(all ? keyEntries().map((x) => x.field) : [keysSheet.field]);
+			keysGo('list');
+		}),
+	]));
+}
+
+/* Clearing the store is not enough on its own. Settings writes its four
+ * password boxes back to the store when you press Save, so a key removed here
+ * while Settings sits open behind the sheet would be resurrected by the next
+ * Save from the input that still held it. syncSettingsInputs() already exists
+ * for exactly this — reusing it beats a second copy of the field-to-input map
+ * that a fifth provider would have to be added to twice. */
+function removeStoredKeys(fields) {
+	let n = 0;
+	fields.forEach((f) => {
+		if (!store[f]) return;
+		n++;
+		store[f] = '';
+		if (f === 'key') store.keySource = '';
+	});
+	if (!n) return;
+	syncSettingsInputs();
+	renderSignIn();
+	updateDashStatus();
+	logActivity(n === 1 ? 'Removed a stored key.' : 'Removed ' + n + ' stored keys.');
+	toast(n === 1 ? 'Key removed' : 'Keys removed', 'Gone from this device. Revoke it at the provider too if it should be dead everywhere.');
+}
+
+function keysGo(view, opts) {
+	const o = opts || {};
+	if (o.field !== undefined) keysSheet.field = o.field;
+	keysSheet.all = !!o.all;
+	/* The revealed key does not survive leaving the view that showed it. */
+	if (view !== 'one') keysSheet.shown = false;
+	sheetMorph(document.getElementById('keysMorph'), () => {
+		keysSheet.view = view;
+		renderKeysCurrent();
+		document.querySelectorAll('#keysMorph .sheetview').forEach((v) => { v.hidden = v.dataset.keysview !== view; });
+		const e = keyEntries().find((x) => x.field === keysSheet.field);
+		document.getElementById('keysTitle').textContent =
+			view === 'list' ? 'Keys on this device'
+				: view === 'one' ? (e ? e.label + ' key' : 'Key')
+					: keysSheet.all ? 'Remove every key?' : 'Remove the ' + (e ? e.label : '') + ' key?';
+	});
+}
+
+function renderKeysCurrent() {
+	if (keysSheet.view === 'list') renderKeysList();
+	else if (keysSheet.view === 'one') renderKeyOne();
+	else renderKeysRemove();
+}
+
+/* A key can also arrive while the sheet is open, since the paste handler files
+ * one from anywhere in the app. Without this the list goes on saying "not
+ * stored" beside a key that now exists. */
+function refreshKeysSheet() {
+	if (!document.getElementById('keysSheet').open) return;
+	sheetMorph(document.getElementById('keysMorph'), renderKeysCurrent);
+}
+
+function openKeysSheet() {
+	keysSheet.shown = false;
+	keysGo('list');
+	document.getElementById('keysSheet').showModal();
+}
+document.getElementById('keysSheetBtn').addEventListener('click', openKeysSheet);
+/* Reopening always starts at the list with nothing revealed, however it was
+ * left — including by Escape, which fires cancel and not click. */
+document.getElementById('keysSheet').addEventListener('close', () => {
+	keysSheet.shown = false;
+	keysGo('list');
+});
+
 function signOutOpenRouter() {
 	store.key = '';
 	store.keySource = '';
@@ -8174,6 +8544,7 @@ function saveDetectedKey(hit) {
 	syncSettingsInputs();
 	renderSignIn();
 	updateDashStatus();
+	refreshKeysSheet();
 	logActivity('Added a ' + hit.label + ' key.');
 	toast(hit.label + ' key saved', 'Stored on this device only. ' + (reachable ? '' : 'Leading with ' + shortModelName(hit.model) + ' now.'));
 }
