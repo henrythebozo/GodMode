@@ -1399,13 +1399,39 @@
 	.logmsg.assistant .role { color: var(--text); }
 
 	/* devices/home */
+	/* A device that is doing something should be legible across the room, not
+	   by reading its subtitle. The tile carries it: warm and lit when live,
+	   quiet when not. */
+	.devrow { align-items: center; border: 1px solid transparent; }
+	.devrow.live { border-color: color-mix(in srgb, var(--ring) 34%, transparent); background: color-mix(in srgb, var(--ring) 9%, var(--panel-2)); }
+	.devicon {
+		flex: none; display: grid; place-items: center;
+		width: 36px; height: 36px; border-radius: 10px;
+		background: var(--panel-3); color: var(--dim);
+		transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+	}
+	.devrow.live .devicon {
+		background: color-mix(in srgb, var(--ring) 22%, var(--panel-3));
+		color: var(--ring);
+		box-shadow: 0 0 14px color-mix(in srgb, var(--ring) 30%, transparent);
+	}
+	.devgroup {
+		display: flex; align-items: baseline; gap: 8px;
+		margin: 14px 2px 2px; font-size: 11px; font-weight: 650;
+		letter-spacing: 0.07em; text-transform: uppercase; color: var(--dim);
+	}
+	.devgroup:first-child { margin-top: 2px; }
+	.devcount { font-weight: 500; letter-spacing: 0; opacity: 0.65; }
+
 	.devctrl { display: flex; align-items: center; gap: 8px; flex: none; }
 	.toggle { width: 42px; height: 25px; border-radius: 999px; background: var(--panel-3); border: none; cursor: pointer; position: relative; flex: none; transition: background 0.15s; }
 	.toggle::after {
 		content: ""; position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%;
 		background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); transition: transform 0.15s;
 	}
-	.toggle.on { background: var(--glow-ok); }
+	/* Was --glow-ok, an iOS green that belonged to no other part of this app
+	   and was the most saturated thing on any screen. The accent is the accent. */
+	.toggle.on { background: var(--ring); }
 	.toggle.on::after { transform: translateX(17px); }
 	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.stepbtn:hover { background: var(--line); }
@@ -4549,6 +4575,48 @@ function coverWord(p) {
 	return n === 0 ? 'closed' : n === 100 ? 'open' : n + '% open';
 }
 const ON_OFF_TYPES = ['light', 'switch', 'plug', 'fan', 'coffee', 'media', 'vacuum'];
+
+/* Twelve devices in a list were twelve identical grey rectangles, readable
+ * only by reading each one. An icon is the difference between scanning and
+ * reading. Drawn in the same 24-unit stroke style as the rest of the app's
+ * icons rather than pulled from a set, since there are no dependencies here. */
+const DEVICE_ICONS = {
+	light: '<path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.3.3.5.7.5 1.1v1h6v-1c0-.4.2-.8.5-1.1A6 6 0 0 0 12 3Z" />',
+	cover: '<rect x="3" y="3" width="18" height="4" rx="1" /><path d="M6 7v6M10 7v9M14 7v6M18 7v9" /><path d="M4 19h16" />',
+	coffee: '<path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Z" /><path d="M17 9h2a2.5 2.5 0 0 1 0 5h-2" /><path d="M8 2v3M12 2v3" />',
+	thermostat: '<path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0Z" /><path d="M12 9v6" />',
+	lock: '<rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" />',
+	fan: '<circle cx="12" cy="12" r="2" /><path d="M12 10c0-3 1-6 4-6 2 0 3 3 0 4.5-2 1-4 1.5-4 1.5Z" /><path d="M14 12c3 0 6 1 6 4 0 2-3 3-4.5 0-1-2-1.5-4-1.5-4Z" /><path d="M10 14c0 3-1 6-4 6-2 0-3-3 0-4.5 2-1 4-1.5 4-1.5Z" /><path d="M10 12c-3 0-6-1-6-4 0-2 3-3 4.5 0 1 2 1.5 4 1.5 4Z" />',
+	plug: '<path d="M9 2v6M15 2v6" /><path d="M6 8h12v3a6 6 0 0 1-12 0V8Z" /><path d="M12 17v5" />',
+	media: '<rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" />',
+	vacuum: '<circle cx="12" cy="13" r="8" /><circle cx="12" cy="13" r="2.5" /><path d="M12 5v-2" />',
+	'switch': '<rect x="4" y="4" width="16" height="16" rx="3" /><path d="M12 8v8" />',
+	scene: '<path d="m12 2 2.4 6.2L21 9.6l-4.8 4.3L17.6 21 12 17.6 6.4 21l1.4-7.1L3 9.6l6.6-1.4L12 2Z" />',
+};
+function deviceIcon(type) {
+	return DEVICE_ICONS[type] || DEVICE_ICONS.switch;
+}
+/* "Is this device doing something right now" — the one bit of state the list
+ * should carry in colour rather than in words. */
+function deviceLive(d) {
+	if (d.type === 'cover') return (d.position || 0) > 0;
+	if (d.type === 'lock') return d.lockState !== 'locked';   // an unlocked door is the notable state
+	if (d.type === 'thermostat' || d.type === 'scene') return false;
+	return d.power === 'on';
+}
+
+/* Sections, from the device's own type — no new field to fill in, and no
+ * guessing a room out of a name like "Thermostat". Rooms would be better and
+ * would need somewhere to put them; this is the honest version of grouping
+ * with the data that exists. */
+const DEVICE_GROUPS = [
+	{ id: 'scenes', label: 'Scenes', types: ['scene'] },
+	{ id: 'lights', label: 'Lights', types: ['light'] },
+	{ id: 'covers', label: 'Blinds & curtains', types: ['cover'] },
+	{ id: 'climate', label: 'Climate', types: ['thermostat', 'fan'] },
+	{ id: 'security', label: 'Doors', types: ['lock'] },
+	{ id: 'things', label: 'Everything else', types: ['coffee', 'plug', 'media', 'vacuum', 'switch'] },
+];
 /* describeDevice() names the device because a spoken reply needs to ("the
  * coffee maker is brewing"). A row in the list has the name in bold directly
  * above, so repeating it there just prints it twice — visible with five
@@ -4566,7 +4634,7 @@ function describeDevice(d) {
 	if (ON_OFF_TYPES.includes(d.type)) return d.name + ' (' + d.power + (d.type === 'light' && d.power === 'on' ? ', ' + d.brightness + '% brightness' : '') + ')';
 	if (d.type === 'lock') return d.name + ' (' + d.lockState + ')';
 	if (d.type === 'thermostat') return d.name + ' (set to ' + d.temp + '°F)';
-	if (d.type === 'scene') return d.name + ' (scene)';
+	if (d.type === 'scene') return d.name + ' (scene, ' + (d.actions || []).length + ' devices)';
 	return d.name;
 }
 function findDevice(list, name) {
@@ -6097,12 +6165,36 @@ async function renderHome() {
 	const list = store.devices;
 	if (!list.length) { box.innerHTML = '<div class="empty">No devices yet — add one below.</div>'; return; }
 	box.innerHTML = '';
-	list.forEach((d) => box.appendChild(deviceRow(d)));
+	const placed = new Set();
+	DEVICE_GROUPS.forEach((g) => {
+		const mine = list.filter((d) => g.types.includes(d.type));
+		if (!mine.length) return;
+		mine.forEach((d) => placed.add(d.id));
+		const head = document.createElement('div');
+		head.className = 'devgroup';
+		head.innerHTML = '<span>' + esc(g.label) + '</span><span class="devcount">' + mine.length + '</span>';
+		box.appendChild(head);
+		mine.forEach((d) => box.appendChild(deviceRow(d)));
+	});
+	/* A type nobody thought of still has to appear, or adding one makes a
+	 * device vanish rather than land somewhere odd. */
+	const rest = list.filter((d) => !placed.has(d.id));
+	if (rest.length) {
+		const head = document.createElement('div');
+		head.className = 'devgroup';
+		head.innerHTML = '<span>Other</span><span class="devcount">' + rest.length + '</span>';
+		box.appendChild(head);
+		rest.forEach((d) => box.appendChild(deviceRow(d)));
+	}
 }
 
 function deviceRow(d) {
 	const row = document.createElement('div');
-	row.className = 'row-item';
+	row.className = 'row-item devrow' + (deviceLive(d) ? ' live' : '');
+	const tile = document.createElement('div');
+	tile.className = 'devicon';
+	tile.setAttribute('aria-hidden', 'true');
+	tile.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + deviceIcon(d.type) + '</svg>';
 	const txt = document.createElement('div');
 	txt.className = 'txt';
 	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(deviceState(d)) + '</small>';
@@ -6149,7 +6241,7 @@ function deviceRow(d) {
 	del.innerHTML = '✕';
 	del.title = 'Remove device';
 	del.addEventListener('click', () => { store.devices = store.devices.filter((x) => x.id !== d.id); renderHome(); });
-	row.append(txt, ctrl, del);
+	row.append(tile, txt, ctrl, del);
 	return row;
 }
 
