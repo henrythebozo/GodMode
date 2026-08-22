@@ -2115,6 +2115,111 @@
 	.swatch.on { border-color: var(--ring); background: var(--ring-soft); font-weight: 650; }
 	.swatch i { width: 15px; height: 15px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
 
+	/* --------------------------- the dictation ring ------------------------
+	   Ported from the "Voice Dictator" study on 21st.dev: a Bayer 8x8 ordered
+	   dither laid over a ring-plus-glow field, haloing the orb while you talk.
+	   Two things are deliberately not the original.
+
+	   1. Its amplitude comes off `Math.random()` on a 120ms timer. That is the
+	      same fiction #bars has been telling since the first commit, and
+	      telling it twice does not make it true — here the amplitude is raised
+	      by words actually arriving from the recognizer and decays on its own,
+	      so the ring is quiet when the room is. See mountDither().
+	   2. It draws white on black. This tints to --ring and composites on
+	      straight alpha, so it survives a palette change and a light page. */
+	#dither {
+		position: absolute; inset: -34px; width: calc(100% + 68px); height: calc(100% + 68px);
+		pointer-events: none; opacity: 0; transition: opacity 0.35s ease;
+	}
+	#dither.on { opacity: 1; }
+
+	/* Interim speech used to land as one string that replaced the last one
+	   wholesale, so a sentence being dictated re-flowed on every result. Words
+	   are appended instead, each arriving on its own. */
+	#caption .dword { display: inline-block; margin-right: 0.26em; animation: dword 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+	@keyframes dword {
+		from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+		to { opacity: 1; transform: none; filter: blur(0); }
+	}
+
+	/* --------------------------- spotlight palette -------------------------
+	   The search dialog reshaped after the "Apple Spotlight" study on 21st.dev.
+	   Three things came across:
+
+	   - The pill: one rounded bar, a magnifier, and type big enough to read at
+	     a glance, with the results hanging inside the same shape.
+	   - The gooey materialise (see #spotgoo in the markup), run over a blurred
+	     and over-wide entry. It is taken off again once the movement stops: an
+	     SVG filter rasterises everything beneath it, and paying for that on
+	     live text buys nothing after the animation is over.
+	   - The morphing label. The original swaps its placeholder to whatever row
+	     you are pointing at, which means it covers what you just typed. The
+	     same blur-slide swap drives a chip on the right instead, naming what
+	     Enter will do — the useful half of the idea, in a slot that is not
+	     already spoken for. */
+	#searchDlg {
+		max-width: 640px; padding: 0; overflow: hidden; border-radius: 26px;
+	}
+	#searchDlg::before { display: none; }   /* no grab pill; the esc chip is the way out */
+	#searchDlg.gooey { filter: url(#spotgoo); }
+	.spotbar { display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; height: 64px; border-bottom: 1px solid transparent; transition: border-color 0.2s ease; }
+	#searchDlg.hasresults .spotbar { border-bottom-color: var(--line); }
+	.spoticon { flex: none; color: var(--dim); }
+	.spotfield { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+	#searchInput {
+		width: 100%; background: none; border: none; outline: none; box-shadow: none;
+		color: var(--text); font: inherit; font-size: 21px; letter-spacing: -0.012em;
+		padding: 0; height: 42px;
+	}
+	.spotph { position: absolute; inset: 0; display: flex; align-items: center; pointer-events: none; overflow: hidden; transition: opacity 0.16s ease; }
+	.spotph span {
+		display: block; color: var(--dim); font-size: 21px; letter-spacing: -0.012em;
+		white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+		animation: spotswap 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+	}
+	#searchDlg.typed .spotph { opacity: 0; }
+	@keyframes spotswap {
+		from { opacity: 0; transform: translateY(10px); filter: blur(5px); }
+		to { opacity: 1; transform: none; filter: blur(0); }
+	}
+	.spotdo {
+		flex: none; max-width: 40%; overflow: hidden; border-radius: 999px;
+		background: var(--ring-soft); color: var(--ring); border: 1px solid var(--ring);
+		font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase;
+		padding: 5px 10px;
+	}
+	.spotdo span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: spotswap 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
+	.spotesc {
+		flex: none; background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
+		border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 11px; font-weight: 650;
+		letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+		transition: background 0.15s ease, color 0.15s ease, transform 0.14s ease;
+	}
+	.spotesc:hover { background: var(--panel-3); color: var(--text); }
+	.spotesc:active { transform: scale(0.94); }
+	#searchResults { max-height: min(52vh, 430px); overflow-y: auto; padding: 8px; }
+	#searchResults:empty { display: none; }
+	/* A ripple down the list rather than the whole block appearing at once.
+	   Capped at ten steps so forty hits do not take a second to finish. */
+	#searchResults .row-item { animation: spotrow 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 26ms); }
+	@keyframes spotrow { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+	@media (min-width: 901px) {
+		/* The over-wide, blurred start the goo condenses out of. */
+		#searchDlg { transform: translateY(-10px) scale(1.07, 1.02); }
+		#searchDlg[open] { transform: none; }
+		@starting-style {
+			#searchDlg[open] { transform: translateY(-10px) scale(1.07, 1.02); }
+		}
+	}
+	@media (max-width: 900px) {
+		/* Still a bottom sheet here; only the bar's proportions change. */
+		#searchDlg { border-radius: 22px 22px 0 0; padding: 0; }
+		.spotbar { height: 58px; padding: 0 10px 0 16px; gap: 10px; }
+		#searchInput, .spotph span { font-size: 18px; }
+		.spotdo { display: none; }   /* nothing hovers or arrow-keys on a phone */
+		#searchResults { max-height: 46dvh; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
+	}
 </style>
 </head>
 <body>
@@ -2122,6 +2227,18 @@
 <!-- Painted by initGridBackdrop(). aria-hidden and pointer-events:none:
      it is a backdrop, and must never take a tap meant for the app. -->
 <canvas id="gridBg" aria-hidden="true"></canvas>
+
+<!-- The "goo" the spotlight palette materialises through: a blur, then an
+     alpha ramp steep enough to snap the soft edge back to a hard one. That
+     pair is what makes the panel look like it condenses into place instead
+     of just fading up. Applied for the length of the entry and no longer. -->
+<svg width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+	<filter id="spotgoo">
+		<feGaussianBlur in="SourceGraphic" stdDeviation="9" result="soft" />
+		<feColorMatrix in="soft" result="goo" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -9" />
+		<feBlend in="SourceGraphic" in2="goo" />
+	</filter>
+</svg>
 
 
 
@@ -2194,6 +2311,7 @@
 							</div>
 							<div class="orbstage">
 								<div id="orbWrap" class="idle" aria-hidden="true">
+									<canvas id="dither" aria-hidden="true"></canvas>
 									<div id="core"><div id="eyes"><span class="eye" id="eyeL"></span><span class="eye" id="eyeR"></span></div></div>
 									<div id="orbKit"><span class="ac ac-hat"></span><span class="ac ac-face"></span><span class="ac ac-neck"></span></div>
 									<div id="orbCraft"><div class="holo"><div class="holoscreen"><span class="hrow hr0"></span><span class="hrow hr1"></span><span class="hrow hr2"></span><span class="hrow hr3"></span><div class="hchart"><i></i><i></i><i></i><i></i><i></i></div><span class="hscan"></span></div><div class="holoaux"><span class="hring"></span></div></div></div>
@@ -2850,10 +2968,17 @@
 	<button type="button" class="linkbtn" id="obSkip">Skip and set this up later</button>
 </dialog>
 
-<dialog id="searchDlg">
-	<h2>Search &amp; run</h2>
-	<input type="text" id="searchInput" placeholder="Search anything, or type a command — “new chat”, “lights off”, “dark mode”…" autocomplete="off" />
-	<div class="viewlist" id="searchResults" style="margin-top: 14px"></div>
+<dialog id="searchDlg" aria-label="Search and run">
+	<div class="spotbar">
+		<svg class="spoticon" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>
+		<div class="spotfield">
+			<div class="spotph" id="searchPh" aria-hidden="true"></div>
+			<input type="text" id="searchInput" autocomplete="off" aria-label="Search anything, or type a command" />
+		</div>
+		<div class="spotdo" id="searchDo" aria-hidden="true" hidden></div>
+		<button type="button" class="spotesc" id="searchEsc" data-dlg-close aria-label="Close search">esc</button>
+	</div>
+	<div class="viewlist" id="searchResults"></div>
 </dialog>
 
 <dialog id="activityDlg">
@@ -3352,6 +3477,7 @@ function animateBars(active) {
 }
 
 function setMicLive(on) {
+	dictRing(on);
 	micBtn.classList.toggle('live', on);
 	composerMicBtn.classList.toggle('live', on);
 	micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -4104,6 +4230,200 @@ applyTheme(store.theme);
 applySkin();
 applyPalette();
 applyLiquidMetal();
+
+/* ============================== dictation ring ===========================
+ * A Bayer 8x8 ordered dither over a ring + glow field, haloing the orb while
+ * you dictate — ported from the "Voice Dictator" study on 21st.dev.
+ *
+ * The one thing worth saying about it: the original pumps its amplitude from
+ * `Math.random()` every 120ms. #bars has been doing exactly that since the
+ * first commit, and a second fake meter next to the first one is not an
+ * improvement. So the amplitude here is raised by speech that actually
+ * arrived — each interim result from the recognizer bumps it by how many new
+ * words landed — and decays on its own between them. It rises fast and falls
+ * slowly, because speech comes in bursts and a ring that snapped shut between
+ * words would strobe.
+ *
+ * The loop only exists while the mic is live: start() mounts it on first use
+ * and stop() cancels the frame, so a dashboard nobody is talking to pays
+ * nothing for it. Under reduced motion it renders one frame per pulse rather
+ * than animating — held still, not removed.
+ *
+ * Ordering: this block declares `dither`, and setMicLive() reads it through
+ * dictRing(). Nothing calls setMicLive() before the page finishes evaluating,
+ * but if that ever changes this must move up, not the call down — a top-level
+ * temporal-dead-zone throw leaves every later listener unattached while every
+ * function still answers, which is the worst kind of broken to debug. */
+const DITHER_VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+const DITHER_FRAG = [
+	'precision highp float;',
+	'uniform vec2 u_res; uniform float u_time; uniform float u_amp; uniform vec3 u_color;',
+	/* The 8x8 Bayer threshold, unrolled the way the reference has it: three
+	   bit-planes of x interleaved with three of y, normalised to 0..1. */
+	'float bayer(vec2 c) {',
+	'  vec2 p = floor(mod(c, 8.0));',
+	'  float i = 1.0 * mod(p.x, 2.0) + 2.0 * mod(p.y, 2.0)',
+	'          + 4.0 * mod(floor(p.x / 2.0), 2.0) + 8.0 * mod(floor(p.y / 2.0), 2.0)',
+	'          + 16.0 * mod(floor(p.x / 4.0), 2.0) + 32.0 * mod(floor(p.y / 4.0), 2.0);',
+	'  return (i + 0.5) / 64.0;',
+	'}',
+	'void main() {',
+	'  vec2 uv = (gl_FragCoord.xy / u_res) * 2.0 - 1.0;',
+	'  uv.x *= u_res.x / u_res.y;',
+	'  float t = u_time * 0.5;',
+	'  float amp = clamp(u_amp, 0.0, 1.2);',
+	'  float radius = 0.66 + amp * 0.10 + sin(t * 0.9) * 0.012;',
+	'  float thick = 0.055 + amp * 0.045 + sin(t * 0.63) * 0.009;',
+	'  float d = length(uv);',
+	'  float ring = smoothstep(radius + thick, radius, d) - smoothstep(radius, radius - thick, d);',
+	'  float glow = exp(-14.0 * abs(d - radius));',
+	'  float halo = exp(-6.5 * d * (1.0 + amp * 0.35));',
+	'  float v = clamp(ring * 0.75 + glow * 0.5 + halo * 0.10, 0.0, 1.0);',
+	/* The reference draws on black, so its halo reads as a glow. Here it would
+	   speckle the sphere's face, so everything inside the orb is knocked out —
+	   the sphere edge sits at 0.60 of the canvas half-width. */
+	'  v *= smoothstep(0.52, 0.63, d);',
+	'  gl_FragColor = vec4(u_color, step(bayer(gl_FragCoord.xy), v) * 0.9);',
+	'}',
+].join('\n');
+
+let dither = null;   // null = not tried, false = no WebGL here
+function mountDither() {
+	const canvas = document.getElementById('dither');
+	if (!canvas) return null;
+	let gl = null;
+	try { gl = canvas.getContext('webgl', { antialias: false, alpha: true, premultipliedAlpha: false, depth: false }); } catch { gl = null; }
+	if (!gl) return null;
+
+	const sh = (type, src) => {
+		const o = gl.createShader(type);
+		gl.shaderSource(o, src); gl.compileShader(o);
+		if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) { console.warn('dither:', gl.getShaderInfoLog(o)); gl.deleteShader(o); return null; }
+		return o;
+	};
+	const vs = sh(gl.VERTEX_SHADER, DITHER_VERT), fs = vs && sh(gl.FRAGMENT_SHADER, DITHER_FRAG);
+	if (!vs || !fs) return null;
+	const prog = gl.createProgram();
+	gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+	gl.deleteShader(vs); gl.deleteShader(fs);
+	if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { console.warn('dither:', gl.getProgramInfoLog(prog)); return null; }
+	gl.useProgram(prog);
+
+	const buf = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+	const loc = gl.getAttribLocation(prog, 'p');
+	gl.enableVertexAttribArray(loc);
+	gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	gl.clearColor(0, 0, 0, 0);
+
+	const uRes = gl.getUniformLocation(prog, 'u_res');
+	const uTime = gl.getUniformLocation(prog, 'u_time');
+	const uAmp = gl.getUniformLocation(prog, 'u_amp');
+	const uColor = gl.getUniformLocation(prog, 'u_color');
+
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	let colour = [0.67, 0.71, 0.77];
+	let amp = 0.06, target = 0.06, clock = 0, last = null, raf = 0, live = false;
+
+	/* --glow-warn, not --ring. The ring is only ever on screen while the mic
+	 * is live, and in that state the orb's rim and the bars under it both go
+	 * warning-orange; an accent-grey halo between two orange things reads as a
+	 * separate widget rather than part of the same signal. Read at start()
+	 * rather than on every theme change, since by then it has long since
+	 * settled — which also keeps applyTheme() from having to know this
+	 * exists. */
+	function readColour() {
+		const probe = document.createElement('span');
+		probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;color:var(--glow-warn)';
+		document.body.append(probe);
+		const m = getComputedStyle(probe).color.match(/[\d.]+/g);
+		probe.remove();
+		if (m) colour = [+m[0] / 255, +m[1] / 255, +m[2] / 255];
+	}
+
+	function size() {
+		const dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const w = Math.max(1, Math.round(canvas.offsetWidth * dpr)), h = Math.max(1, Math.round(canvas.offsetHeight * dpr));
+		if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
+	}
+	function frame(now) {
+		raf = 0;
+		const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1);
+		last = now;
+		amp += (target - amp) * (1 - Math.exp(-(target > amp ? 13 : 2.6) * dt));
+		target += (0.06 - target) * (1 - Math.exp(-1.7 * dt));
+		clock += dt;
+		size();
+		gl.clear(gl.COLOR_BUFFER_BIT);
+		gl.uniform2f(uRes, canvas.width, canvas.height);
+		gl.uniform1f(uTime, still ? 0 : clock);
+		gl.uniform1f(uAmp, amp);
+		gl.uniform3f(uColor, colour[0], colour[1], colour[2]);
+		gl.drawArrays(gl.TRIANGLES, 0, 3);
+		if (live && !still && document.visibilityState === 'visible') raf = requestAnimationFrame(frame);
+		else last = null;
+	}
+	function tick() { if (raf === 0 && document.visibilityState === 'visible') raf = requestAnimationFrame(frame); }
+	document.addEventListener('visibilitychange', () => { if (live) tick(); });
+
+	return {
+		start() {
+			if (live) return;
+			live = true; amp = 0.06; target = 0.3;
+			readColour();
+			canvas.classList.add('on');
+			tick();
+		},
+		stop() {
+			live = false;
+			canvas.classList.remove('on');
+			if (raf) cancelAnimationFrame(raf);
+			raf = 0; last = null;
+		},
+		pulse(n) { target = Math.min(1.15, target + 0.18 + Math.min(n, 6) * 0.12); if (live) tick(); },
+		get amp() { return amp; },
+		get live() { return live; },
+	};
+}
+function dictRing(on) {
+	if (on && dither === null) dither = mountDither() || false;
+	if (dither) { if (on) dither.start(); else dither.stop(); }
+}
+
+/* The interim transcript arrived as one string that replaced the last one
+ * wholesale, so a sentence being dictated re-flowed on every result. Only the
+ * words that are genuinely new are appended now, each fading up on its own;
+ * the line is rebuilt from scratch only when the recognizer revises something
+ * it had already committed to. One DOM write per result either way, which
+ * matters because #caption is an aria-live region. */
+let dictWords = [];
+function setDictation(text) {
+	const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+	/* An empty word list means this is the start of an utterance, and the
+	   caption is still holding whatever was there before — "Listening…", or the
+	   idle prompt. Growing onto that is how the first result came out as
+	   "Tap the mic, or type below, to talk to Jarvis.turn the kitchen lights
+	   off"; every assertion passed and a screenshot caught it. */
+	const grew = dictWords.length > 0 && words.length >= dictWords.length && dictWords.every((w, i) => words[i] === w);
+	if (!grew) { captionEl.textContent = ''; dictWords = []; }
+	captionEl.classList.add('dim');
+	const frag = document.createDocumentFragment();
+	for (let i = dictWords.length; i < words.length; i++) {
+		const span = document.createElement('span');
+		span.className = 'dword';
+		span.textContent = words[i];
+		frag.append(span);
+	}
+	if (frag.childNodes.length) {
+		captionEl.append(frag);
+		if (dither) dither.pulse(words.length - dictWords.length);
+	}
+	dictWords = words;
+	termLoad(false);
+}
 /* Settings previews a theme without saving it, so applyTheme alone is not
  * enough for the palette — this is the persist-and-apply pair. */
 function renderReplyStyle() {
@@ -4325,7 +4645,21 @@ document.getElementById('sheetSettingsBtn').addEventListener('click', () => { cl
 document.getElementById('navSearch').addEventListener('click', () => openSearch());
 document.getElementById('mobileSearchBtn').addEventListener('click', () => openSearch());
 document.getElementById('searchDlg').addEventListener('click', (e) => { if (e.target.id === 'searchDlg') e.target.close(); });
-document.getElementById('searchInput').addEventListener('input', (e) => runSearch(e.target.value));
+document.getElementById('searchInput').addEventListener('input', (e) => {
+	document.getElementById('searchDlg').classList.toggle('typed', !!e.target.value);
+	runSearch(e.target.value);
+});
+/* The chip follows the pointer while it is over the list and snaps back to
+ * whatever Enter would actually do the moment it leaves. */
+document.getElementById('searchResults').addEventListener('pointerleave', () => spotDefault());
+document.getElementById('searchDlg').addEventListener('close', () => stopSpotHints());
+/* Written by hand rather than injected, so installDialogCloses() leaves this
+ * dialog alone and the floating x never lands on the pill. `cancel` rather
+ * than close() for the same reason the injected one uses it. */
+document.getElementById('searchEsc').addEventListener('click', () => {
+	const dlg = document.getElementById('searchDlg');
+	if (dlg.dispatchEvent(new Event('cancel', { cancelable: true }))) dlg.close();
+});
 /* Keyboard navigation for search. There was none at all: results could only be
  * reached with a mouse, which makes Ctrl+K a dead end for the very people most
  * likely to press it. Arrow keys move a highlight, Enter opens it, and Home/End
@@ -4338,6 +4672,7 @@ function highlightSearch(ix) {
 	searchIx = Math.max(0, Math.min(ix, rows.length - 1));
 	rows.forEach((r, i) => r.classList.toggle('sel', i === searchIx));
 	rows[searchIx].scrollIntoView({ block: 'nearest' });
+	spotAction(rows[searchIx].dataset.do || '');
 }
 document.getElementById('searchInput').addEventListener('keydown', (e) => {
 	const rows = searchRows();
@@ -4919,6 +5254,7 @@ function startListening(opts) {
 	setMicLive(true);
 	setState('listening', opts && opts.wake ? 'Listening for “' + store.wakeWord + '”' : 'Listening');
 	setCaption(opts && opts.wake ? 'Say “' + store.wakeWord + '”…' : 'Listening…', true);
+	dictWords = [];
 	recog = makeRecognizer();
 	recog.onresult = (e) => {
 		let interim = '', final = '';
@@ -4926,7 +5262,7 @@ function startListening(opts) {
 			const t = e.results[i][0].transcript;
 			if (e.results[i].isFinal) final += t; else interim += t;
 		}
-		if (interim) setCaption(interim, true);
+		if (interim) setDictation(interim);
 		if (final) handleFinalTranscript(final.trim(), opts);
 	};
 	recog.onerror = (e) => {
@@ -8652,9 +8988,10 @@ function makeMatcher(q) {
 }
 function runSearch(q) {
 	const box = document.getElementById('searchResults');
+	const dlg = document.getElementById('searchDlg');
 	const raw = (q || '').trim();
 	q = raw.toLowerCase();
-	if (!q) { box.innerHTML = ''; searchIx = -1; return; }
+	if (!q) { box.innerHTML = ''; searchIx = -1; dlg.classList.remove('hasresults'); spotAction(''); return; }
 	const match = makeMatcher(q);
 	const cmds = collectCommands().filter((it) => match(it.text));
 	const found = collectSearchIndex().filter((it) => match(it.text));
@@ -8662,6 +8999,7 @@ function runSearch(q) {
 	   for what you typed, the assistant still might, and that beats a dead end. */
 	const askRow = {
 		command: true,
+		ask: true,
 		title: 'Ask ' + store.assistantName + ': ' + raw,
 		sub: 'Send this as a message',
 		run: () => { showView('dashboard'); submitCommand(raw); },
@@ -8669,24 +9007,106 @@ function runSearch(q) {
 	const hits = cmds.slice(0, 12).concat(found.slice(0, 30)).concat([askRow]);
 	box.innerHTML = '';
 	searchIx = -1;
-	hits.forEach((it) => {
+	hits.forEach((it, i) => {
 		const row = document.createElement('button');
 		row.type = 'button';
 		row.className = 'row-item';
+		/* Capped at ten so a forty-hit list still finishes rippling in a
+		   quarter of a second. */
+		row.style.setProperty('--i', String(Math.min(i, 9)));
+		row.dataset.do = it.ask ? 'Ask ' + store.assistantName : it.command ? 'Run' : 'Open';
 		row.innerHTML = '<div class="txt"><b>' + esc(it.title.slice(0, 90) || '(untitled)') + '</b><small>' + esc(it.sub) + '</small></div>' +
-			(it.command ? '<div class="pstate">Run</div>' : '');
+			(it.command ? '<div class="pstate">' + (it.ask ? 'Ask' : 'Run') + '</div>' : '');
 		row.addEventListener('click', () => {
 			document.getElementById('searchDlg').close();
 			if (it.run) it.run(); else showView(it.view);
 		});
+		row.addEventListener('pointerenter', () => spotAction(row.dataset.do));
 		box.appendChild(row);
 	});
+	dlg.classList.add('hasresults');
+	spotDefault();
 }
+
+/* ------------------------------- spotlight -------------------------------
+ * The behaviour half of the Apple Spotlight port. Two pieces:
+ *
+ * `spotAction` is the morphing label. The reference swaps its *placeholder*
+ * to whatever row you are pointing at, which paints over the query you just
+ * typed; the same blur-slide swap drives a chip on the right of the bar
+ * instead, naming what Enter is about to do. It follows the arrow-key
+ * selection as well as the pointer, because this palette is keyboard-first
+ * and the reference's hover-only version says nothing to someone who never
+ * touches the mouse. Re-rendering is skipped when the label has not actually
+ * changed, or every keystroke would restart the animation.
+ *
+ * The hint cycle is the reference's placeholder carousel, fed from
+ * collectCommands() rather than from invented copy — so every example it
+ * offers is a string that genuinely resolves if you type it. It never
+ * advances while there is a query in the box.
+ */
+let spotTimer = 0, spotGooTimer = 0, spotHints = [], spotHintIx = 0;
+
+function spotAction(label) {
+	const el = document.getElementById('searchDo');
+	if (!el || el.dataset.label === label) return;
+	el.dataset.label = label;
+	el.textContent = '';
+	el.hidden = !label;
+	if (!label) return;
+	const span = document.createElement('span');
+	span.textContent = label;
+	el.append(span);
+}
+/* What Enter would do right now: the highlighted row, or the top hit, which
+ * is what Enter falls back to when nothing is highlighted. */
+function spotDefault() {
+	const rows = searchRows();
+	const row = rows[searchIx] || rows[0];
+	spotAction(row ? row.dataset.do || '' : '');
+}
+function spotHint(text) {
+	const box = document.getElementById('searchPh');
+	if (!box) return;
+	box.textContent = '';
+	const span = document.createElement('span');
+	span.textContent = text;
+	box.append(span);
+}
+function startSpotHints() {
+	clearInterval(spotTimer);
+	const runnable = collectCommands().filter((c) => c.run && c.title.length < 34);
+	for (let i = runnable.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[runnable[i], runnable[j]] = [runnable[j], runnable[i]];
+	}
+	spotHints = ['Search anything, or type a command…'].concat(runnable.slice(0, 5).map((c) => 'Try “' + c.title + '”'));
+	spotHintIx = 0;
+	spotHint(spotHints[0]);
+	spotTimer = setInterval(() => {
+		const input = document.getElementById('searchInput');
+		if (!input || input.value) return;   // never move under a query being typed
+		spotHintIx = (spotHintIx + 1) % spotHints.length;
+		spotHint(spotHints[spotHintIx]);
+	}, 2800);
+}
+function stopSpotHints() { clearInterval(spotTimer); spotTimer = 0; }
+
 function openSearch() {
+	const dlg = document.getElementById('searchDlg');
 	document.getElementById('searchInput').value = '';
 	document.getElementById('searchResults').innerHTML = '';
+	dlg.classList.remove('typed', 'hasresults');
+	spotAction('');
 	searchIx = -1;
-	document.getElementById('searchDlg').showModal();
+	dlg.showModal();
+	startSpotHints();
+	/* The goo rides the entry and then comes off: an SVG filter rasterises
+	 * everything under it, and paying that on live text buys nothing once the
+	 * movement has stopped. 480ms covers the 220ms transition twice over. */
+	dlg.classList.add('gooey');
+	clearTimeout(spotGooTimer);
+	spotGooTimer = setTimeout(() => dlg.classList.remove('gooey'), 480);
 	setTimeout(() => document.getElementById('searchInput').focus(), 50);
 }
 
