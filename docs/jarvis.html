@@ -222,11 +222,11 @@
 	.dot.err { background: var(--glow-err); box-shadow: 0 0 8px var(--glow-err); }
 	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 10px 18px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.14s ease; }
 	.ghost:hover { background: var(--panel-3); }
-	.ghost:active { transform: scale(0.975); }
+
 	.ghost.small { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
 	.primary { background: var(--ring); color: var(--on-accent); border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease, transform 0.14s ease; }
 	.primary:hover { filter: brightness(0.92); }
-	.primary:active { transform: scale(0.975); }
+
 	.linkbtn { background: none; border: none; color: var(--dim); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
 	.empty { color: var(--dim); font-size: 13px; text-align: center; padding: 26px 10px; }
@@ -1918,9 +1918,102 @@
 	}
 
 
+	/* ========================= liquid glass buttons =========================
+	   Taken off 21st.dev's "Apple Tahoe Liquid Glass Button" — but the part
+	   worth taking is not its engine. That component drives an SVG
+	   feDisplacementMap from a generated convex normal map, re-analysed every
+	   frame in a rAF loop, to refract whatever photograph sits behind it.
+	   These buttons sit on a flat panel; there is nothing to refract, and the
+	   loop would cost a frame budget to bend nothing.
+
+	   What actually reads as glass is its SHADOW STACK: a dozen tiny insets
+	   instead of one blur, so the rim, the bevel catching the light, the
+	   bounce off the opposite wall and the occlusion under the top edge are
+	   all separate layers. That is pure CSS, so that is what came across —
+	   with the light fixed overhead rather than recomputed per frame. */
+	/* Applied through the classes that already exist, so a button added
+	   later is glass automatically and nobody has to remember a class. */
+	.glassy, .primary, .ghost, .iconbtn, #micBtn, #textSend, .sheetact .destroy {
+		position: relative;
+		isolation: isolate;
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 255, 255, 0.14),
+			inset 0 2px 1px -1px rgba(255, 255, 255, 0.5),
+			inset 0 -3px 2px -2px rgba(255, 255, 255, 0.2),
+			inset 0 -1px 4px rgba(0, 0, 0, 0.13),
+			inset 0 5px 7px -5px rgba(0, 0, 0, 0.2),
+			0 1px 2px rgba(0, 0, 0, 0.14),
+			0 6px 16px -4px rgba(0, 0, 0, 0.16);
+		/* The overshoot is the whole trick. A plain ease returns the button to
+		   rest; 1.5 on the third control point lets it pass its resting size
+		   and settle back, which is what registers as a click in the hand. */
+		transition: transform 0.4s cubic-bezier(0.4, 1.5, 0.3, 1), box-shadow 0.25s ease, filter 0.2s ease, background 0.25s ease;
+	}
+	/* The specular. One highlight off the top-left, cropped to the button's
+	   own radius — inherit is what keeps it honest on a pill and a square. */
+	/* ::before, NOT ::after. Every button in this app already uses ::after
+	   as an invisible hit pad (inset:-5px) to reach the 44px touch target
+	   from a 34px chip — putting the specular there collapsed six targets
+	   at once, and the touch-target suite caught it. */
+	.glassy::before, .primary::before, .ghost::before, .iconbtn::before, #micBtn::before, #textSend::before {
+		content: ''; position: absolute; inset: 0; border-radius: inherit;
+		pointer-events: none; z-index: -1;
+		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.26), transparent 62%);
+		opacity: 0.9; transition: opacity 0.25s ease;
+	}
+	.glassy:active, .primary:active, .ghost:active, .iconbtn:active, #micBtn:active, #textSend:active { transform: scale(0.955); }
+	.glassy:active::before, .primary:active::before, .ghost:active::before, .iconbtn:active::before, #micBtn:active::before, #textSend:active::before { opacity: 0.5; }
+	.glassy:hover, .primary:hover, .iconbtn:hover, #micBtn:hover, #textSend:hover {
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+			inset 0 2px 1px -1px rgba(255, 255, 255, 0.62),
+			inset 0 -3px 2px -2px rgba(255, 255, 255, 0.24),
+			inset 0 -1px 4px rgba(0, 0, 0, 0.13),
+			inset 0 5px 7px -5px rgba(0, 0, 0, 0.2),
+			0 2px 4px rgba(0, 0, 0, 0.16),
+			0 10px 24px -6px rgba(0, 0, 0, 0.2);
+	}
+	/* The light theme has nothing like as much room: a white bevel on a white
+	   surface is invisible, so the bright layers come down and the dark ones
+	   come up to carry the shape instead. */
+	:root[data-theme="light"] .glassy, :root[data-theme="light"] .primary, :root[data-theme="light"] .ghost, :root[data-theme="light"] .iconbtn, :root[data-theme="light"] #micBtn, :root[data-theme="light"] #textSend {
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+			inset 0 1.5px 1px -1px rgba(255, 255, 255, 0.9),
+			inset 0 -3px 3px -3px rgba(0, 0, 0, 0.1),
+			inset 0 5px 8px -6px rgba(0, 0, 0, 0.12),
+			0 1px 2px rgba(40, 36, 32, 0.1),
+			0 6px 16px -6px rgba(40, 36, 32, 0.14);
+	}
+	:root[data-theme="light"] .glassy::before, :root[data-theme="light"] .primary::before, :root[data-theme="light"] .iconbtn::before, :root[data-theme="light"] #micBtn::before, :root[data-theme="light"] #textSend::before {
+		background: radial-gradient(125% 90% at 28% -25%, rgba(255, 255, 255, 0.75), transparent 60%);
+	}
+
+	/* ======================= the interactive backdrop =======================
+	   A kinetic grid, after 21st.dev's: invisible at rest, and it warps and
+	   lights up only where the pointer is. That locality is the point — the
+	   shader that was here before moved the whole picture at once, which
+	   reads as a moving wallpaper rather than as something responding.
+
+	   Canvas 2D, not WebGL: it is lines and dots, and it costs nothing to
+	   draw. Better still, it can STOP. At rest the grid is a static image, so
+	   the loop shuts down entirely and the page goes quiet — see gridStep(). */
+	#gridBg {
+		position: fixed; inset: 0; width: 100%; height: 100%;
+		z-index: 0; display: block; pointer-events: none;
+		opacity: 0; transition: opacity 0.7s ease;
+	}
+	#gridBg.on { opacity: 1; }
+	#sidebar, #contentArea { position: relative; z-index: 1; }
+
 </style>
 </head>
 <body>
+
+<!-- Painted by initGridBackdrop(). aria-hidden and pointer-events:none:
+     it is a backdrop, and must never take a tap meant for the app. -->
+<canvas id="gridBg" aria-hidden="true"></canvas>
+
 
 
 
@@ -2296,6 +2389,12 @@
 		<p class="hint">Applies everywhere, including the boot intro.</p>
 		<label>Frosted glass<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
 		<p class="hint">Surfaces are flat by default. Raise this to blur and see through them.</p>
+
+		<h3>Backdrop</h3>
+		<div class="row">
+			<label class="inline"><input type="checkbox" id="gridBgInput" /> Kinetic grid — a grid behind the app that warps under your pointer and ripples where you click</label>
+		</div>
+		<p class="hint" id="gridHint">Invisible until you touch it, and it stops drawing the moment it settles, so it costs nothing while you read.</p>
 
 		<h3>Units</h3>
 		<div class="seg2" id="unitsSeg">
@@ -2935,6 +3034,8 @@ const store = {
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
 	get navCollapsed() { return localStorage.getItem('jarvis.navCollapsed') === '1'; },
 	set navCollapsed(v) { localStorage.setItem('jarvis.navCollapsed', v ? '1' : '0'); },
+	get gridBg() { return localStorage.getItem('jarvis.gridBg') !== '0'; },   // on unless turned off
+	set gridBg(v) { localStorage.setItem('jarvis.gridBg', v ? '1' : '0'); },
 	get introSeen() { return localStorage.getItem('jarvis.introSeen') === '1'; },
 	set introSeen(v) { localStorage.setItem('jarvis.introSeen', v ? '1' : '0'); },
 	/* ---- the business Jarvis is focused on ---- */
@@ -3408,12 +3509,245 @@ document.getElementById('skinRandom').addEventListener('click', () => {
 });
 
 
+/* ========================= the kinetic grid backdrop =========================
+ * After 21st.dev's Kinetic Grid. Lines and dots on a 2D canvas, pulled into a
+ * lens bulge around the pointer and lit only there; a click sends a ring out
+ * across it.
+ *
+ * The important property is that it STOPS. A grid with no pointer near it is
+ * a still image, so once the warp has settled and the ripples have died the
+ * loop cancels itself and the page draws nothing at all until you move again.
+ * The shader this replaces ran sixty times a second forever to animate a
+ * backdrop nobody was looking at.
+ */
+let gridHandle = null;
+
+function initGridBackdrop() {
+	const canvas = document.getElementById('gridBg');
+	if (!store.gridBg) return null;
+	const ctx = canvas.getContext && canvas.getContext('2d');
+	if (!ctx) return null;
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	const SPACING = 46;      // px between grid lines at rest
+	const REACH = 150;       // how far the pointer's influence carries
+	const PULL = 24;         // how many px a vertex under the pointer moves
+	const RIPPLE_SPEED = 620;
+	const RIPPLE_LIFE = 1.15;
+
+	let w = 0, h = 0, dpr = 1;
+	let px = -9999, py = -9999;        // pointer, eased
+	let tx = -9999, ty = -9999;        // pointer, target
+	let ripples = [];
+	let raf = 0, last = null, running = true;
+	let visible = document.visibilityState === 'visible';
+	let ink = [255, 255, 255], accent = [221, 129, 99], headroom = 1;
+
+	function readColours() {
+		const probe = document.createElement('span');
+		probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden';
+		document.body.append(probe);
+		const rgb = (token, fallback) => {
+			probe.style.color = 'var(' + token + ')';
+			const m = getComputedStyle(probe).color.match(/[\d.]+/g);
+			return m ? [+m[0], +m[1], +m[2]] : fallback;
+		};
+		ink = rgb('--text', [255, 255, 255]);
+		accent = rgb('--ring', [221, 129, 99]);
+		const bg = rgb('--bg', [38, 38, 36]);
+		probe.remove();
+		/* A light ground shows a dark grid far more readily than a dark ground
+		 * shows a light one, so the same alphas that whisper on dark shout on
+		 * light. Judged from --bg's own luminance rather than the theme name,
+		 * so a skin that lightens the background gets the same treatment. */
+		const lum = (0.299 * bg[0] + 0.587 * bg[1] + 0.114 * bg[2]) / 255;
+		headroom = lum > 0.5 ? 0.5 : 1;
+	}
+	readColours();
+
+	function size() {
+		dpr = Math.min(window.devicePixelRatio || 1, 2);
+		const nw = Math.round(window.innerWidth * dpr), nh = Math.round(window.innerHeight * dpr);
+		if (canvas.width !== nw || canvas.height !== nh) {
+			canvas.width = nw; canvas.height = nh;
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		}
+		w = window.innerWidth; h = window.innerHeight;
+	}
+
+	/* Where a grid vertex actually lands: pulled toward the pointer by a
+	 * bell curve, then pushed by each live ripple's ring. */
+	function warp(x, y, out) {
+		let dx = 0, dy = 0, lit = 0;
+		const ox = x - px, oy = y - py;
+		const d2 = ox * ox + oy * oy;
+		const r2 = REACH * REACH;
+		if (d2 < r2 * 2.2) {
+			const f = Math.exp(-d2 / (r2 * 0.30));
+			const d = Math.sqrt(d2) || 1;
+			dx -= (ox / d) * f * PULL;
+			dy -= (oy / d) * f * PULL;
+			lit = Math.max(lit, f);
+		}
+		for (let i = 0; i < ripples.length; i++) {
+			const rp = ripples[i];
+			const rx = x - rp.x, ry = y - rp.y;
+			const dist = Math.sqrt(rx * rx + ry * ry) || 1;
+			const ring = dist - rp.age * RIPPLE_SPEED;
+			const band = Math.exp(-(ring * ring) / 5200);
+			if (band > 0.01) {
+				const fade = 1 - rp.age / RIPPLE_LIFE;
+				dx += (rx / dist) * band * 20 * fade;
+				dy += (ry / dist) * band * 20 * fade;
+				lit = Math.max(lit, band * fade);
+			}
+		}
+		out[0] = x + dx; out[1] = y + dy; out[2] = lit;
+	}
+
+	const P = [0, 0, 0];
+	function draw() {
+		ctx.clearRect(0, 0, w, h);
+		const cols = Math.ceil(w / SPACING) + 1, rows = Math.ceil(h / SPACING) + 1;
+		/* One pass to place every vertex, so the lines and the dots agree. */
+		const gx = new Float32Array(cols * rows), gy = new Float32Array(cols * rows), gl = new Float32Array(cols * rows);
+		for (let j = 0; j < rows; j++) {
+			for (let i = 0; i < cols; i++) {
+				warp(i * SPACING, j * SPACING, P);
+				const k = j * cols + i;
+				gx[k] = P[0]; gy[k] = P[1]; gl[k] = P[2];
+			}
+		}
+		/* The colour is INTERPOLATED toward the accent by how lit a segment is,
+		 * never switched to it. A hard `lit > threshold ? hot : base` turned
+		 * a third of the screen fully accent-coloured at low alpha, which read
+		 * as an orange net rather than as a grid catching the light. */
+		const hot = accent, cold = ink;
+		ctx.lineWidth = 1;
+		const stroke = (lit) => {
+			const t = Math.min(1, lit * 1.25);
+			const r = Math.round(cold[0] + (hot[0] - cold[0]) * t);
+			const g = Math.round(cold[1] + (hot[1] - cold[1]) * t);
+			const b = Math.round(cold[2] + (hot[2] - cold[2]) * t);
+			/* 0.022 at rest. Anything higher and the grid crosses body text and
+			 * costs legibility for decoration — the reference gets away with a
+			 * louder grid because it sits behind one huge headline. */
+			return 'rgba(' + r + ',' + g + ',' + b + ',' + ((0.022 + lit * 0.42) * headroom).toFixed(3) + ')';
+		};
+		for (let j = 0; j < rows; j++) {
+			for (let i = 0; i < cols; i++) {
+				const k = j * cols + i;
+				if (i < cols - 1) {
+					const k2 = k + 1;
+					ctx.strokeStyle = stroke(Math.max(gl[k], gl[k2]));
+					ctx.beginPath(); ctx.moveTo(gx[k], gy[k]); ctx.lineTo(gx[k2], gy[k2]); ctx.stroke();
+				}
+				if (j < rows - 1) {
+					const k2 = k + cols;
+					ctx.strokeStyle = stroke(Math.max(gl[k], gl[k2]));
+					ctx.beginPath(); ctx.moveTo(gx[k], gy[k]); ctx.lineTo(gx[k2], gy[k2]); ctx.stroke();
+				}
+			}
+		}
+		/* Dots only where there is light — a dot at every intersection all the
+		 * time reads as a texture swatch, not as a grid coming alive. */
+		for (let k = 0; k < gl.length; k++) {
+			if (gl[k] < 0.12) continue;
+			ctx.fillStyle = 'rgba(' + hot[0] + ',' + hot[1] + ',' + hot[2] + ',' + (gl[k] * 0.8 * headroom).toFixed(3) + ')';
+			ctx.beginPath(); ctx.arc(gx[k], gy[k], 1.1 + gl[k] * 1.7, 0, 6.2832); ctx.fill();
+		}
+	}
+
+	function settled() {
+		return ripples.length === 0
+			&& Math.abs(tx - px) < 0.5 && Math.abs(ty - py) < 0.5;
+	}
+	function step(now) {
+		raf = 0;
+		if (!running) return;
+		const dt = last === null ? 0 : Math.min((now - last) / 1000, 0.1);
+		last = now;
+		const follow = still ? 1 : 1 - Math.exp(-11 * dt);
+		px += (tx - px) * follow;
+		py += (ty - py) * follow;
+		ripples.forEach((r) => { r.age += dt; });
+		ripples = ripples.filter((r) => r.age < RIPPLE_LIFE);
+		draw();
+		/* The whole point: when nothing is moving, stop asking for frames. */
+		if (!settled()) request(); else last = null;
+	}
+	function request() { if (running && visible && raf === 0) raf = requestAnimationFrame(step); }
+	function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; last = null; }
+
+	const onMove = (e) => { tx = e.clientX; ty = e.clientY; request(); };
+	const onDown = (e) => {
+		tx = e.clientX; ty = e.clientY;
+		/* Four at once is a light show. */
+		if (ripples.length < 4) ripples.push({ x: e.clientX, y: e.clientY, age: 0 });
+		request();
+	};
+	const onLeave = () => { tx = -9999; ty = -9999; request(); };
+	const onResize = () => { size(); draw(); request(); };
+	const onVisibility = () => {
+		visible = document.visibilityState === 'visible';
+		if (visible) request(); else stop();
+	};
+	window.addEventListener('pointermove', onMove, { passive: true });
+	window.addEventListener('pointerdown', onDown, { passive: true });
+	window.addEventListener('pointercancel', onLeave);
+	window.addEventListener('blur', onLeave);
+	document.documentElement.addEventListener('pointerleave', onLeave);
+	window.addEventListener('resize', onResize);
+	document.addEventListener('visibilitychange', onVisibility);
+
+	size();
+	draw();
+	canvas.classList.add('on');
+
+	return {
+		repaint() { readColours(); size(); draw(); },
+		pause() {
+			if (!running) return;
+			running = false; stop(); canvas.classList.remove('on');
+			window.removeEventListener('pointermove', onMove);
+			window.removeEventListener('pointerdown', onDown);
+			window.removeEventListener('pointercancel', onLeave);
+			window.removeEventListener('blur', onLeave);
+			document.documentElement.removeEventListener('pointerleave', onLeave);
+			window.removeEventListener('resize', onResize);
+			document.removeEventListener('visibilitychange', onVisibility);
+		},
+		resume() {
+			if (running) return;
+			running = true;
+			window.addEventListener('pointermove', onMove, { passive: true });
+			window.addEventListener('pointerdown', onDown, { passive: true });
+			window.addEventListener('pointercancel', onLeave);
+			window.addEventListener('blur', onLeave);
+			document.documentElement.addEventListener('pointerleave', onLeave);
+			window.addEventListener('resize', onResize);
+			document.addEventListener('visibilitychange', onVisibility);
+			canvas.classList.add('on');
+			size(); draw();
+		},
+	};
+}
+
+function applyGridBackdrop() {
+	if (!store.gridBg) { if (gridHandle) gridHandle.pause(); return; }
+	if (!gridHandle) gridHandle = initGridBackdrop();
+	else { gridHandle.resume(); gridHandle.repaint(); }
+}
+applyGridBackdrop();
+
 function applyTheme(theme) {
 	const dark = theme !== 'light';
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 	// keep the browser/OS chrome (iOS status bar, Android address bar) in step
 	const meta = document.querySelector('meta[name="theme-color"]');
 	if (meta) meta.setAttribute('content', dark ? '#262624' : '#faf9f7');
+	/* The grid draws in --text and --ring, both of which just changed. */
+	applyGridBackdrop();
 }
 applyTheme(store.theme);
 applySkin();
@@ -3781,6 +4115,8 @@ function openSettings(tab) {
 	document.querySelectorAll('#themeSeg button').forEach((x) => x.classList.toggle('on', x.dataset.themeOpt === store.theme));
 	document.getElementById('glassIntensityInput').value = store.glassIntensity;
 	document.getElementById('glassIntensityVal').textContent = store.glassIntensity + '%';
+	document.getElementById('gridBgInput').checked = store.gridBg;
+	renderGridHint();
 	document.querySelectorAll('#unitsSeg button').forEach((x) => x.classList.toggle('on', x.dataset.units === store.units));
 	document.getElementById('keyInput').value = store.key;
 	document.getElementById('oaiKeyInput').value = store.oaiKey;
@@ -4088,6 +4424,21 @@ document.getElementById('importFile').addEventListener('change', (e) => {
 	if (file) importBackup(file);
 });
 
+function renderGridHint() {
+	const hint = document.getElementById('gridHint');
+	const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	hint.textContent = !document.getElementById('gridBgInput').checked
+		? 'Off — the app keeps its plain background.'
+		: still
+			? 'Your device asks for reduced motion, so the grid follows your pointer without easing into it.'
+			: 'Invisible until you touch it, and it stops drawing the moment it settles, so it costs nothing while you read.';
+}
+document.getElementById('gridBgInput').addEventListener('change', () => {
+	store.gridBg = document.getElementById('gridBgInput').checked;
+	applyGridBackdrop();
+	renderGridHint();
+});
+
 document.getElementById('resetJarvisBtn').addEventListener('click', async () => {
 	const ok = await confirmAction('Reset Jarvis?', 'This erases everything stored on this device — memory, reminders, notes, history, recordings, devices, keys and preferences — and cannot be undone.');
 	if (ok) resetJarvis();
@@ -4099,6 +4450,8 @@ document.getElementById('settingsSave').addEventListener('click', () => {
 	if (document.getElementById('keyInput').value.trim() !== store.key) store.keySource = '';
 	store.theme = document.querySelector('#themeSeg button.on')?.dataset.themeOpt || store.theme;
 	store.glassIntensity = parseInt(document.getElementById('glassIntensityInput').value, 10);
+	store.gridBg = document.getElementById('gridBgInput').checked;
+	applyGridBackdrop();
 	store.key = document.getElementById('keyInput').value.trim();
 	store.oaiKey = document.getElementById('oaiKeyInput').value.trim();
 	store.anthKey = document.getElementById('anthKeyInput').value.trim();
