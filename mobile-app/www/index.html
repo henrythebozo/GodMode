@@ -2035,21 +2035,37 @@
 	.iconbtn::before, #textSend::before, .sheetact .destroy::before, .swatch::before {
 		content: ''; position: absolute; inset: 0; border-radius: inherit;
 		padding: 1.6px; pointer-events: none; z-index: 0;
-		/* Every stop is neutral on purpose. The first version borrowed the
-		   shader's chromatic fringe as literal colour stops — a steel blue, a
-		   warm cream and a pink — which at 1.6px wide stops reading as chrome
+		/* Two things about these stops.
+		
+		   Every one of them is neutral on purpose. The first version borrowed
+		   the shader's chromatic fringe as literal colour stops — a steel blue,
+		   a warm cream and a pink — which at 1.6px wide stops reading as chrome
 		   and starts reading as an oil slick, with an orange smear along the
 		   bottom edge of every button. Polished metal reflects the room, and
-		   this room is grey. The variation that sells it is value, not hue. */
+		   this room is grey; the variation that sells it is value, not hue.
+		
+		   And they are unevenly placed, dark for most of the way round with one
+		   hard white spike at 15% and a softer second reflection at 57%. The
+		   ring was animated from the start, but the first version's eleven
+		   stops were all bright, so it was a uniformly lit band whose rotation
+		   you could not actually see — nothing distinct to follow. A dark ring
+		   with a comet in it is the same animation made legible: you watch one
+		   highlight travel the perimeter, which is what the spin was for.
+		
+		   The angle pivots about the centre, so on a wide pill the highlight
+		   crosses the short ends faster than the long sides. True constant
+		   speed needs offset-path or a stroked SVG per button, and neither is
+		   worth 118 extra nodes for a rim decoration. */
 		background: conic-gradient(from var(--metal-spin),
-			#6d7076, #eceef2, #a9adb4, #f4f5f7, #8e9298, #dcdee2,
-			#c2c5ca, #cbced3, #979aa0, #e8eaee, #6d7076);
+			#52565c 0%, #6f737a 6%, #eceef2 12%, #ffffff 15%, #cfd3d9 20%,
+			#6b6f76 28%, #4e5157 44%, #8d9198 52%, #c8ccd2 57%, #85898f 63%,
+			#55585e 78%, #52565c 100%);
 		/* Ring, not disc: paint the border box, punch out the content box. */
 		-webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
 		-webkit-mask-composite: xor;
 		mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
 		mask-composite: exclude;
-		animation: metalSpin 6s linear infinite;
+		animation: metalSpin 4.5s linear infinite;
 		opacity: 1;
 	}
 	/* Once the shader is up, the fallback ring gets out of its way. */
