@@ -2296,9 +2296,24 @@
 	button:hover .ico-x { transform: rotate(90deg); }
 
 	/* send — leans forward under the pointer, leaves the frame on the click */
-	.ico-send { transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease; }
+	.ico-send { transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1); }
 	button:hover .ico-send { transform: translate(2px, -2px); }
-	#textSend.sent .ico-send { transform: translate(18px, -18px) scale(0.4); opacity: 0; }
+	/* Out through the top right, and a fresh one back in from the bottom left,
+	   so the button reloads rather than snapping. One keyframe set rather than
+	   two classes: the return is the same gesture, not a second state. */
+	@keyframes icoFly {
+		/* Per-keyframe easing, because the two halves are opposite gestures: the
+		   exit ACCELERATES away and the return SETTLES in. One curve across both
+		   was the bug in the first cut — the file's usual front-loaded
+		   cubic-bezier(0.32, 0.72, 0, 1) put the plane out of frame and fully
+		   transparent within about 90ms, so the flight was over before the eye
+		   found it and it read as the icon simply blinking out. */
+		0% { transform: none; opacity: 1; animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.35); }
+		54% { transform: translate(30px, -30px) rotate(16deg) scale(0.4); opacity: 0; }
+		55% { transform: translate(-16px, 16px) rotate(-12deg) scale(0.55); opacity: 0; animation-timing-function: cubic-bezier(0.18, 0.85, 0.3, 1); }
+		100% { transform: none; opacity: 1; }
+	}
+	#textSend.sent .ico-send { animation: icoFly 0.62s linear; }
 
 	/* the record dot breathes only while it is actually recording */
 	@keyframes icoRec { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.72); opacity: 0.6; } }
@@ -2340,7 +2355,7 @@
 	@keyframes icoChip { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.11); } 62% { transform: scale(0.96); } }
 	@keyframes icoGrid { 0%, 100% { transform: rotate(0); } 34% { transform: rotate(8deg); } 70% { transform: rotate(-5deg); } }
 	@keyframes icoBeat { 0%, 100% { transform: scaleX(1); } 40% { transform: scaleX(1.18); } }
-	@keyframes icoGear { to { transform: rotate(90deg); } }
+	@keyframes icoGear { to { transform: rotate(360deg); } }
 	.navitem[data-view="dashboard"]:hover svg { animation-name: icoLift; }
 	.navitem[data-view="overview"]:hover svg { animation-name: icoPop; }
 	.navitem[data-view="chat"]:hover svg { animation-name: icoBob; }
@@ -2351,7 +2366,9 @@
 	.navitem[data-view="apps"]:hover svg { animation-name: icoGrid; }
 	#navSearch:hover svg, #sheetSearchBtn:hover svg { animation-name: icoPop; }
 	#navActivity:hover svg, #sheetActivityBtn:hover svg { animation-name: icoBeat; }
-	#navSettings:hover svg, #sheetSettingsBtn:hover svg, #activitySettingsBtn:hover svg { animation-name: icoGear; animation-fill-mode: forwards; }
+	/* A full turn, and slower than the rest so you can see it go round. No
+	   fill-mode: 360 lands back where it started, so it needs no unwinding. */
+	#navSettings:hover svg, #sheetSettingsBtn:hover svg, #activitySettingsBtn:hover svg { animation-name: icoGear; animation-duration: 0.8s; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
 
 	/* The global reduce rule already collapses every duration to 0.001ms, so
 	   these are only for the three that loop: a frozen first frame is still a
@@ -4873,7 +4890,7 @@ document.getElementById('searchDlg').addEventListener('click', (e) => { if (e.ta
 document.getElementById('textSend').addEventListener('click', () => {
 	const b = document.getElementById('textSend');
 	b.classList.add('sent');
-	setTimeout(() => b.classList.remove('sent'), 380);
+	setTimeout(() => b.classList.remove('sent'), 660);
 });
 document.getElementById('searchInput').addEventListener('input', (e) => {
 	document.getElementById('searchDlg').classList.toggle('typed', !!e.target.value);
@@ -7301,9 +7318,23 @@ let turnAbort = null;
  * move is easier to hit than one that appears somewhere new. */
 function setBusy(on) {
 	busy = on;
-	document.getElementById('textSend').hidden = on;
-	document.getElementById('stopBtn').hidden = !on;
+	const send = document.getElementById('textSend'), stop = document.getElementById('stopBtn');
 	if (on) document.getElementById('retryBtn').hidden = true;
+	/* The swap waits for the plane to leave. setBusy fires in the same tick as
+	 * the click, and `hidden` is display:none !important here, so hiding the
+	 * button immediately cancelled the flight outright — it played only when
+	 * you pressed Send on an empty box, which is the one case where nothing
+	 * happens. Both buttons swap together at the end rather than overlapping,
+	 * because two 38px buttons in the composer for half a second is a layout
+	 * jump. The `busy` re-check matters: a turn that fails instantly (no key)
+	 * calls setBusy(false) before this fires, and without it the timer would
+	 * put the app back into a state it had already left. */
+	if (on && send.classList.contains('sent')) {
+		setTimeout(() => { if (busy) { send.hidden = true; stop.hidden = false; } }, 400);
+		return;
+	}
+	send.hidden = on;
+	stop.hidden = !on;
 }
 /* Aborts but does NOT clear turnAbort. Clearing it here looked tidy and was
  * the whole bug: every later `turnAbort && …` guard then read null, so the
