@@ -2248,6 +2248,137 @@
 		.spotdo { display: none; }   /* nothing hovers or arrow-keys on a phone */
 		#searchResults { max-height: 46dvh; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
 	}
+	/* ============================== animated icons =========================
+	   Ported from the animated-icon sets on 21st.dev — dev.yadhakim's
+	   "Animated State Icons" and skyleen77's icons-* library. Both are React
+	   plus Framer Motion, so what came across is the vocabulary, not the code:
+
+	     - Framer's `pathLength` is stroke-dasharray plus stroke-dashoffset.
+	       That is how the mute cross draws itself on rather than appearing.
+	     - Its spring easing is cubic-bezier(0.32, 0.72, 0, 1), which this file
+	       already uses for the sheet morph, so the motion matches what is here.
+	     - A two-state icon is ONE svg whose parts move — not two svgs swapped.
+	       Swapping is what Jarvis did everywhere, and it is the whole reason
+	       nothing ever appeared to animate.
+
+	   The sets had no orb face, sidebar chevron, record dot or nav glyphs, so
+	   those eleven are custom, built from the same vocabulary so the set reads
+	   as one family rather than an import next to the originals.
+
+	   Two rules the whole block keeps. Transform and opacity only — nothing
+	   here can trigger layout. And nothing runs on a timer: the reference sets
+	   loop theirs to demo them, which on a real sidebar is eleven things
+	   twitching at you. These move when you point at them, or when the thing
+	   they describe actually changes. */
+	.ico * { transform-box: fill-box; transform-origin: center; }
+	.navitem svg, .iconbtn svg { transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1); }
+
+	/* mute — the two waves slide out and a cross draws itself over them */
+	.ico-vol .wv { transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.32, 0.72, 0, 1); }
+	.ico-vol .wv1 { transition-delay: 0.03s; }
+	.ico-vol .slash { stroke-dasharray: 18; stroke-dashoffset: 18; opacity: 0; transition: stroke-dashoffset 0.3s cubic-bezier(0.32, 0.72, 0, 1) 0.05s, opacity 0.08s linear; }
+	#muteBtn.on .wv { opacity: 0; transform: translateX(-3px); }
+	#muteBtn.on .wv1 { transform: translateX(-2px); }
+	#muteBtn.on .slash { opacity: 1; stroke-dashoffset: 0; }
+
+	/* hamburger — the three bars stagger rather than morphing to an X: the
+	   sheet covers this button once it is open, so a morph nobody can see
+	   would be a lie told to an empty room */
+	.ico-menu .mn { transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+	.ico-menu .mn2 { transition-delay: 0.04s; }
+	.ico-menu .mn3 { transition-delay: 0.08s; }
+	button:hover .ico-menu .mn1 { transform: translateX(2.5px); }
+	button:hover .ico-menu .mn2 { transform: translateX(-2px); }
+	button:hover .ico-menu .mn3 { transform: translateX(1.5px); }
+
+	/* every close, including the one installDialogCloses() injects */
+	.ico-x { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+	button:hover .ico-x { transform: rotate(90deg); }
+
+	/* send — leans forward under the pointer, leaves the frame on the click */
+	.ico-send { transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease; }
+	button:hover .ico-send { transform: translate(2px, -2px); }
+	#textSend.sent .ico-send { transform: translate(18px, -18px) scale(0.4); opacity: 0; }
+
+	/* the record dot breathes only while it is actually recording */
+	@keyframes icoRec { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.72); opacity: 0.6; } }
+	#recordBtn.recording .ico-rec { animation: icoRec 1.15s ease-in-out infinite; }
+	button:hover .ico-stop { transform: scale(0.86); }
+
+	/* the sidebar chevron turns to face the way it will send the sidebar */
+	.ico-chev { transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
+	#sidebar.narrow .ico-chev { transform: rotate(180deg); }
+	#navToggle:hover .ico-chev { transform: translateX(-2px); }
+	#sidebar.narrow #navToggle:hover .ico-chev { transform: rotate(180deg) translateX(-2px); }
+
+	/* the orb's own face, on the button that customises it — so it blinks */
+	@keyframes icoBlink { 0%, 86%, 100% { transform: scaleY(1); } 91%, 95% { transform: scaleY(0.1); } }
+	button:hover .ico-face .ey { animation: icoBlink 1.8s ease-in-out infinite; }
+
+	/* the mic capsule lifts under the pointer, and bobs while it is live */
+	.ico-mic .cap { transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+	button:hover .ico-mic .cap { transform: translateY(-1.5px); }
+	@keyframes icoMic { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.8px); } }
+	.live .ico-mic .cap { animation: icoMic 0.9s ease-in-out infinite; }
+
+	/* the lens leads and the handle follows, like something being lifted */
+	.ico-search .lens, .ico-search .handle { transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1); }
+	button:hover .ico-search .lens { transform: translate(-1px, -1px) scale(1.07); }
+	button:hover .ico-search .handle { transform: translate(1.5px, 1.5px); }
+
+	/* ---- the eleven nav glyphs ----
+	   No set on 21st.dev had these, so each gets a motion that means something
+	   about the thing it opens rather than one shared wobble: the roof lifts,
+	   the bubble bounces, the graph swings round its centre, the gear turns. */
+	.navitem:hover svg { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+	@keyframes icoLift { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-2.5px); } }
+	@keyframes icoPop { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.14); } }
+	@keyframes icoBob { 0% { transform: translateY(0); } 30% { transform: translateY(-3px); } 62% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+	@keyframes icoTick { 0%, 100% { transform: rotate(0); } 40% { transform: rotate(-12deg) scale(1.08); } }
+	@keyframes icoOrbit { 0% { transform: rotate(0); } 100% { transform: rotate(120deg); } }
+	@keyframes icoStack { 0%, 100% { transform: scaleY(1); } 45% { transform: scaleY(0.82); } }
+	@keyframes icoChip { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.11); } 62% { transform: scale(0.96); } }
+	@keyframes icoGrid { 0%, 100% { transform: rotate(0); } 34% { transform: rotate(8deg); } 70% { transform: rotate(-5deg); } }
+	@keyframes icoBeat { 0%, 100% { transform: scaleX(1); } 40% { transform: scaleX(1.18); } }
+	@keyframes icoGear { to { transform: rotate(90deg); } }
+	.navitem[data-view="dashboard"]:hover svg { animation-name: icoLift; }
+	.navitem[data-view="overview"]:hover svg { animation-name: icoPop; }
+	.navitem[data-view="chat"]:hover svg { animation-name: icoBob; }
+	.navitem[data-view="tasks"]:hover svg { animation-name: icoTick; }
+	.navitem[data-view="graph"]:hover svg { animation-name: icoOrbit; }
+	.navitem[data-view="memory"]:hover svg { animation-name: icoStack; }
+	.navitem[data-view="systems"]:hover svg { animation-name: icoChip; }
+	.navitem[data-view="apps"]:hover svg { animation-name: icoGrid; }
+	#navSearch:hover svg, #sheetSearchBtn:hover svg { animation-name: icoPop; }
+	#navActivity:hover svg, #sheetActivityBtn:hover svg { animation-name: icoBeat; }
+	#navSettings:hover svg, #sheetSettingsBtn:hover svg, #activitySettingsBtn:hover svg { animation-name: icoGear; animation-fill-mode: forwards; }
+
+	/* The global reduce rule already collapses every duration to 0.001ms, so
+	   these are only for the three that loop: a frozen first frame is still a
+	   frame, and a blink caught mid-blink is an icon with no eyes. */
+	@media (prefers-reduced-motion: reduce) {
+		#recordBtn.recording .ico-rec, button:hover .ico-face .ey, .live .ico-mic .cap { animation: none; }
+	}
+	/* ---- reveal a key you have typed ----
+	   The eye is the state-icon port: one svg whose pupil shrinks and whose
+	   slash draws itself, not two icons swapped. It names the ACTION, so the
+	   slash appears once the key is visible — that click will hide it. */
+	.pwwrap { position: relative; display: block; }
+	.pwwrap > input { width: 100%; padding-right: 38px; }
+	.pweye {
+		position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+		background: none; border: none; color: var(--dim); cursor: pointer;
+		padding: 6px; border-radius: 8px; display: grid; place-items: center;
+		transition: color 0.15s ease, background 0.15s ease;
+	}
+	.pweye:hover { color: var(--text); background: var(--panel-3); }
+	.pweye::after { content: ''; position: absolute; inset: -5px; border-radius: 12px; }
+	.ico-eye .pup { transition: transform 0.26s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s ease; }
+	.ico-eye .lid { transition: opacity 0.2s ease; }
+	.ico-eye .cut { stroke-dasharray: 25; stroke-dashoffset: 25; transition: stroke-dashoffset 0.3s cubic-bezier(0.32, 0.72, 0, 1); }
+	.pweye.on .pup { transform: scale(0.45); opacity: 0.3; }
+	.pweye.on .lid { opacity: 0.42; }
+	.pweye.on .cut { stroke-dashoffset: 0; }
 </style>
 </head>
 <body>
@@ -2287,7 +2418,7 @@
 <aside id="sidebar">
 	<div class="brandrow">
 		<div class="brand" id="brandSide">JARVIS</div>
-		<button type="button" class="navtoggle" id="navToggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
+		<button type="button" class="navtoggle" id="navToggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg class="ico ico-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
 	</div>
 	<nav id="navList">
 		<button class="navitem on" data-view="dashboard"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg><span class="navlabel">Dashboard</span></button>
@@ -2307,7 +2438,7 @@
 		<div class="vlabel" id="voiceModeLabel">Voice mode<br /><b>Standby</b></div>
 		<button id="micBtn" class="metal" title="Talk to Jarvis" aria-label="Talk to Jarvis">
 			<canvas class="metalcanvas" aria-hidden="true"></canvas><span class="metalcore" aria-hidden="true"></span>
-			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
 			<span class="miclabel">Tap to Speak</span>
 		</button>
 	</div>
@@ -2315,9 +2446,9 @@
 
 <div id="contentArea">
 	<div id="mobileTop">
-		<button class="iconbtn" id="mobileMenuBtn" aria-label="Open menu" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg></button>
+		<button class="iconbtn" id="mobileMenuBtn" aria-label="Open menu" aria-haspopup="dialog"><svg class="ico ico-menu" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line class="mn mn1" x1="3" y1="6" x2="21" y2="6" /><line class="mn mn2" x1="3" y1="12" x2="21" y2="12" /><line class="mn mn3" x1="3" y1="18" x2="21" y2="18" /></svg></button>
 		<div class="brand" id="brandMobile">JARVIS</div>
-		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg></button>
+		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg class="ico ico-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle class="lens" cx="11" cy="11" r="7" /><path class="handle" d="m21 21-4.3-4.3" /></svg></button>
 	</div>
 	<div id="topRow">
 		<div id="main">
@@ -2332,9 +2463,9 @@
 									<div class="statussub"><span class="dot ok" id="dashStatusDot"></span><span id="dashStatusSub">How can I help you today?</span></div>
 								</div>
 								<div class="herotools">
-									<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" /></svg></button>
-									<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg></button>
-									<button class="iconbtn" id="skinBtn" title="Customize Jarvis" aria-label="Customize Jarvis"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><circle cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="15.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><path d="M4 8a9 9 0 0 1 16 0" /></svg></button>
+									<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice"><svg class="ico ico-vol" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path class="wv wv2" d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path class="wv wv1" d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path class="slash" d="M15.5 9.5l6 5M21.5 9.5l-6 5" stroke-linecap="round" /></svg></button>
+									<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record"><svg class="ico ico-rec" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg></button>
+									<button class="iconbtn" id="skinBtn" title="Customize Jarvis" aria-label="Customize Jarvis"><svg class="ico ico-face" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><circle class="ey" cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><circle class="ey" cx="15.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><path d="M4 8a9 9 0 0 1 16 0" /></svg></button>
 								</div>
 							</div>
 							<div class="orbstage">
@@ -2371,9 +2502,9 @@
 							</div>
 							<div class="composer">
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
-								<button id="composerMicBtn" class="micinline" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg></button>
-								<button id="textSend" title="Send" aria-label="Send"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
-								<button id="stopBtn" title="Stop" aria-label="Stop generating" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5" /></svg></button>
+								<button id="composerMicBtn" class="micinline" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ico ico-mic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect class="cap" x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg></button>
+								<button id="textSend" title="Send" aria-label="Send"><svg class="ico ico-send" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
+								<button id="stopBtn" title="Stop" aria-label="Stop generating" hidden><svg class="ico ico-stop" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5" /></svg></button>
 							</div>
 					</div>
 				</div>
@@ -2533,7 +2664,7 @@
 <dialog id="navSheet" aria-label="Menu">
 	<div class="navsheet-head">
 		<div class="brand" id="brandSheet">JARVIS</div>
-		<button class="iconbtn" id="navSheetClose" data-dlg-close aria-label="Close menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+		<button class="iconbtn" id="navSheetClose" data-dlg-close aria-label="Close menu"><svg class="ico ico-x" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
 	</div>
 	<nav class="navsheet-list">
 		<button class="navitem" data-view="dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h13V10" /></svg>Home</button>
@@ -4539,7 +4670,7 @@ function toast(title, body, ms) {
  * marking itself done. A plain close() would skip all three — confirmAction's
  * promise would stay pending for ever, and the caller awaiting it would hang.
  */
-const DLG_CLOSE_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18" /></svg>';
+const DLG_CLOSE_SVG = '<svg class="ico ico-x" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>';
 function installDialogCloses() {
 	document.querySelectorAll('dialog').forEach((dlg) => {
 		if (dlg.querySelector('[data-dlg-close]')) return;   // already has one by hand
@@ -4566,6 +4697,60 @@ function installDialogCloses() {
 	});
 }
 installDialogCloses();
+
+/* -------------------------- reveal a key you typed ------------------------
+ * Seven password fields and no way to see what you had put in them. That is
+ * the one place a typo is both invisible and expensive: a mistyped key fails
+ * at the provider with a 401 that says nothing about which character is wrong,
+ * and the paste handler deliberately never reads your clipboard, so a hand-
+ * typed key was unverifiable until it failed.
+ *
+ * The eye re-hides whenever the dialog closes. Leaving a key on screen behind
+ * you is the exact risk type=password exists to remove, and nobody remembers
+ * to click it back — so the app remembers instead. */
+const EYE_SVG = '<svg class="ico ico-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+	+ '<path class="lid" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />'
+	+ '<circle class="pup" cx="12" cy="12" r="3.2" />'
+	+ '<line class="cut" x1="3.5" y1="20.5" x2="20.5" y2="3.5" /></svg>';
+
+function hideKey(input) {
+	input.type = 'password';
+	const btn = input.parentElement && input.parentElement.querySelector('.pweye');
+	if (!btn) return;
+	btn.classList.remove('on');
+	btn.setAttribute('aria-pressed', 'false');
+	btn.setAttribute('aria-label', 'Show key');
+}
+function installKeyReveals() {
+	document.querySelectorAll('input[type="password"]').forEach((input) => {
+		if (input.parentElement && input.parentElement.classList.contains('pwwrap')) return;
+		const wrap = document.createElement('span');
+		wrap.className = 'pwwrap';
+		input.replaceWith(wrap);
+		wrap.append(input);
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'pweye';
+		btn.setAttribute('aria-label', 'Show key');
+		btn.setAttribute('aria-pressed', 'false');
+		btn.innerHTML = EYE_SVG;
+		btn.addEventListener('click', () => {
+			if (input.type === 'password') {
+				input.type = 'text';
+				btn.classList.add('on');
+				btn.setAttribute('aria-pressed', 'true');
+				btn.setAttribute('aria-label', 'Hide key');
+			} else { hideKey(input); }
+		});
+		wrap.append(btn);
+	});
+}
+installKeyReveals();
+/* Revealed fields are `type=text` by then, so the selector has to look for
+ * what they became, not for what they were. */
+document.querySelectorAll('dialog').forEach((dlg) => {
+	dlg.addEventListener('close', () => dlg.querySelectorAll('.pwwrap > input[type="text"]').forEach(hideKey));
+});
 
 /* -- reusable confirm dialog, used for anything security-sensitive (e.g. unlocking a door) -- */
 function confirmAction(title, body) {
@@ -4682,6 +4867,14 @@ document.getElementById('sheetSettingsBtn').addEventListener('click', () => { cl
 document.getElementById('navSearch').addEventListener('click', () => openSearch());
 document.getElementById('mobileSearchBtn').addEventListener('click', () => openSearch());
 document.getElementById('searchDlg').addEventListener('click', (e) => { if (e.target.id === 'searchDlg') e.target.close(); });
+/* The plane leaves the frame on the click and is reset by a timer rather than
+ * by transitionend — the same reason sheetMorph() uses one: under reduced
+ * motion the transition never fires and the button would stay empty. */
+document.getElementById('textSend').addEventListener('click', () => {
+	const b = document.getElementById('textSend');
+	b.classList.add('sent');
+	setTimeout(() => b.classList.remove('sent'), 380);
+});
 document.getElementById('searchInput').addEventListener('input', (e) => {
 	document.getElementById('searchDlg').classList.toggle('typed', !!e.target.value);
 	runSearch(e.target.value);
@@ -7718,7 +7911,7 @@ function deviceRow(d) {
 	const tile = document.createElement('div');
 	tile.className = 'devicon';
 	tile.setAttribute('aria-hidden', 'true');
-	tile.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + deviceIcon(d.type) + '</svg>';
+	tile.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + deviceIcon(d.type) + '</svg>';
 	const txt = document.createElement('div');
 	txt.className = 'txt';
 	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(deviceState(d)) + '</small>';
@@ -9617,13 +9810,13 @@ function sheetMorph(wrap, mutate) {
 }
 
 const SHEET_ICONS = {
-	lock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>',
-	shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8.2-7 9-4-.8-7-4.6-7-9V6z" /></svg>',
-	noshare: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></svg>',
-	nocloud: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 3.5 3.5 0 0 0 7 18z" /><path d="M4 4l16 16" /></svg>',
-	trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" /></svg>',
-	warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2v.1" /></svg>',
-	chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7" /></svg>',
+	lock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>',
+	shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8.2-7 9-4-.8-7-4.6-7-9V6z" /></svg>',
+	noshare: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></svg>',
+	nocloud: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 3.5 3.5 0 0 0 7 18z" /><path d="M4 4l16 16" /></svg>',
+	trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" /></svg>',
+	warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2v.1" /></svg>',
+	chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7" /></svg>',
 };
 
 /* Derived from KEY_SHAPES rather than listed again — a second copy of the
