@@ -2396,6 +2396,58 @@
 	.pweye.on .pup { transform: scale(0.45); opacity: 0.3; }
 	.pweye.on .lid { opacity: 0.42; }
 	.pweye.on .cut { stroke-dashoffset: 0; }
+	/* ========================= every button, not just the icons =============
+	   The icon pass covered the 57 buttons that have an svg in them and left
+	   the other 81 with nothing but a colour fade — `.ghost` alone is 45 of
+	   them, `.primary` another 14. This is the floor underneath all 138: a
+	   ripple struck where you actually pressed, and a lift under the pointer.
+
+	   Deliberately NOT clipped to the button. An overflow:hidden here would be
+	   the obvious way to keep the ripple inside the radius, and it would cut
+	   #textSend's plane in half — that flight leaves the button's own bounds on
+	   purpose. The ripple is a radial gradient falling to transparent, so it
+	   needs no clip to look right. */
+	button { position: relative; }
+	.ripple {
+		position: absolute; width: 22px; height: 22px; border-radius: 50%; z-index: 3;
+		pointer-events: none;
+		background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+		animation: metalRipple 0.55s ease-out forwards;
+	}
+	/* White on a light page is invisible, so it strikes dark instead. */
+	:root[data-theme="light"] .ripple {
+		background: radial-gradient(circle, rgba(40, 36, 32, 0.22) 0%, rgba(40, 36, 32, 0) 70%);
+	}
+	@media (prefers-reduced-motion: reduce) { .ripple { display: none; } }
+
+	/* The text buttons lift. The icon ones already carry their own motion, so
+	   they are left out rather than given a second one on top. */
+	.ghost, .primary, .glassy, .linkbtn, .usagechip, .nextchip, .chip, .qabtn, .swatch, .skinopt {
+		transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1), background 0.16s ease,
+			color 0.16s ease, border-color 0.16s ease, box-shadow 0.18s ease, filter 0.15s ease;
+	}
+	.ghost:hover, .primary:hover, .glassy:hover, .usagechip:hover, .nextchip:hover,
+	.chip:hover, .qabtn:hover, .swatch:hover, .skinopt:hover { transform: translateY(-1.5px); }
+	.linkbtn:hover { transform: translateX(1.5px); }
+	.navitem { transition: background 0.16s ease, color 0.16s ease, transform 0.2s cubic-bezier(0.32, 0.72, 0, 1); }
+	.navitem:hover { transform: translateX(2px); }
+	/* Collapsed, the row is a 64px square and there is nowhere to slide to. */
+	#sidebar.narrow .navitem:hover { transform: none; }
+
+	/* These have to come after the hovers above or they lose: several of these
+	   classes already had an :active scale earlier in the file, and a later
+	   :hover of equal specificity was quietly beating it while pressed. */
+	.ghost:active, .primary:active, .glassy:active, .usagechip:active, .nextchip:active,
+	.chip:active, .qabtn:active, .skinopt:active, .navitem:active { transform: scale(0.955); }
+	.swatch:active { transform: scale(0.97); }
+	.linkbtn:active { transform: translateX(1.5px) scale(0.96); }
+
+	/* A phone has no hover at all, so every one of the lifts above is dead
+	   there and the press has to carry the whole interaction on its own. */
+	@media (hover: none) {
+		.ghost:active, .primary:active, .glassy:active, .navitem:active,
+		.nextchip:active, .chip:active, .qabtn:active, .skinopt:active { transform: scale(0.94); }
+	}
 </style>
 </head>
 <body>
@@ -4714,6 +4766,35 @@ function installDialogCloses() {
 	});
 }
 installDialogCloses();
+
+/* ------------------------------ the press ripple --------------------------
+ * One listener for all 138 buttons. Delegated rather than bound per button
+ * because most of them do not exist at load: search rows, swatches, chips,
+ * sheet actions, chain steps and note rows are all built at runtime, so
+ * anything attached at boot would cover the toolbar and miss the app.
+ *
+ * pointerdown rather than click, for two reasons. It should start under your
+ * finger the moment it lands rather than when the gesture resolves — and on
+ * touch there is no hover at all, so this press is the only feedback the
+ * whole interface has to offer.
+ *
+ * The mic button is skipped: mountLiquidMetal() already strikes its own
+ * ripple and also kicks the shader's speed, and two overlapping rings on the
+ * one button that already has the most going on is not an improvement. */
+const RIPPLE_STILL = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.addEventListener('pointerdown', (e) => {
+	if (RIPPLE_STILL || !e.target || !e.target.closest) return;
+	const btn = e.target.closest('button');
+	if (!btn || btn.disabled || btn.classList.contains('metal')) return;
+	const box = btn.getBoundingClientRect();
+	if (!box.width) return;
+	const dot = document.createElement('span');
+	dot.className = 'ripple';
+	dot.style.left = (e.clientX - box.left) + 'px';
+	dot.style.top = (e.clientY - box.top) + 'px';
+	btn.append(dot);
+	setTimeout(() => dot.remove(), 620);
+}, { passive: true });
 
 /* -------------------------- reveal a key you typed ------------------------
  * Seven password fields and no way to see what you had put in them. That is
