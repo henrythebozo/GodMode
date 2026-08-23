@@ -5886,7 +5886,13 @@ document.getElementById('vaultForgetBtn').addEventListener('click', disconnectVa
  * temporal dead zone — which does not fail quietly: it throws during script
  * evaluation, so every const and every listener below this line was silently
  * never created. It is called at the end of the vault-folder section instead. */
-document.getElementById('graphRelayout').addEventListener('click', () => { graphState.selected = null; renderGraph(); });
+document.getElementById('graphRelayout').addEventListener('click', () => {
+	/* A new seed, kept until the next press: the arrangement you just asked
+	   for should survive switching views and back, not reshuffle on redraw. */
+	graphSeed = 1 + Math.floor(Math.random() * 99991);
+	graphState.selected = null;
+	renderGraph();
+});
 wireGraphStage();
 
 document.getElementById('chainsOpenBtn').addEventListener('click', openChains);
@@ -7723,6 +7729,8 @@ function applyAllSuggestions() {
 
 /* -------------------------------- graph view ------------------------------ */
 let graphState = { nodes: [], edges: [], vb: null, selected: null };
+/* 0 means the deterministic layout. Only the Re-lay out button sets it. */
+let graphSeed = 0;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 function renderGraph() {
 	const svg = document.getElementById('graphSvg');
@@ -7744,7 +7752,7 @@ function renderGraph() {
 	/* Fewer passes on a big vault: the layout is O(n^2) per pass, and past a
 	 * couple of hundred nodes the extra settling is not worth a locked-up tab. */
 	const iterations = graph.nodes.length > 160 ? 220 : 420;
-	const laid = layoutGraph(graph, W, H, iterations);
+	const laid = layoutGraph(graph, W, H, iterations, graphSeed);
 	const byId = new Map(laid.nodes.map((n) => [n.id, n]));
 
 	const xs = laid.nodes.map((n) => n.x), ys = laid.nodes.map((n) => n.y);
@@ -8082,7 +8090,14 @@ document.getElementById('addDeviceBtn').addEventListener('click', () => {
 	const nameInput = document.getElementById('newDeviceName');
 	const typeInput = document.getElementById('newDeviceType');
 	const name = nameInput.value.trim();
-	if (!name) return;
+	/* Was a bare `return`. A button that declines and says nothing is the same
+	 * mystery a paste that vanishes would be — so it says so and puts the
+	 * cursor where the problem is. */
+	if (!name) {
+		toast('Name it first', 'A device needs a name before Jarvis can be told to turn it on.');
+		nameInput.focus();
+		return;
+	}
 	const type = typeInput.value;
 	const d = { id: uid(), name, type };
 	if (type === 'light') { d.power = 'off'; d.brightness = 100; }
@@ -8747,9 +8762,22 @@ function excerptAround(body, needle) {
  * CLAUDE.md rules out pulling one in. Seeded on a spiral rather than at random
  * so the same vault lays out the same way every time — a picture you have
  * learnt to read should stay where you left it. */
-function layoutGraph(graph, W, H, iterations) {
+function layoutGraph(graph, W, H, iterations, seed) {
+	/* Deterministic when seed is 0, which is what every ordinary render wants:
+	 * come back to the graph and it is the one you remember, not a reshuffle.
+	 *
+	 * The seed is what makes "Re-lay out" mean anything. Everything about this
+	 * simulation was fixed — the phyllotaxis seeding, the iteration count, the
+	 * forces — so re-running it landed on byte-identical coordinates and the
+	 * button had never once moved a node since it was written. A rotation
+	 * alone would not do either: it produces the same arrangement at a
+	 * different angle. The radius has to scatter too, or the springs settle
+	 * back into the shape they came from. */
+	let sv = (seed || 0) * 9301 + 49297;
+	const rnd = () => { sv = (sv * 9301 + 49297) % 233280; return sv / 233280; };
 	const nodes = graph.nodes.map((n, i) => {
-		const a = i * 2.399963, r = 8 * Math.sqrt(i + 1);
+		const a = i * 2.399963 + (seed ? rnd() * Math.PI * 2 : 0);
+		const r = 8 * Math.sqrt(i + 1) * (seed ? 0.55 + rnd() * 1.1 : 1);
 		return { ...n, x: W / 2 + r * Math.cos(a), y: H / 2 + r * Math.sin(a), vx: 0, vy: 0 };
 	});
 	const byId = new Map(nodes.map((n) => [n.id, n]));
