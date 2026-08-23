@@ -2448,6 +2448,118 @@
 		.ghost:active, .primary:active, .glassy:active, .navitem:active,
 		.nextchip:active, .chip:active, .qabtn:active, .skinopt:active { transform: scale(0.94); }
 	}
+	/* ====================== the first screen you ever see ===================
+	   Reshaped after the "Sign In Flow" study on 21st.dev: full bleed, drifting
+	   light behind it, one step at a time. What it is NOT is a sign-up form.
+	   There is no server behind Jarvis and no account to make — a page asking
+	   for an email and a password here would look exactly like the real thing
+	   and do nothing at all. The two routes on this screen are the two that
+	   exist: OpenRouter's OAuth, which needs no client secret and so is the
+	   only one a serverless page can actually complete, and a key you paste.
+
+	   The reference builds its backdrop with three.js and react-three-fiber,
+	   which is three dependencies this file cannot have. Two blurred radial
+	   gradients drifting on long, mismatched timers read the same at this
+	   size, cost nothing, and follow the palette. */
+	#onboardDlg {
+		max-width: none; width: 100vw; height: 100dvh; max-height: none;
+		margin: 0; padding: 0; border: none; border-radius: 0;
+		background: var(--bg); box-shadow: none;
+		backdrop-filter: none; -webkit-backdrop-filter: none;
+		/* Scrolls rather than clips. overflow:hidden looked right — the aurora
+		   is clipped by .obsky's own overflow anyway — and it meant that on a
+		   short screen the last thing in the column, "Skip and set this up
+		   later", was cut off with no way to reach it. `safe` on the alignment
+		   is what stops a centred grid pushing the TOP of overflowing content
+		   off the other edge instead. */
+		overflow-x: hidden; overflow-y: auto;
+		padding: 44px 20px; transform: none;
+	}
+	/* display goes on [open], NOT on the bare id. The UA hides a closed dialog
+	   with `dialog:not([open]) { display: none }`, and an id selector outranks
+	   it — so `#onboardDlg { display: grid }` left the closed dialog laid out
+	   as a full-viewport box, invisible only because the shared dialog rule
+	   sets opacity 0. It still answered isVisible() and still occupied the
+	   page. Exactly the trap `hidden` fell into with .composer button, one
+	   layer down: an author rule that sets display beats the thing meant to
+	   hide it. */
+	#onboardDlg[open] { display: grid; place-items: center; align-content: safe center; }
+	@starting-style { #onboardDlg[open] { transform: none; opacity: 0; } }
+	#onboardDlg::before { display: none; }   /* no bottom-sheet grab pill here */
+	/* :not(.obsky) matters. Without it this rule wins over the backdrop's own
+	   position:absolute, which drops it back into the grid as a zero-height
+	   row — its children are absolutely positioned against it, so the light
+	   had nowhere to be and the screen just rendered flat. */
+	#onboardDlg > *:not(.obsky) { position: relative; z-index: 1; }
+	/* 44 square on its own rather than relying on the ::after pad, because
+	   this one is fixed in a corner with nothing around it to borrow from. */
+	#onboardDlg .dlgclose-float { position: fixed; top: 14px; right: 14px; float: none; margin: 0; z-index: 3; width: 44px; height: 44px; }
+	/* Everything on the first screen someone ever touches clears 44. */
+	#onboardDlg .primary, #onboardDlg .ghost { min-height: 44px; }
+	#onboardDlg #obSkip { min-height: 44px; padding: 10px 16px; }
+
+	.obsky { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+	.obsky::before, .obsky::after { content: ''; position: absolute; border-radius: 50%; filter: blur(72px); }
+	.obsky::before {
+		width: 62vmax; height: 62vmax; left: -16vmax; top: -22vmax;
+		background: radial-gradient(circle, rgba(var(--ring-rgb), 0.42) 0%, rgba(var(--ring-rgb), 0) 66%);
+		animation: obDriftA 27s ease-in-out infinite alternate;
+	}
+	.obsky::after {
+		width: 54vmax; height: 54vmax; right: -19vmax; bottom: -24vmax;
+		background: radial-gradient(circle, rgba(255, 149, 0, 0.22) 0%, rgba(255, 149, 0, 0) 66%);
+		animation: obDriftB 34s ease-in-out infinite alternate;
+	}
+	/* Mismatched periods on purpose: 27 and 34 seconds never line back up
+	   inside a sitting, so the light never visibly loops. */
+	@keyframes obDriftA { to { transform: translate3d(14vmax, 10vmax, 0) scale(1.15); } }
+	@keyframes obDriftB { to { transform: translate3d(-12vmax, -9vmax, 0) scale(1.1); } }
+	:root[data-theme="light"] .obsky::before { opacity: 0.55; }
+	:root[data-theme="light"] .obsky::after { opacity: 0.4; }
+
+	/* The orb, reduced to the two things that make it recognisable. */
+	/* Sized to the text column, not to the viewport: centred on the screen it
+	   sat above a left-aligned column and read as belonging to neither. */
+	.obmark-wrap { width: min(440px, calc(100vw - 40px)); }
+	.obmark {
+		width: 64px; height: 64px; border-radius: 50%; margin: 0 0 24px; flex: none;
+		background: radial-gradient(circle at 50% 40%, #16161a 0%, #060607 70%, #000 100%);
+		border: 2px solid var(--ring);
+		box-shadow: 0 0 12px 1px var(--ring-soft), 0 0 46px 10px var(--ring-soft), inset 0 0 22px rgba(0, 0, 0, 0.7);
+		display: flex; align-items: center; justify-content: center; gap: 9px;
+		animation: obBreathe 4.2s ease-in-out infinite;
+	}
+	.obeye { width: 6px; height: 15px; border-radius: 99px; background: var(--ring); box-shadow: 0 0 8px 2px var(--ring-soft); }
+	@keyframes obBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
+	#onboardDlg .obstep {
+		width: min(440px, calc(100vw - 40px));
+		animation: obIn 0.44s cubic-bezier(0.32, 0.72, 0, 1) both;
+	}
+	/* Going from display:none to visible restarts an animation, which is what
+	   makes this fire on every step without a line of JS. */
+	@keyframes obIn {
+		from { opacity: 0; transform: translateY(16px); filter: blur(7px); }
+		to { opacity: 1; transform: none; filter: blur(0); }
+	}
+	#onboardDlg h2 { font-size: 34px; letter-spacing: -0.032em; margin: 0 0 10px; }
+	#onboardDlg .obstep > p { font-size: 14.5px; line-height: 1.6; }
+	#onboardDlg .signinbox { background: rgba(var(--ring-rgb), 0.06); }
+	/* The dialog's ground moved from --panel to --bg, which left the provider
+	   rows sitting on almost their own colour. */
+	#onboardDlg .row-item { background: rgba(var(--ring-rgb), 0.05); border: 1px solid var(--line); }
+	#onboardDlg button.row-item:hover { background: rgba(var(--ring-rgb), 0.11); }
+
+	@media (max-width: 900px) {
+		#onboardDlg { border-radius: 0; padding: 0; width: 100vw; height: 100dvh; margin: 0; transform: none; }
+		@starting-style { #onboardDlg[open] { transform: none; } }
+		#onboardDlg h2 { font-size: 29px; }
+		.obmark { width: 56px; height: 56px; margin-bottom: 20px; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.obsky::before, .obsky::after, .obmark { animation: none; }
+		#onboardDlg .obstep { animation: none; }
+	}
 </style>
 </head>
 <body>
@@ -3154,6 +3266,12 @@
 </dialog>
 
 <dialog id="onboardDlg">
+	<!-- Drifting light and the orb's own face. No 3D engine: the reference
+	     builds its backdrop in react-three-fiber, which is three libraries
+	     this page cannot take, and two blurred radial gradients on a timer
+	     read the same at this scale. -->
+	<div class="obsky" aria-hidden="true"></div>
+	<div class="obmark-wrap" aria-hidden="true"><div class="obmark"><span class="obeye"></span><span class="obeye"></span></div></div>
 	<div class="obstep" data-obstep="1">
 		<h2>Welcome.</h2>
 		<p>Jarvis talks to a model provider straight from this browser. Whatever it uses to do that is stored on this device and never passes through a server of ours — there isn't one.</p>
