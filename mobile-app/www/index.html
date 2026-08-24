@@ -2560,6 +2560,65 @@
 		.obsky::before, .obsky::after, .obmark { animation: none; }
 		#onboardDlg .obstep { animation: none; }
 	}
+	/* ================================ the arcade ============================
+	   A hidden room. Reached by the Konami code, gated behind four digits that
+	   are decoration — see the note on the gate itself.
+
+	   Every game here draws into ONE canvas and only while its view is on
+	   screen: arcadeStop() cancels the frame on any view change, so a tab left
+	   open on the dashboard is not quietly running a physics simulation. */
+	#arcadeGate {
+		max-width: none; width: 100vw; height: 100dvh; max-height: none;
+		margin: 0; padding: 34px 20px; border: none; border-radius: 0;
+		background: var(--bg); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+		overflow-x: hidden; overflow-y: auto; transform: none;
+	}
+	#arcadeGate[open] { display: grid; place-items: center; align-content: safe center; }
+	#arcadeGate::before { display: none; }
+	#arcadeGate > *:not(.obsky) { position: relative; z-index: 1; }
+	#arcadeGate .dlgclose-float { position: fixed; top: 14px; right: 14px; float: none; margin: 0; z-index: 3; width: 44px; height: 44px; }
+	.gatebox { width: min(400px, calc(100vw - 40px)); }
+	.gatemark { margin-bottom: 20px; }
+	#arcadeGate h2 { font-size: 31px; letter-spacing: -0.03em; margin: 0 0 8px; }
+	#gateCode {
+		width: 100%; font-size: 30px; letter-spacing: 0.5em; text-align: center;
+		font-variant-numeric: tabular-nums; padding: 12px 0 12px 0.5em; min-height: 44px;
+	}
+	.gatedots { display: flex; justify-content: center; gap: 12px; margin: 16px 0 10px; }
+	.gatedots i { width: 9px; height: 9px; border-radius: 50%; background: var(--line); transition: background 0.18s ease, transform 0.18s ease; }
+	.gatedots i.on { background: var(--ring); transform: scale(1.25); }
+	.gatedots.bad { animation: gateShake 0.4s ease; }
+	@keyframes gateShake { 10%, 90% { transform: translateX(-3px); } 30%, 70% { transform: translateX(5px); } 50% { transform: translateX(-5px); } }
+	.gatewarn { margin-top: 16px; font-size: 11.5px; line-height: 1.5; opacity: 0.75; }
+
+	.arcpick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+	/* Width is capped from the game's own aspect in arcadeStart(), so a square
+	   board does not stretch to a widescreen panel and fall off the bottom of
+	   the page — which is exactly what 2048 did at 400x400 in a 1480px panel. */
+	.arcstage { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #08080a; margin: 0 auto; }
+	#arcCanvas { display: block; width: 100%; height: auto; touch-action: none; }
+	/* Pixelated belongs to the sim, whose grid really is 200 cells wide. On the
+	   games, which draw vectors and text at full resolution, it just fringes
+	   the glyphs. */
+	#arcCanvas.pixel { image-rendering: pixelated; image-rendering: crisp-edges; }
+	.arcover {
+		position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+		background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(3px); color: #fff;
+		font-size: 20px; font-weight: 650; letter-spacing: -0.01em; padding: 20px;
+	}
+	.arcbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+	.arcscore { font-variant-numeric: tabular-nums; font-weight: 650; margin-right: auto; }
+	.arcpalette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+	.elbtn {
+		display: flex; align-items: center; gap: 7px; cursor: pointer; color: var(--text);
+		background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
+		padding: 5px 12px 5px 6px; font: inherit; font-size: 12px; font-weight: 550;
+		transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+	}
+	.elbtn i { width: 14px; height: 14px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
+	.elbtn:hover { background: var(--panel-3); }
+	.elbtn.on { border-color: var(--ring); background: var(--ring-soft); font-weight: 650; }
+	@media (max-width: 900px) { .elbtn { font-size: 11.5px; padding: 5px 10px 5px 5px; } }
 </style>
 </head>
 <body>
@@ -2613,6 +2672,7 @@
 		<button class="navitem" id="navSearch"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg><span class="navlabel">Search</span></button>
 		<button class="navitem" id="navActivity"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg><span class="navlabel">Activity</span></button>
 		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg><span class="navlabel">Settings</span></button>
+		<button class="navitem" id="navArcade" data-view="arcade" hidden><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg><span class="navlabel">Arcade</span></button>
 	</nav>
 	<div class="voicecard">
 		<div id="sideBars" aria-hidden="true"></div>
@@ -2836,6 +2896,26 @@
 					</div>
 				</div>
 
+				<div class="view" id="view-arcade">
+					<div class="viewhead">
+						<h1>Arcade</h1>
+						<div class="headtools">
+							<button type="button" class="ghost small" id="arcLock">Lock again</button>
+						</div>
+					</div>
+					<div class="glasspanel viewpanel">
+						<div class="arcpick" id="arcPick"></div>
+						<div class="arcstage">
+							<canvas id="arcCanvas" width="640" height="400"></canvas>
+							<div class="arcover" id="arcOver" hidden></div>
+						</div>
+						<div class="arcbar" id="arcBar"></div>
+						<div class="arcpalette" id="arcPalette"></div>
+						<p class="hint" id="arcHint"></p>
+					</div>
+				</div>
+
+
 			</div>
 		</div>
 	</div>
@@ -2860,7 +2940,28 @@
 		<button class="navitem" id="sheetSearchBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Search</button>
 		<button class="navitem" id="sheetActivityBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>Activity</button>
 		<button class="navitem" id="sheetSettingsBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>Settings</button>
+		<button class="navitem" id="sheetArcadeBtn" data-view="arcade" hidden><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg>Arcade</button>
 	</nav>
+</dialog>
+
+
+<!-- The way in. A passcode in a page anyone can read the source of is a toy,
+     not a lock, and the screen says so rather than implying otherwise. -->
+<dialog id="arcadeGate" aria-label="Arcade">
+	<div class="obsky" aria-hidden="true"></div>
+	<div class="gatebox">
+		<div class="obmark gatemark" aria-hidden="true"><span class="obeye"></span><span class="obeye"></span></div>
+		<h2>Well found.</h2>
+		<p>There is a room behind this one. It wants four digits.</p>
+		<div class="gatedots" id="gateDots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+		<input type="text" id="gateCode" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Four digit code" />
+		<div class="obhint" id="gateHint">The year the first home games console reached a living room.</div>
+		<div class="row" style="margin-top:14px">
+			<button type="button" class="ghost small" id="gateCancel">Not now</button>
+			<button type="button" class="primary" id="gateGo" style="margin-left:auto">Unlock</button>
+		</div>
+		<p class="hint gatewarn">This is an easter egg, not a lock. The code is in the source of this page like everything else here — it keeps the room hidden, not secure.</p>
+	</div>
 </dialog>
 
 <div id="toasts" role="status" aria-live="polite"></div>
@@ -5032,6 +5133,8 @@ function promptText(title, initial) {
 /* ================================ navigation ============================= */
 let currentView = 'dashboard';
 function showView(name) {
+	/* Whatever the arcade was running stops the moment you leave it. */
+	if (currentView === 'arcade' && name !== 'arcade' && typeof arcadeStop === 'function') arcadeStop();
 	currentView = name;
 	document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'view-' + name));
 	document.querySelectorAll('#navList .navitem[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
@@ -5054,6 +5157,630 @@ function markEntering(view) {
 	clearTimeout(enterTimer);
 	enterTimer = setTimeout(() => view.removeAttribute('data-entering'), 700);
 }
+
+/* ================================= the arcade =============================
+ * A hidden room, reached with the Konami code and gated behind four digits.
+ *
+ * On the gate: it is decoration and the screen says so. A passcode checked in
+ * a page whose whole source is one file anyone can read protects nothing —
+ * what it does is keep the room from being the first thing you find, which is
+ * the entire point of an easter egg. Pretending otherwise would be the lie.
+ *
+ * On the games: the sand sim is in the falling-sand genre — Powder Game and
+ * its descendants — but the element set, the reactions and the code are their
+ * own. It is not a copy of any particular one.
+ *
+ * Every game draws into one canvas and runs only while the view is on screen.
+ * arcadeStop() is called on every view change, so a tab parked on the
+ * dashboard is never quietly running a physics loop.
+ */
+const ARCADE_CODE = '1972';   // Magnavox Odyssey. Decorative, as the gate says.
+const KONAMI = ['arrowup', 'arrowup', 'arrowdown', 'arrowdown', 'arrowleft', 'arrowright', 'arrowleft', 'arrowright', 'b', 'a'];
+let konamiAt = 0;
+
+document.addEventListener('keydown', (e) => {
+	if (isTypingTarget(document.activeElement)) { konamiAt = 0; return; }
+	const k = String(e.key || '').toLowerCase();
+	konamiAt = (k === KONAMI[konamiAt]) ? konamiAt + 1 : (k === KONAMI[0] ? 1 : 0);
+	if (konamiAt === KONAMI.length) { konamiAt = 0; openArcadeGate(); }
+});
+
+function arcadeUnlocked() { return localStorage.getItem('jarvis.arcade') === '1'; }
+function setArcadeUnlocked(on) {
+	if (on) localStorage.setItem('jarvis.arcade', '1'); else localStorage.removeItem('jarvis.arcade');
+	['navArcade', 'sheetArcadeBtn'].forEach((id) => {
+		const el = document.getElementById(id);
+		if (el) el.hidden = !on;
+	});
+}
+/* Restores the row on load for anyone who has already found it. */
+setArcadeUnlocked(arcadeUnlocked());
+
+function openArcadeGate() {
+	if (arcadeUnlocked()) { showView('arcade'); return; }
+	const dlg = document.getElementById('arcadeGate');
+	const inp = document.getElementById('gateCode');
+	inp.value = '';
+	paintGateDots();
+	if (!dlg.open) dlg.showModal();
+	setTimeout(() => inp.focus(), 60);
+}
+function paintGateDots(bad) {
+	const n = document.getElementById('gateCode').value.length;
+	const box = document.getElementById('gateDots');
+	[...box.children].forEach((d, i) => d.classList.toggle('on', i < n));
+	if (bad) { box.classList.remove('bad'); void box.offsetWidth; box.classList.add('bad'); }
+}
+function tryGateCode() {
+	const inp = document.getElementById('gateCode');
+	if (inp.value.trim() === ARCADE_CODE) {
+		setArcadeUnlocked(true);
+		document.getElementById('arcadeGate').close();
+		showView('arcade');
+		toast('Arcade', 'It stays unlocked now. Lock it again from inside.');
+		return;
+	}
+	paintGateDots(true);
+	inp.value = '';
+	setTimeout(paintGateDots, 30);
+}
+document.getElementById('gateCode').addEventListener('input', (e) => {
+	e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+	paintGateDots();
+	if (e.target.value.length === 4) setTimeout(tryGateCode, 120);
+});
+document.getElementById('gateCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryGateCode(); });
+document.getElementById('gateGo').addEventListener('click', tryGateCode);
+document.getElementById('gateCancel').addEventListener('click', () => document.getElementById('arcadeGate').close());
+document.getElementById('arcLock').addEventListener('click', () => {
+	setArcadeUnlocked(false);
+	showView('dashboard');
+	toast('Locked', 'The Konami code still opens the gate.');
+});
+
+/* ---- the shell ---------------------------------------------------------- */
+const ARCADE_GAMES = {};
+let arcNow = null, arcRaf = 0, arcTeardown = null;
+
+function arcadeStop() {
+	if (arcRaf) cancelAnimationFrame(arcRaf);
+	arcRaf = 0;
+	if (arcTeardown) { try { arcTeardown(); } catch {} }
+	arcTeardown = null;
+}
+function arcadeStart(id) {
+	arcadeStop();
+	arcNow = ARCADE_GAMES[id] ? id : Object.keys(ARCADE_GAMES)[0];
+	localStorage.setItem('jarvis.arcadeGame', arcNow);
+	const game = ARCADE_GAMES[arcNow];
+	document.querySelectorAll('#arcPick .ghost').forEach((b) => b.classList.toggle('primary', b.dataset.game === arcNow));
+	document.getElementById('arcBar').innerHTML = '';
+	document.getElementById('arcPalette').innerHTML = '';
+	document.getElementById('arcOver').hidden = true;
+	document.getElementById('arcHint').textContent = game.hint || '';
+	const cv = document.getElementById('arcCanvas');
+	cv.width = game.w; cv.height = game.h;
+	cv.classList.toggle('pixel', !!game.pixel);
+	sizeArcStage();
+	arcTeardown = game.start(cv, cv.getContext('2d', { alpha: false })) || null;
+}
+/* Cap the stage by HEIGHT and derive the width from the game's aspect, rather
+ * than letting a 100%-wide canvas decide how tall the page gets. */
+function sizeArcStage() {
+	const game = ARCADE_GAMES[arcNow];
+	const stage = document.querySelector('.arcstage');
+	if (!game || !stage) return;
+	stage.style.maxWidth = Math.round(Math.min(820, (window.innerHeight * 0.56) * (game.w / game.h))) + 'px';
+}
+window.addEventListener('resize', () => { if (currentView === 'arcade') sizeArcStage(); });
+function renderArcade() {
+	const pick = document.getElementById('arcPick');
+	if (!pick.children.length) {
+		pick.innerHTML = Object.entries(ARCADE_GAMES)
+			.map(([id, g]) => '<button type="button" class="ghost small" data-game="' + id + '">' + esc(g.name) + '</button>').join('');
+		pick.addEventListener('click', (e) => {
+			const b = e.target.closest('[data-game]');
+			if (b) arcadeStart(b.dataset.game);
+		});
+	}
+	arcadeStart(localStorage.getItem('jarvis.arcadeGame') || Object.keys(ARCADE_GAMES)[0]);
+}
+/* Small helpers the games share rather than each rolling their own. */
+function arcBtn(label, fn) {
+	const b = document.createElement('button');
+	b.type = 'button'; b.className = 'ghost small'; b.textContent = label;
+	b.addEventListener('click', fn);
+	document.getElementById('arcBar').append(b);
+	return b;
+}
+function arcScore(text) {
+	let el = document.querySelector('#arcBar .arcscore');
+	if (!el) { el = document.createElement('div'); el.className = 'arcscore'; document.getElementById('arcBar').prepend(el); }
+	el.textContent = text;
+}
+function arcOver(text) {
+	const el = document.getElementById('arcOver');
+	if (text === null) { el.hidden = true; return; }
+	el.textContent = text; el.hidden = false;
+}
+
+/* ---- 1. sand ------------------------------------------------------------
+ * A cellular automaton on a 200x125 grid drawn one pixel per cell into an
+ * ImageData and scaled up by CSS, which is the only way this stays smooth at
+ * 25,000 cells a frame — a fillRect per cell is a hundred times slower.
+ *
+ * Two rules keep it from tearing itself apart. The grid is scanned bottom-up
+ * so a falling grain is not moved twice in one pass, and every cell carries a
+ * `done` flag for the same reason across swaps. Left/right choices are
+ * randomised per cell or piles lean permanently one way.
+ */
+const EL = {
+	air:   { name: 'Air',   rgb: [8, 8, 10],      kind: 'none' },
+	wall:  { name: 'Wall',  rgb: [86, 90, 98],    kind: 'static' },
+	sand:  { name: 'Sand',  rgb: [201, 173, 106], kind: 'powder' },
+	water: { name: 'Water', rgb: [58, 118, 196],  kind: 'liquid', dens: 3 },
+	oil:   { name: 'Oil',   rgb: [92, 74, 52],    kind: 'liquid', dens: 2, burns: true },
+	stone: { name: 'Stone', rgb: [110, 110, 116], kind: 'static' },
+	ice:   { name: 'Ice',   rgb: [158, 208, 232], kind: 'static' },
+	plant: { name: 'Plant', rgb: [74, 158, 84],   kind: 'static', burns: true },
+	lava:  { name: 'Lava',  rgb: [214, 92, 34],   kind: 'liquid', dens: 5 },
+	acid:  { name: 'Acid',  rgb: [138, 206, 62],  kind: 'liquid', dens: 3 },
+	fire:  { name: 'Fire',  rgb: [242, 148, 48],  kind: 'gas' },
+	steam: { name: 'Steam', rgb: [176, 186, 196], kind: 'gas' },
+	smoke: { name: 'Smoke', rgb: [64, 64, 70],    kind: 'gas' },
+	glass: { name: 'Glass', rgb: [176, 208, 214], kind: 'static' },
+};
+const EL_KEYS = Object.keys(EL);
+const EL_ID = {};
+EL_KEYS.forEach((k, i) => { EL_ID[k] = i; });
+const AIR = EL_ID.air;
+
+ARCADE_GAMES.sand = {
+	name: 'Sand', w: 200, h: 125, pixel: true,
+	hint: 'Drag to draw. Fire eats oil and plant, lava turns water to steam and sand to glass, acid gets through most things.',
+	start(cv, ctx) {
+		const W = 200, H = 125, N = W * H;
+		const cell = new Uint8Array(N), life = new Uint8Array(N), done = new Uint8Array(N);
+		const img = ctx.createImageData(W, H);
+		let brush = EL_ID.sand, size = 3, paused = false, raf = 0;
+
+		const idx = (x, y) => y * W + x;
+		const inb = (x, y) => x >= 0 && x < W && y >= 0 && y < H;
+		const put = (x, y, e) => { if (inb(x, y)) { cell[idx(x, y)] = e; life[idx(x, y)] = e === EL_ID.fire ? 40 + (Math.random() * 30 | 0) : 0; } };
+		const swap = (a, b) => {
+			const c = cell[a]; cell[a] = cell[b]; cell[b] = c;
+			const l = life[a]; life[a] = life[b]; life[b] = l;
+			done[a] = done[b] = 1;
+		};
+
+		function reset() { cell.fill(AIR); life.fill(0); for (let x = 0; x < W; x++) put(x, H - 1, EL_ID.wall); }
+		reset();
+
+		function step() {
+			done.fill(0);
+			for (let y = H - 2; y >= 0; y--) {
+				const flip = Math.random() < 0.5;
+				for (let n = 0; n < W; n++) {
+					const x = flip ? n : W - 1 - n;
+					const i = idx(x, y);
+					if (done[i]) continue;
+					const e = cell[i];
+					if (e === AIR) continue;
+					const def = EL[EL_KEYS[e]];
+
+					// --- reactions, before movement -------------------------
+					if (e === EL_ID.fire) {
+						if (--life[i] <= 0) { cell[i] = Math.random() < 0.5 ? EL_ID.smoke : AIR; life[i] = 60; continue; }
+						for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+							if (!inb(x + dx, y + dy)) continue;
+							const j = idx(x + dx, y + dy), t = cell[j];
+							if (t === EL_ID.water) { cell[i] = EL_ID.steam; cell[j] = EL_ID.steam; done[j] = 1; break; }
+							if (t === EL_ID.ice) { cell[j] = EL_ID.water; done[j] = 1; }
+							const td = EL[EL_KEYS[t]];
+							if (td && td.burns && Math.random() < 0.22) { cell[j] = EL_ID.fire; life[j] = 30 + (Math.random() * 30 | 0); done[j] = 1; }
+						}
+					} else if (e === EL_ID.lava) {
+						for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+							if (!inb(x + dx, y + dy)) continue;
+							const j = idx(x + dx, y + dy), t = cell[j];
+							if (t === EL_ID.water) { cell[i] = EL_ID.stone; cell[j] = EL_ID.steam; done[j] = 1; break; }
+							if (t === EL_ID.ice) { cell[j] = EL_ID.water; done[j] = 1; }
+							if (t === EL_ID.sand) { cell[j] = EL_ID.glass; done[j] = 1; }
+							const td = EL[EL_KEYS[t]];
+							if (td && td.burns && Math.random() < 0.3) { cell[j] = EL_ID.fire; life[j] = 40; done[j] = 1; }
+						}
+					} else if (e === EL_ID.acid) {
+						for (const [dx, dy] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) {
+							if (!inb(x + dx, y + dy)) continue;
+							const j = idx(x + dx, y + dy), t = cell[j];
+							if (t !== AIR && t !== EL_ID.acid && t !== EL_ID.wall && Math.random() < 0.06) {
+								cell[j] = AIR; done[j] = 1;
+								if (Math.random() < 0.4) { cell[i] = EL_ID.smoke; life[i] = 40; }
+								break;
+							}
+						}
+					} else if (e === EL_ID.plant) {
+						if (Math.random() < 0.035) {
+							const dx = (Math.random() * 3 | 0) - 1, dy = (Math.random() * 3 | 0) - 1;
+							if (inb(x + dx, y + dy) && cell[idx(x + dx, y + dy)] === EL_ID.water) { cell[idx(x + dx, y + dy)] = EL_ID.plant; done[idx(x + dx, y + dy)] = 1; }
+						}
+					} else if (e === EL_ID.steam) {
+						if (life[i]++ > 190 && Math.random() < 0.05) { cell[i] = EL_ID.water; life[i] = 0; continue; }
+					} else if (e === EL_ID.smoke) {
+						if (life[i]-- <= 0) { cell[i] = AIR; continue; }
+					} else if (e === EL_ID.ice) {
+						let hot = 0;
+						for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+							if (!inb(x + dx, y + dy)) continue;
+							const t = cell[idx(x + dx, y + dy)];
+							if (t === EL_ID.fire || t === EL_ID.lava) hot++;
+						}
+						if (hot && Math.random() < 0.3) { cell[i] = EL_ID.water; continue; }
+					}
+
+					// --- movement -------------------------------------------
+					if (!def || def.kind === 'static' || def.kind === 'none') continue;
+					const below = inb(x, y + 1) ? idx(x, y + 1) : -1;
+					const above = inb(x, y - 1) ? idx(x, y - 1) : -1;
+					const dir = Math.random() < 0.5 ? 1 : -1;
+
+					if (def.kind === 'gas') {
+						if (above >= 0 && cell[above] === AIR) { swap(i, above); continue; }
+						const s = inb(x + dir, y) ? idx(x + dir, y) : -1;
+						if (s >= 0 && cell[s] === AIR && Math.random() < 0.7) { swap(i, s); continue; }
+						continue;
+					}
+					if (below >= 0 && cell[below] === AIR) { swap(i, below); continue; }
+					// a denser liquid sinks through a lighter one
+					if (below >= 0 && def.dens) {
+						const bd = EL[EL_KEYS[cell[below]]];
+						if (bd && bd.kind === 'liquid' && bd.dens < def.dens) { swap(i, below); continue; }
+					}
+					const d1 = inb(x + dir, y + 1) ? idx(x + dir, y + 1) : -1;
+					const d2 = inb(x - dir, y + 1) ? idx(x - dir, y + 1) : -1;
+					if (d1 >= 0 && cell[d1] === AIR) { swap(i, d1); continue; }
+					if (d2 >= 0 && cell[d2] === AIR) { swap(i, d2); continue; }
+					if (def.kind === 'liquid') {
+						const s1 = inb(x + dir, y) ? idx(x + dir, y) : -1;
+						const s2 = inb(x - dir, y) ? idx(x - dir, y) : -1;
+						if (s1 >= 0 && cell[s1] === AIR) { swap(i, s1); continue; }
+						if (s2 >= 0 && cell[s2] === AIR) { swap(i, s2); continue; }
+					}
+				}
+			}
+		}
+
+		function draw() {
+			const d = img.data;
+			for (let i = 0; i < N; i++) {
+				const e = cell[i], c = EL[EL_KEYS[e]].rgb;
+				const o = i * 4;
+				if (e === EL_ID.fire) {
+					const f = life[i] / 70;
+					d[o] = 255; d[o + 1] = 90 + f * 150 | 0; d[o + 2] = 30 * f | 0;
+				} else {
+					/* A flat fill of one colour reads as plastic; a couple of
+					   points of per-cell noise reads as material. */
+					const n = ((i * 2654435761) % 13) - 6;
+					d[o] = c[0] + n; d[o + 1] = c[1] + n; d[o + 2] = c[2] + n;
+				}
+				d[o + 3] = 255;
+			}
+			ctx.putImageData(img, 0, 0);
+		}
+
+		function frame() { if (!paused) step(); draw(); raf = requestAnimationFrame(frame); arcRaf = raf; }
+
+		// --- input ---
+		let painting = false;
+		const at = (ev) => {
+			const r = cv.getBoundingClientRect();
+			return [Math.floor((ev.clientX - r.left) / r.width * W), Math.floor((ev.clientY - r.top) / r.height * H)];
+		};
+		const paint = (ev) => {
+			const [cx, cy] = at(ev);
+			for (let dy = -size; dy <= size; dy++) for (let dx = -size; dx <= size; dx++) {
+				if (dx * dx + dy * dy > size * size) continue;
+				if (brush === AIR || cell[idx(Math.max(0, Math.min(W - 1, cx + dx)), Math.max(0, Math.min(H - 1, cy + dy)))] === AIR || Math.random() < 0.5) put(cx + dx, cy + dy, brush);
+			}
+		};
+		const down = (e) => { painting = true; cv.setPointerCapture(e.pointerId); paint(e); };
+		const move = (e) => { if (painting) paint(e); };
+		const up = (e) => { painting = false; try { cv.releasePointerCapture(e.pointerId); } catch {} };
+		cv.addEventListener('pointerdown', down);
+		cv.addEventListener('pointermove', move);
+		cv.addEventListener('pointerup', up);
+		cv.addEventListener('pointercancel', up);
+
+		const pal = document.getElementById('arcPalette');
+		pal.innerHTML = EL_KEYS.filter((k) => k !== 'air').map((k) =>
+			'<button type="button" class="elbtn' + (EL_ID[k] === brush ? ' on' : '') + '" data-el="' + k + '">' +
+			'<i style="background:rgb(' + EL[k].rgb.join(',') + ')"></i>' + esc(EL[k].name) + '</button>').join('') +
+			'<button type="button" class="elbtn" data-el="air"><i style="background:#08080a"></i>Erase</button>';
+		pal.addEventListener('click', (e) => {
+			const b = e.target.closest('[data-el]');
+			if (!b) return;
+			brush = EL_ID[b.dataset.el];
+			pal.querySelectorAll('.elbtn').forEach((x) => x.classList.toggle('on', x === b));
+		});
+
+		const pauseBtn = arcBtn('Pause', () => { paused = !paused; pauseBtn.textContent = paused ? 'Play' : 'Pause'; });
+		arcBtn('Clear', reset);
+		const sizeBtn = arcBtn('Brush 3', () => { size = size >= 8 ? 1 : size + 2; sizeBtn.textContent = 'Brush ' + size; });
+
+		frame();
+		return () => {
+			cancelAnimationFrame(raf);
+			cv.removeEventListener('pointerdown', down);
+			cv.removeEventListener('pointermove', move);
+			cv.removeEventListener('pointerup', up);
+			cv.removeEventListener('pointercancel', up);
+		};
+	},
+};
+
+
+/* ---- shared: read the accent so the games belong to the palette --------- */
+function arcInk() {
+	const probe = document.createElement('span');
+	probe.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden;color:var(--ring)';
+	document.body.append(probe);
+	const c = getComputedStyle(probe).color;
+	probe.remove();
+	return c || '#aab6c4';
+}
+
+/* ---- 2. snake ------------------------------------------------------------
+ * The turn is queued rather than applied on the keypress. Pressing up then
+ * left inside one tick used to apply both before the snake moved, which on a
+ * vertical snake is a 180 into your own neck — the classic version of this bug.
+ */
+ARCADE_GAMES.snake = {
+	name: 'Snake', w: 400, h: 300,
+	hint: 'Arrow keys or WASD. On a phone, swipe anywhere on the board.',
+	start(cv, ctx) {
+		const S = 20, CW = cv.width / S, CH = cv.height / S;
+		let snake, dir, queued, food, score, best = Number(localStorage.getItem('jarvis.arcSnake') || 0), dead, acc, last, raf = 0;
+		const ink = arcInk();
+
+		function reset() {
+			snake = [{ x: 5, y: 7 }, { x: 4, y: 7 }, { x: 3, y: 7 }];
+			dir = { x: 1, y: 0 }; queued = null; score = 0; dead = false; acc = 0; last = 0;
+			place();
+			arcOver(null);
+		}
+		function place() {
+			do { food = { x: Math.random() * CW | 0, y: Math.random() * CH | 0 }; }
+			while (snake.some((p) => p.x === food.x && p.y === food.y));
+		}
+		function tick() {
+			if (queued) { dir = queued; queued = null; }
+			const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
+			if (head.x < 0 || head.y < 0 || head.x >= CW || head.y >= CH || snake.some((p) => p.x === head.x && p.y === head.y)) {
+				dead = true;
+				if (score > best) { best = score; localStorage.setItem('jarvis.arcSnake', String(best)); }
+				arcOver('Ate itself at ' + score + '. Press Space.');
+				return;
+			}
+			snake.unshift(head);
+			if (head.x === food.x && head.y === food.y) { score++; place(); } else snake.pop();
+			arcScore('Score ' + score + '   ·   Best ' + best);
+		}
+		function draw() {
+			ctx.fillStyle = '#08080a'; ctx.fillRect(0, 0, cv.width, cv.height);
+			ctx.fillStyle = '#d64a3a';
+			ctx.fillRect(food.x * S + 4, food.y * S + 4, S - 8, S - 8);
+			snake.forEach((p, i) => {
+				ctx.globalAlpha = i === 0 ? 1 : Math.max(0.35, 1 - i / (snake.length + 6));
+				ctx.fillStyle = ink;
+				ctx.fillRect(p.x * S + 1, p.y * S + 1, S - 2, S - 2);
+			});
+			ctx.globalAlpha = 1;
+		}
+		function frame(t) {
+			if (!last) last = t;
+			acc += t - last; last = t;
+			const speed = Math.max(70, 150 - score * 3);
+			while (acc >= speed) { acc -= speed; if (!dead) tick(); }
+			draw();
+			raf = requestAnimationFrame(frame); arcRaf = raf;
+		}
+		const turn = (x, y) => {
+			const d = queued || dir;
+			if (d.x === -x && d.y === -y) return;   // no 180 into your own neck
+			queued = { x, y };
+		};
+		const key = (e) => {
+			const k = e.key.toLowerCase();
+			if (k === 'arrowup' || k === 'w') turn(0, -1);
+			else if (k === 'arrowdown' || k === 's') turn(0, 1);
+			else if (k === 'arrowleft' || k === 'a') turn(-1, 0);
+			else if (k === 'arrowright' || k === 'd') turn(1, 0);
+			else if (k === ' ' && dead) reset();
+			else return;
+			e.preventDefault();
+		};
+		let sx = 0, sy = 0;
+		const down = (e) => { sx = e.clientX; sy = e.clientY; if (dead) reset(); };
+		const up = (e) => {
+			const dx = e.clientX - sx, dy = e.clientY - sy;
+			if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+			if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 1 : -1, 0); else turn(0, dy > 0 ? 1 : -1);
+		};
+		document.addEventListener('keydown', key);
+		cv.addEventListener('pointerdown', down);
+		cv.addEventListener('pointerup', up);
+		arcBtn('Restart', reset);
+		reset(); frame(0);
+		return () => { cancelAnimationFrame(raf); document.removeEventListener('keydown', key); cv.removeEventListener('pointerdown', down); cv.removeEventListener('pointerup', up); };
+	},
+};
+
+/* ---- 3. breakout ---------------------------------------------------------
+ * The bounce reflects off the paddle by WHERE it hit, not by a flat -dy.
+ * A flat reflection makes the ball settle into a vertical rally you cannot
+ * break out of, which is a dull game and a real one people ship by accident.
+ */
+ARCADE_GAMES.brick = {
+	name: 'Bricks', w: 480, h: 320,
+	hint: 'Move the mouse or drag. The angle you come off the paddle depends on where it hits.',
+	start(cv, ctx) {
+		const PW = 76, PH = 9, R = 5, COLS = 10, ROWS = 5, BW = cv.width / COLS, BH = 16;
+		let px, ball, bricks, score, lives, over, raf = 0;
+		const ink = arcInk();
+		const hues = ['#c86d5a', '#c8a05a', '#8ab86a', '#5a9ec8', '#8a7ac8'];
+
+		function reset(full) {
+			px = cv.width / 2 - PW / 2;
+			ball = { x: cv.width / 2, y: cv.height - 46, vx: 2.4 * (Math.random() < 0.5 ? 1 : -1), vy: -3 };
+			if (full) { bricks = []; score = 0; lives = 3; over = false;
+				for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) bricks.push({ c, r, alive: true }); }
+			arcOver(over ? null : null);
+			arcScore('Score ' + score + '   ·   Lives ' + lives);
+		}
+		function draw() {
+			ctx.fillStyle = '#08080a'; ctx.fillRect(0, 0, cv.width, cv.height);
+			bricks.forEach((b) => {
+				if (!b.alive) return;
+				ctx.fillStyle = hues[b.r % hues.length];
+				ctx.fillRect(b.c * BW + 2, 26 + b.r * BH + 2, BW - 4, BH - 4);
+			});
+			ctx.fillStyle = ink;
+			ctx.fillRect(px, cv.height - 22, PW, PH);
+			ctx.beginPath(); ctx.arc(ball.x, ball.y, R, 0, Math.PI * 2); ctx.fill();
+		}
+		function step() {
+			if (over) return;
+			ball.x += ball.vx; ball.y += ball.vy;
+			if (ball.x < R || ball.x > cv.width - R) { ball.vx *= -1; ball.x = Math.max(R, Math.min(cv.width - R, ball.x)); }
+			if (ball.y < R) { ball.vy *= -1; ball.y = R; }
+			const py = cv.height - 22;
+			if (ball.vy > 0 && ball.y + R >= py && ball.y + R <= py + PH + 6 && ball.x >= px - R && ball.x <= px + PW + R) {
+				const hit = (ball.x - (px + PW / 2)) / (PW / 2);        // -1 .. 1
+				const ang = hit * 1.05;                                  // up to ~60 degrees
+				const sp = Math.min(7.5, Math.hypot(ball.vx, ball.vy) * 1.03);
+				ball.vx = Math.sin(ang) * sp; ball.vy = -Math.abs(Math.cos(ang) * sp);
+				ball.y = py - R;
+			}
+			for (const b of bricks) {
+				if (!b.alive) continue;
+				const bx = b.c * BW, by = 26 + b.r * BH;
+				if (ball.x > bx && ball.x < bx + BW && ball.y - R < by + BH && ball.y + R > by) {
+					b.alive = false; ball.vy *= -1; score += 10;
+					arcScore('Score ' + score + '   ·   Lives ' + lives);
+					break;
+				}
+			}
+			if (!bricks.some((b) => b.alive)) { over = true; arcOver('Cleared, ' + score + '. Press Space.'); }
+			if (ball.y > cv.height + 20) {
+				lives--;
+				arcScore('Score ' + score + '   ·   Lives ' + lives);
+				if (lives <= 0) { over = true; arcOver('Out of lives at ' + score + '. Press Space.'); }
+				else reset(false);
+			}
+		}
+		function frame() { step(); draw(); raf = requestAnimationFrame(frame); arcRaf = raf; }
+		const movePad = (clientX) => {
+			const r = cv.getBoundingClientRect();
+			px = Math.max(0, Math.min(cv.width - PW, (clientX - r.left) / r.width * cv.width - PW / 2));
+		};
+		const pm = (e) => movePad(e.clientX);
+		const key = (e) => { if (e.key === ' ' && over) { e.preventDefault(); reset(true); } };
+		cv.addEventListener('pointermove', pm);
+		cv.addEventListener('pointerdown', pm);
+		document.addEventListener('keydown', key);
+		arcBtn('Restart', () => reset(true));
+		reset(true); frame();
+		return () => { cancelAnimationFrame(raf); cv.removeEventListener('pointermove', pm); cv.removeEventListener('pointerdown', pm); document.removeEventListener('keydown', key); };
+	},
+};
+
+/* ---- 4. 2048 -------------------------------------------------------------
+ * One slide function, and the other three directions are the board rotated
+ * into it and back. Writing four of them by hand is four chances to get a
+ * merge rule subtly wrong in one direction only.
+ */
+ARCADE_GAMES.twenty = {
+	name: '2048', w: 400, h: 400,
+	hint: 'Arrow keys or WASD, or swipe. Two of a kind make one of the next.',
+	start(cv, ctx) {
+		const N = 4, PAD = 8, CELL = (cv.width - PAD * (N + 1)) / N;
+		let grid, score, best = Number(localStorage.getItem('jarvis.arc2048') || 0), over, raf = 0;
+		const TILE = { 0: '#15151a', 2: '#3a3a42', 4: '#46464f', 8: '#7a6448', 16: '#8a6a44', 32: '#96603f',
+			64: '#a4543a', 128: '#9c8a44', 256: '#9c9444', 512: '#8fa044', 1024: '#6f9a52', 2048: '#4f9a68' };
+
+		const empty = () => { const o = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!grid[y][x]) o.push([x, y]); return o; };
+		function spawn() { const c = empty(); if (!c.length) return; const [x, y] = c[Math.random() * c.length | 0]; grid[y][x] = Math.random() < 0.9 ? 2 : 4; }
+		function reset() { grid = Array.from({ length: N }, () => Array(N).fill(0)); score = 0; over = false; spawn(); spawn(); arcOver(null); paint(); }
+		const rot = (g) => g[0].map((_, i) => g.map((r) => r[i]).reverse());   // clockwise
+		function slideLeft(g) {
+			let moved = false;
+			const out = g.map((row) => {
+				const v = row.filter(Boolean);
+				for (let i = 0; i < v.length - 1; i++) if (v[i] === v[i + 1]) { v[i] *= 2; score += v[i]; v.splice(i + 1, 1); }
+				while (v.length < N) v.push(0);
+				if (v.some((n, i) => n !== row[i])) moved = true;
+				return v;
+			});
+			return { out, moved };
+		}
+		function move(dir) {
+			if (over) return;
+			let g = grid;
+			for (let i = 0; i < dir; i++) g = rot(g);
+			const { out, moved } = slideLeft(g);
+			g = out;
+			for (let i = 0; i < (4 - dir) % 4; i++) g = rot(g);
+			if (!moved) return;
+			grid = g; spawn();
+			if (score > best) { best = score; localStorage.setItem('jarvis.arc2048', String(best)); }
+			if (!empty().length && !canMove()) { over = true; arcOver('No moves left at ' + score + '. Press Space.'); }
+			paint();
+		}
+		function canMove() {
+			for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+				if (x < N - 1 && grid[y][x] === grid[y][x + 1]) return true;
+				if (y < N - 1 && grid[y][x] === grid[y + 1][x]) return true;
+			}
+			return false;
+		}
+		function paint() {
+			arcScore('Score ' + score + '   ·   Best ' + best);
+			ctx.fillStyle = '#08080a'; ctx.fillRect(0, 0, cv.width, cv.height);
+			ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+			for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+				const v = grid[y][x], px = PAD + x * (CELL + PAD), py = PAD + y * (CELL + PAD);
+				ctx.fillStyle = TILE[v] || '#4f9a68';
+				ctx.beginPath(); ctx.roundRect(px, py, CELL, CELL, 8); ctx.fill();
+				if (!v) continue;
+				ctx.fillStyle = v <= 4 ? '#e8e6e3' : '#fff';
+				ctx.font = '600 ' + (v > 999 ? 26 : v > 99 ? 32 : 38) + 'px ui-sans-serif, system-ui, sans-serif';
+				ctx.fillText(String(v), px + CELL / 2, py + CELL / 2 + 2);
+			}
+		}
+		const key = (e) => {
+			const k = e.key.toLowerCase();
+			const m = { arrowleft: 0, a: 0, arrowup: 1, w: 1, arrowright: 2, d: 2, arrowdown: 3, s: 3 };
+			if (k === ' ' && over) { e.preventDefault(); reset(); return; }
+			if (!(k in m)) return;
+			e.preventDefault(); move(m[k]);
+		};
+		let sx = 0, sy = 0;
+		const down = (e) => { sx = e.clientX; sy = e.clientY; if (over) reset(); };
+		const up = (e) => {
+			const dx = e.clientX - sx, dy = e.clientY - sy;
+			if (Math.abs(dx) < 22 && Math.abs(dy) < 22) return;
+			move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 2 : 0) : (dy > 0 ? 3 : 1));
+		};
+		document.addEventListener('keydown', key);
+		cv.addEventListener('pointerdown', down);
+		cv.addEventListener('pointerup', up);
+		arcBtn('Restart', reset);
+		reset();
+		return () => { cancelAnimationFrame(raf); document.removeEventListener('keydown', key); cv.removeEventListener('pointerdown', down); cv.removeEventListener('pointerup', up); };
+	},
+};
+
 function renderView(name) {
 	if (name === 'dashboard') renderDashboard();
 	else if (name === 'overview') renderOverview();
@@ -5063,6 +5790,7 @@ function renderView(name) {
 	else if (name === 'graph') renderGraph();
 	else if (name === 'systems') { renderHome(); renderTranscripts(); }
 	else if (name === 'apps') renderAppsView();
+	else if (name === 'arcade') renderArcade();
 }
 document.querySelectorAll('[data-view]').forEach((el) => {
 	el.addEventListener('click', () => {
