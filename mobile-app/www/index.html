@@ -2619,6 +2619,39 @@
 	.elbtn:hover { background: var(--panel-3); }
 	.elbtn.on { border-color: var(--ring); background: var(--ring-soft); font-weight: 650; }
 	@media (max-width: 900px) { .elbtn { font-size: 11.5px; padding: 5px 10px 5px 5px; } }
+	/* ============================ final touches ============================
+	   Small things a second look catches once everything else is in place. */
+
+	/* The chat is a column that fills the height, log growing, box docked at
+	   the bottom — instead of a 150px panel floating over 900px of nothing. */
+	#view-chat.on { display: flex; flex-direction: column; min-height: calc(100dvh - 128px); }
+	#view-chat .viewpanel { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+	#view-chat #chatLog { flex: 1; overflow-y: auto; min-height: 0; }
+	#chatDock { margin-top: 14px; flex: none; }
+	#chatDock:empty { display: none; }
+	@media (max-width: 900px) { #view-chat.on { min-height: calc(100dvh - 190px); } }
+
+	/* Letterspaced caps must never wrap; the format shortens instead. */
+	.heroeyebrow { white-space: nowrap; }
+
+	/* An empty state sits where its content would, in the same alignment as
+	   the heading above it, and points somewhere. Centred grey text in a big
+	   box under a left-aligned heading was the tell across the Tasks view. */
+	.empty { text-align: left; padding: 12px 4px 16px; line-height: 1.55; }
+	/* The one action in an empty state is the accent, not the sentence's grey:
+	   it is the thing to do next, and it has to read as one. */
+	.empty .linkbtn { padding: 0 2px; font-size: inherit; vertical-align: baseline; color: var(--ring); font-weight: 600; }
+	.empty .linkbtn:hover { color: var(--text); }
+	/* A caption alone in a tall panel sits in the middle of it, not at the top. */
+	#chatLog:has(> .empty) { display: grid; place-items: center; }
+	/* The chat log's own empty line keeps its old centring: it has no heading
+	   to align to, and reads as a caption there. */
+	#chatLog .empty { text-align: center; padding: 26px 10px; }
+
+	/* One beat between settings sections, instead of whatever the previous
+	   hint's line count happened to leave. */
+	dialog h3 { margin-top: 26px; }
+	.settab h3:first-child { margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -2805,6 +2838,8 @@
 					<div class="glasspanel viewpanel">
 						<div class="viewlist" id="chatLog"></div>
 					</div>
+					<!-- The composer is one element that MOVES here on this view; see homeComposer(). -->
+					<div id="chatDock"></div>
 				</div>
 
 				<div class="view" id="view-tasks">
@@ -3065,9 +3100,9 @@
 
 		<h3>Backdrop</h3>
 		<div class="row">
-			<label class="inline"><input type="checkbox" id="gridBgInput" /> Kinetic grid — a grid behind the app that warps under your pointer and ripples where you click</label>
+			<label class="inline"><input type="checkbox" id="gridBgInput" /> Kinetic grid</label>
 		</div>
-		<p class="hint" id="gridHint">Invisible until you touch it, and it stops drawing the moment it settles, so it costs nothing while you read.</p>
+		<p class="hint" id="gridHint">A grid behind the app that warps under your pointer and ripples where you click. Invisible until you touch it, and it stops drawing the moment it settles.</p>
 
 		<h3>Units</h3>
 		<div class="seg2" id="unitsSeg">
@@ -5136,6 +5171,7 @@ function showView(name) {
 	/* Whatever the arcade was running stops the moment you leave it. */
 	if (currentView === 'arcade' && name !== 'arcade' && typeof arcadeStop === 'function') arcadeStop();
 	currentView = name;
+	homeComposer(name);
 	document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'view-' + name));
 	document.querySelectorAll('#navList .navitem[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
 	document.querySelectorAll('#navSheet .navitem[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
@@ -5273,6 +5309,8 @@ function sizeArcStage() {
 	stage.style.maxWidth = Math.round(Math.min(820, (window.innerHeight * 0.56) * (game.w / game.h))) + 'px';
 }
 window.addEventListener('resize', () => { if (currentView === 'arcade') sizeArcStage(); });
+/* The date format depends on width, so a rotation has to re-render it. */
+window.addEventListener('resize', updateDashMeta);
 function renderArcade() {
 	const pick = document.getElementById('arcPick');
 	if (!pick.children.length) {
@@ -5781,6 +5819,36 @@ ARCADE_GAMES.twenty = {
 	},
 };
 
+/* One composer, two homes. The chat view had no way to type into it: you
+ * read the transcript there and went back to the dashboard to reply, which
+ * makes it a log, not a chat. It is one element with one set of ids and one
+ * set of listeners, so it MOVES rather than being duplicated — the node is
+ * appended into whichever view is on screen and every handler comes with it.
+ * The dashboard anchor is recorded once so it goes back in the same place. */
+const composerHome = (() => {
+	const comp = document.querySelector('.composer');
+	return comp ? { parent: comp.parentElement, next: comp.nextElementSibling } : null;
+})();
+function homeComposer(view) {
+	const comp = document.querySelector('.composer');
+	if (!comp || !composerHome) return;
+	if (view === 'chat') {
+		const dock = document.getElementById('chatDock');
+		if (dock && comp.parentElement !== dock) dock.append(comp);
+	} else if (comp.parentElement !== composerHome.parent) {
+		composerHome.parent.insertBefore(comp, composerHome.next);
+	}
+}
+/* Drops you on the dashboard with the box pre-filled and the cursor at the
+ * end. The empty states use it, so "Set one" is one click, not a hunt. */
+function promptComposer(prefix) {
+	showView('dashboard');
+	const inp = document.getElementById('textInput');
+	if (!inp) return;
+	inp.value = prefix;
+	inp.focus();
+	try { inp.setSelectionRange(prefix.length, prefix.length); } catch {}
+}
 function renderView(name) {
 	if (name === 'dashboard') renderDashboard();
 	else if (name === 'overview') renderOverview();
@@ -5818,6 +5886,15 @@ document.getElementById('textSend').addEventListener('click', () => {
 	const b = document.getElementById('textSend');
 	b.classList.add('sent');
 	setTimeout(() => b.classList.remove('sent'), 660);
+});
+/* The empty states' one action each. Delegated, since the rows are rebuilt
+ * on every render and anything bound to them would go with the old HTML. */
+document.getElementById('view-tasks').addEventListener('click', (e) => {
+	const b = e.target.closest('[data-empty]');
+	if (!b) return;
+	if (b.dataset.empty === 'chain') openChains();
+	else if (b.dataset.empty === 'remind') promptComposer('Remind me to ');
+	else if (b.dataset.empty === 'note') promptComposer('Note that ');
 });
 document.getElementById('searchInput').addEventListener('input', (e) => {
 	document.getElementById('searchDlg').classList.toggle('typed', !!e.target.value);
@@ -6294,7 +6371,7 @@ function renderGridHint() {
 		? 'Off — the app keeps its plain background.'
 		: still
 			? 'Your device asks for reduced motion, so the grid follows your pointer without easing into it.'
-			: 'Invisible until you touch it, and it stops drawing the moment it settles, so it costs nothing while you read.';
+			: 'A grid behind the app that warps under your pointer and ripples where you click. Invisible until you touch it, and it stops drawing the moment it settles.';
 }
 document.getElementById('gridBgInput').addEventListener('change', () => {
 	store.gridBg = document.getElementById('gridBgInput').checked;
@@ -8794,7 +8871,7 @@ function wireGraphStage() {
 function renderReminders() {
 	const box = document.getElementById('panel-reminders');
 	const list = store.reminders;
-	if (!list.length) { box.innerHTML = '<div class="empty">No reminders set.</div>'; return; }
+	if (!list.length) { box.innerHTML = '<div class="empty">Nothing scheduled. <button type="button" class="linkbtn" data-empty="remind">Set one</button></div>'; return; }
 	box.innerHTML = '';
 	list.slice().sort((a, b) => a.at - b.at).forEach((r) => {
 		const row = document.createElement('div');
@@ -8812,7 +8889,7 @@ function renderReminders() {
 function renderNotes() {
 	const box = document.getElementById('panel-notes');
 	const list = store.notes;
-	if (!list.length) { box.innerHTML = '<div class="empty">No notes yet.</div>'; return; }
+	if (!list.length) { box.innerHTML = '<div class="empty">Nothing noted. <button type="button" class="linkbtn" data-empty="note">Add one</button></div>'; return; }
 	box.innerHTML = '';
 	list.slice().reverse().forEach((n) => {
 		const row = document.createElement('div');
@@ -9194,7 +9271,12 @@ function updateDashMeta() {
 	const d = new Date();
 	const date = document.getElementById('dashDate');
 	const clock = document.getElementById('dashClock');
-	if (date) date.textContent = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+	/* Shorter under 480px. Letterspaced caps that wrap leave a lone "2" and a
+	   lone "PM" on their own lines, which is what the phone was showing. */
+	const compact = window.innerWidth < 480;
+	if (date) date.textContent = d.toLocaleDateString([], compact
+		? { weekday: 'short', day: 'numeric', month: 'short' }
+		: { weekday: 'long', day: 'numeric', month: 'long' });
 	if (clock) clock.textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
 	const model = document.getElementById('metaModel');
@@ -9973,7 +10055,7 @@ function renderChainsPanel() {
 	const box = document.getElementById('panel-chains');
 	if (!box) return;
 	const list = store.chains;
-	if (!list.length) { box.innerHTML = '<div class="empty">No chains yet. Build one to run several steps in a row.</div>'; return; }
+	if (!list.length) { box.innerHTML = '<div class="empty">No chains yet — several steps that run in a row. <button type="button" class="linkbtn" data-empty="chain">Build one</button></div>'; return; }
 	box.innerHTML = '';
 	list.forEach((c) => {
 		const row = document.createElement('div');
