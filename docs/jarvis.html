@@ -17,7 +17,11 @@
 	   on load. Deliberately duplicates the storage key rather than waiting for
 	   the main script at the end of the document — by then the first paint has
 	   already happened. Dark is the default. */
-	try { document.documentElement.dataset.theme = localStorage.getItem('jarvis.theme') === 'light' ? 'light' : 'dark'; } catch { document.documentElement.dataset.theme = 'dark'; }
+	try {
+		const t = localStorage.getItem('jarvis.theme');
+		document.documentElement.dataset.theme = t === 'light' ? 'light'
+			: t === 'auto' && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+	} catch { document.documentElement.dataset.theme = 'dark'; }
 </script>
 <style>
 	/* ============================ the rulebook ============================= */
@@ -167,7 +171,7 @@
 	body {
 		background: var(--bg);
 		color: var(--text);
-		font: 14.5px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		font: 0.90625rem/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
 		overscroll-behavior: none;
 		-webkit-font-smoothing: antialiased;
 		display: flex;
@@ -178,11 +182,18 @@
 	::-webkit-scrollbar-track { background: transparent; }
 	::-webkit-scrollbar-thumb { background: rgba(60, 60, 67, 0.35); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
 	:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+	/* Increase Contrast: hairlines and secondary text step up together, the
+	   way the system's own Increase Contrast setting does. */
+	@media (prefers-contrast: more) {
+		:root { --line: rgba(24, 20, 16, 0.32); --line-soft: rgba(24, 20, 16, 0.2); --dim: rgba(40, 38, 35, 0.92); --dim-2: rgba(63, 60, 56, 0.7); }
+		:root[data-theme="dark"] { --line: rgba(255, 255, 255, 0.34); --line-soft: rgba(255, 255, 255, 0.22); --dim: rgba(240, 238, 232, 0.92); --dim-2: rgba(233, 230, 222, 0.7); }
+		:focus-visible { outline-width: 3px; }
+	}
 	::selection { background: rgba(0, 122, 255, 0.22); }
 	button { font: inherit; color: inherit; }
 	svg { display: block; }
 	a { color: var(--ring); }
-	.eyebrow { font-size: 12.5px; font-weight: 600; color: var(--dim); }
+	.eyebrow { font-size: 0.78125rem; font-weight: 600; color: var(--dim); }
 	.card, .glasspanel {
 		background: var(--panel);
 		border: 1px solid var(--line);
@@ -223,13 +234,13 @@
 	.ghost { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 10px 18px; font-weight: 500; cursor: pointer; transition: background 0.15s ease, transform 0.14s ease; }
 	.ghost:hover { background: var(--panel-3); }
 
-	.ghost.small { padding: 6px 12px; font-size: 12.5px; border-radius: 8px; }
+	.ghost.small { padding: 6px 12px; font-size: 0.78125rem; border-radius: 8px; }
 	.primary { background: var(--ring); color: var(--on-accent); border: none; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: filter 0.15s ease, transform 0.14s ease; }
 	.primary:hover { filter: brightness(0.92); }
 
-	.linkbtn { background: none; border: none; color: var(--dim); font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
+	.linkbtn { background: none; border: none; color: var(--dim); font-size: 0.78125rem; font-weight: 500; cursor: pointer; padding: 4px; transition: color 0.15s ease; }
 	.linkbtn:hover { color: var(--text); }
-	.empty { color: var(--dim); font-size: 13px; text-align: center; padding: 26px 10px; }
+	.empty { color: var(--dim); font-size: 0.8125rem; text-align: center; padding: 26px 10px; }
 
 	/* ================================ sidebar =============================== */
 	#sidebar {
@@ -245,7 +256,7 @@
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 	}
 	.brand {
-		font-size: 17px;
+		font-size: 1.0625rem;
 		font-weight: 650;
 		letter-spacing: -0.01em;
 		padding: 4px 8px;
@@ -260,10 +271,10 @@
 		color: var(--dim);
 		border-radius: 8px;
 		padding: 9px 11px;
-		font-size: 14px;
+		font-size: 0.875rem;
 		font-weight: 500;
 		cursor: pointer;
-		text-align: left;
+		text-align: start;
 		transition: background 0.18s ease, color 0.18s ease;
 	}
 	.navitem:hover { background: var(--panel-3); color: var(--text); }
@@ -323,8 +334,8 @@
 	}
 	#sideBars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 22px; }
 	#sideBars span { width: 3px; border-radius: 3px; background: var(--dim); opacity: 0.7; height: 5px; transition: height 0.12s ease; }
-	.vlabel { font-size: 11.5px; font-weight: 500; color: var(--dim); line-height: 1.5; }
-	.vlabel b { display: block; color: var(--text); font-size: 11.5px; }
+	.vlabel { font-size: 0.71875rem; font-weight: 500; color: var(--dim); line-height: 1.5; }
+	.vlabel b { display: block; color: var(--text); font-size: 0.71875rem; }
 	#micBtn {
 		width: 100%;
 		background: var(--ring);
@@ -336,7 +347,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: 8px;
-		font-size: 13px;
+		font-size: 0.8125rem;
 		font-weight: 600;
 		cursor: pointer;
 		transition: background 0.2s ease, color 0.2s ease, filter 0.15s ease, transform 0.14s ease;
@@ -408,7 +419,7 @@
 	   point. None of that needs a component — it needs restraint. */
 	.heroeyebrow {
 		display: flex; align-items: center; gap: 9px;
-		font-size: 10.5px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase;
+		font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase;
 		/* --dim, not --dim-2. Faint tiny caps are the signature premium move
 		   and they fail WCAG AA outright: --dim-2 measured 3.19:1 on dark and
 		   2.31:1 on light against the 4.5 these sizes need. --dim clears it at
@@ -419,7 +430,7 @@
 	/* 44px against the 10.5px eyebrow is the contrast that does the work. At
 	   the old 26px everything on this screen sat within one size of everything
 	   else, which is exactly what made it read as unconsidered. */
-	.statusbig { font-size: 44px; font-weight: 680; letter-spacing: -0.035em; line-height: 1.02; margin-top: 0; }
+	.statusbig { font-size: 2.75rem; font-weight: 680; letter-spacing: -0.035em; line-height: 1.02; margin-top: 0; }
 	/* The instrument strip. It fills the ~200px of dead space that used to sit
 	   between the caption and the composer, and it earns the room by being
 	   live: what Jarvis is running on, what it remembers, what you have spent. */
@@ -431,13 +442,13 @@
 	.instrument > div { flex: 1; min-width: 0; padding: 15px 20px; border-left: 1px solid var(--line-soft); }
 	.instrument > div:first-child { border-left: none; padding-left: 0; }
 	.instrument > div:last-child { padding-right: 0; }
-	.ikey { font-size: 9.5px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); }
+	.ikey { font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); }
 	.ival {
-		font-size: 15px; font-weight: 560; letter-spacing: -0.012em; margin-top: 6px; color: var(--text);
+		font-size: 0.9375rem; font-weight: 560; letter-spacing: -0.012em; margin-top: 6px; color: var(--text);
 		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 	}
-	.ival .unit { color: var(--dim); font-weight: 450; font-size: 12.5px; letter-spacing: 0; margin-left: 3px; }
-	.statussub { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--dim); font-size: 12.5px; }
+	.ival .unit { color: var(--dim); font-weight: 450; font-size: 0.78125rem; letter-spacing: 0; margin-left: 3px; }
+	.statussub { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--dim); font-size: 0.78125rem; }
 	/* 10px, not 8px: both children are .iconbtn, whose hit areas each extend
 	   5px past the painted chip — an 8px gap left them overlapping by 2px. */
 	.herotools { display: flex; gap: 10px; flex: none; }
@@ -984,14 +995,14 @@
 	   sphere instead was the first attempt and it just looked cramped. */
 	.sc-z {
 		position: absolute; left: 118px; top: 58px;
-		font: 700 16px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+		font: 700 1rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
 		color: rgba(250, 249, 245, 0.95);
 		-webkit-text-stroke: 0.6px rgba(0, 0, 0, 0.6);
 		paint-order: stroke fill;
 		text-shadow: 0 0 9px rgba(255, 255, 255, 0.45);
 	}
-	.z2 { font-size: 13px; }
-	.z3 { font-size: 20px; }
+	.z2 { font-size: 0.8125rem; }
+	.z3 { font-size: 1.25rem; }
 	#orbWrap.idle[data-scene="sleep"] .sc-z { animation: zfloat 3.2s ease-out infinite; }
 	#orbWrap.idle[data-scene="sleep"] .z2 { animation-delay: 1.05s; }
 	#orbWrap.idle[data-scene="sleep"] .z3 { animation-delay: 2.1s; }
@@ -1073,12 +1084,12 @@
 	#orbWrap.listening ~ #bars span { background: var(--glow-warn); }
 	#orbWrap.speaking ~ #bars span { background: var(--glow-ok); }
 	#orbWrap.recording ~ #bars span { background: var(--glow-err); }
-	#stateLabel { font-size: 12px; font-weight: 500; color: var(--dim); transition: color 0.3s ease; }
+	#stateLabel { font-size: 0.75rem; font-weight: 500; color: var(--dim); transition: color 0.3s ease; }
 	#stateLabel.listening { color: var(--warn); }
 	#stateLabel.speaking { color: var(--ok); }
 	#stateLabel.error, #stateLabel.recording { color: var(--err); }
-	#caption { max-width: 560px; min-height: 1.6em; font-size: 15px; line-height: 1.5; color: var(--text); transition: opacity 0.2s ease; }
-	#caption.dim { color: var(--dim); font-size: 13.5px; }
+	#caption { max-width: 560px; min-height: 1.6em; font-size: 0.9375rem; line-height: 1.5; color: var(--text); transition: opacity 0.2s ease; }
+	#caption.dim { color: var(--dim); font-size: 0.84375rem; }
 
 	/* ---- what it is doing right now ---------------------------------------
 	   Tool calls used to happen entirely behind the answer: Jarvis would go
@@ -1094,7 +1105,7 @@
 		   cannot shrink below itself, so `height: 0` still computes to 2px and
 		   leaves a permanent sliver under the orb. */
 		border: 0 solid var(--ring-soft);
-		font-size: 12px; font-weight: 500; color: var(--ring);
+		font-size: 0.75rem; font-weight: 500; color: var(--ring);
 		transition: height 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease,
 		            margin 0.24s ease, border-width 0.24s ease, border-color 0.24s ease;
 	}
@@ -1125,7 +1136,7 @@
 	#introSkip {
 		position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; z-index: 1;
 		background: none; border: 1px solid var(--intro-line); color: var(--intro-text);
-		border-radius: 999px; padding: 8px 16px; font-size: 12.5px; font-weight: 500;
+		border-radius: 999px; padding: 8px 16px; font-size: 0.78125rem; font-weight: 500;
 		cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease;
 	}
 	#introSkip:hover { color: var(--intro-text-strong); border-color: var(--intro-text); }
@@ -1159,7 +1170,7 @@
 	}
 
 	.introline {
-		font-size: 20px; font-weight: 600; letter-spacing: -0.01em; color: var(--intro-text);
+		font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; color: var(--intro-text);
 		opacity: 0; transform: translateY(6px); transition: opacity 1s ease, transform 1s ease;
 		position: absolute; top: 100%; margin-top: 26px; width: min(88vw, 480px); text-align: center;
 	}
@@ -1169,15 +1180,15 @@
 	#introOverlay.stage-awake #introLine2 { opacity: 0; }
 	#introOverlay.stage-awake #introLine3 { opacity: 1; transform: none; }
 	#introOverlay.stage-greet #introLine3 { opacity: 0; }
-	#introOverlay.stage-greet #introGreeting { opacity: 1; transform: none; font-size: 26px; font-weight: 700; color: var(--intro-text-strong); }
+	#introOverlay.stage-greet #introGreeting { opacity: 1; transform: none; font-size: 1.625rem; font-weight: 700; color: var(--intro-text-strong); }
 	@media (max-width: 480px) {
-		.introline { font-size: 16px; }
-		#introOverlay.stage-greet #introGreeting { font-size: 21px; }
+		.introline { font-size: 1rem; }
+		#introOverlay.stage-greet #introGreeting { font-size: 1.3125rem; }
 	}
 
 	.chip {
 		display: inline-flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line);
-		border-radius: 999px; padding: 6px 13px; font-size: 12px; color: var(--text); margin: 4px 4px 0; cursor: pointer;
+		border-radius: 999px; padding: 6px 13px; font-size: 0.75rem; color: var(--text); margin: 4px 4px 0; cursor: pointer;
 	}
 	.chip { transition: background 0.16s ease, transform 0.16s ease; }
 	.chip:hover { background: var(--panel-3); }
@@ -1185,6 +1196,8 @@
 	.composer { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 18px; }
 	.composer input { flex: 1; background: none; border: none; color: var(--text); font: inherit; padding: 8px 0; }
 	.composer input:focus { outline: none; }
+	/* The pill itself shows focus; a ring on the bare input inside it would cut across the chrome. */
+	.composer:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
 	.composer input::placeholder { color: var(--dim); }
 	/* --panel-2, matching #micBtn. Both carry the chrome rim, and the mic has
 	   been the app's grey since the rim went on every button; leaving Send
@@ -1213,15 +1226,15 @@
 	#nextbar:empty { display: none; }
 	.nextchip {
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-		border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 12.5px; font-weight: 500;
-		cursor: pointer; text-align: left; max-width: 100%;
+		border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 0.78125rem; font-weight: 500;
+		cursor: pointer; text-align: start; max-width: 100%;
 		overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 		animation: rise 0.22s ease-out both;
 		transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 	}
 	.nextchip:hover { background: var(--panel-3); border-color: var(--ring); }
 	.nextchip:active { transform: scale(0.97); }
-	@media (max-width: 640px) { .nextchip { font-size: 12px; padding: 6px 11px; } }
+	@media (max-width: 640px) { .nextchip { font-size: 0.75rem; padding: 6px 11px; } }
 
 	/* the row under the caption: a retry offer and the running cost, both of
 	   which are absent most of the time and must not reserve space when they are */
@@ -1229,7 +1242,7 @@
 	#turnbar:not(:has(> :not([hidden]))) { display: none; }
 	.usagechip {
 		background: none; border: 1px solid var(--line); color: var(--dim);
-		border-radius: 999px; padding: 3px 10px; font-size: 11.5px; font-weight: 500;
+		border-radius: 999px; padding: 3px 10px; font-size: 0.71875rem; font-weight: 500;
 		cursor: pointer; font-variant-numeric: tabular-nums;
 		transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 	}
@@ -1263,7 +1276,7 @@
 	.styleticks { display: flex; justify-content: space-between; margin-top: 2px; }
 	.styleticks button {
 		background: none; border: none; padding: 4px 2px; cursor: pointer;
-		font: inherit; font-size: 12px; font-weight: 500; color: var(--dim);
+		font: inherit; font-size: 0.75rem; font-weight: 500; color: var(--dim);
 		transition: color 0.15s ease;
 	}
 	.styleticks button:hover { color: var(--text); }
@@ -1271,30 +1284,30 @@
 
 	/* Clear: bigger, calmer, everywhere — dialogs included, which is why this
 	   hangs off <html> rather than a view. */
-	:root[data-reply-style="clear"] { font-size: 17.5px; }
-	:root[data-reply-style="clear"] #caption { font-size: 19px; line-height: 1.45; }
-	:root[data-reply-style="clear"] .hint, :root[data-reply-style="clear"] small { font-size: 14px; }
-	:root[data-reply-style="clear"] .nextchip { font-size: 14.5px; padding: 9px 16px; }
-	:root[data-reply-style="clear"] .composer input { font-size: 16.5px; }
+	:root[data-reply-style="clear"] { font-size: 1.09375rem; }
+	:root[data-reply-style="clear"] #caption { font-size: 1.1875rem; line-height: 1.45; }
+	:root[data-reply-style="clear"] .hint, :root[data-reply-style="clear"] small { font-size: 0.875rem; }
+	:root[data-reply-style="clear"] .nextchip { font-size: 0.90625rem; padding: 9px 16px; }
+	:root[data-reply-style="clear"] .composer input { font-size: 1.03125rem; }
 	:root[data-reply-style="clear"] .row-item { padding-block: 14px; }
 
 	/* ---- the vault: memory list and graph ---- */
 	.memtoolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 	.memtoolbar input {
 		flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
-		color: var(--text); font: inherit; font-size: 13px; padding: 7px 14px;
+		color: var(--text); font: inherit; font-size: 0.8125rem; padding: 7px 14px;
 	}
-	.memtoolbar input:focus { outline: none; border-color: var(--ring); }
-	.memcount { flex: none; color: var(--dim); font-size: 12px; }
+	.memtoolbar input:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
+	.memcount { flex: none; color: var(--dim); font-size: 0.75rem; }
 	.noterow { display: flex; align-items: flex-start; gap: 8px; }
 	.noterow .nfolder {
-		flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim);
+		flex: none; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim);
 		background: var(--panel-3); border-radius: 5px; padding: 3px 7px; margin-top: 2px;
 	}
 	.notelinks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
 	.notelink {
 		background: var(--ring-soft); color: var(--ring); border: none; border-radius: 999px;
-		padding: 2px 8px; font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit;
+		padding: 2px 8px; font-size: 0.6875rem; font-weight: 500; cursor: pointer; font-family: inherit;
 	}
 	.notelink.missing { background: none; border: 1px dashed var(--line); color: var(--dim); }
 	.notelink:hover { filter: brightness(1.15); }
@@ -1303,11 +1316,11 @@
 	.graphstage { position: relative; min-height: 460px; height: 60vh; touch-action: none; }
 	.graphstage svg { width: 100%; height: 100%; display: block; cursor: grab; }
 	.graphstage svg.dragging { cursor: grabbing; }
-	.graphempty { position: absolute; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; color: var(--dim); font-size: 13px; }
+	.graphempty { position: absolute; inset: 0; display: grid; place-items: center; padding: 30px; text-align: center; color: var(--dim); font-size: 0.8125rem; }
 	.graphside { border-left: 1px solid var(--line-soft); padding: 18px; overflow-y: auto; min-width: 0; }
-	.graphside h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; word-break: break-word; }
-	.graphside .gmeta { font-size: 11.5px; color: var(--dim); margin-bottom: 12px; }
-	.graphside .gbody { font-size: 12.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+	.graphside h3 { font-size: 0.875rem; font-weight: 700; margin-bottom: 4px; word-break: break-word; }
+	.graphside .gmeta { font-size: 0.71875rem; color: var(--dim); margin-bottom: 12px; }
+	.graphside .gbody { font-size: 0.78125rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 	.graphside .empty { padding: 0; }
 	.gedge { stroke: var(--line); stroke-width: 1; }
 	.gedge.folder { stroke: var(--line-soft); }
@@ -1317,22 +1330,23 @@
 	.gnode.folder circle { fill: var(--ring); }
 	.gnode.unresolved circle { fill: none; stroke: var(--dim); stroke-width: 1.2; }
 	.gnode text {
-		font-size: 9px; text-anchor: middle; fill: var(--dim); pointer-events: none;
+		/* User units inside a zoom-to-fit viewBox, not screen px — 9 here is ~25px on a five-note graph. */
+		font-size: 0.5625rem; text-anchor: middle; fill: var(--dim); pointer-events: none;
 		paint-order: stroke; stroke: var(--panel); stroke-width: 2.6px;
 	}
-	.gnode.folder text { fill: var(--ring); font-weight: 600; font-size: 10px; }
+	.gnode.folder text { fill: var(--ring); font-weight: 600; font-size: 0.625rem; }
 	.gnode.on circle, .gnode:hover circle { fill: var(--ring); }
 	.gnode.on text, .gnode:hover text { fill: var(--text); }
 	.gnode.faded { opacity: 0.15; }
 	.gedge.faded { opacity: 0.06; }
-	.graphlegend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 12px; color: var(--dim); font-size: 11.5px; }
+	.graphlegend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 12px; color: var(--dim); font-size: 0.71875rem; }
 	.graphlegend span { display: flex; align-items: center; gap: 6px; }
 	.graphlegend i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 	.graphlegend .lg-note { background: var(--text); }
 	.graphlegend .lg-folder { background: var(--ring); }
 	.graphlegend .lg-unres { border: 1.2px solid var(--dim); }
 	.graphlegend .graphhint { margin-left: auto; }
-	.graphtoggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--dim); cursor: pointer; }
+	.graphtoggle { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--dim); cursor: pointer; }
 	.graphtoggle input { accent-color: var(--ring); }
 	@media (max-width: 900px) {
 		.graphpanel { grid-template-columns: 1fr; }
@@ -1348,7 +1362,7 @@
 	.keepbtn {
 		position: absolute; top: 6px; right: 6px;
 		background: var(--panel-3); border: 1px solid var(--line); color: var(--dim);
-		border-radius: 999px; padding: 3px 9px; font-size: 10.5px; font-weight: 500;
+		border-radius: 999px; padding: 3px 9px; font-size: 0.6875rem; font-weight: 500;
 		cursor: pointer; opacity: 0; transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 	}
 	.logmsg:hover .keepbtn, .keepbtn:focus-visible { opacity: 1; }
@@ -1360,7 +1374,7 @@
 
 	/* ---- conversations ---- */
 	.headtools { display: flex; gap: 8px; flex: none; }
-	.convohead { display: flex; align-items: center; gap: 8px; margin: -8px 0 12px; color: var(--dim); font-size: 12.5px; }
+	.convohead { display: flex; align-items: center; gap: 8px; margin: -8px 0 12px; color: var(--dim); font-size: 0.78125rem; }
 	.convohead b { color: var(--text); font-weight: 600; }
 	.convohead .cvcount { margin-left: auto; flex: none; }
 	.convorow { display: flex; align-items: center; gap: 8px; }
@@ -1371,12 +1385,12 @@
 	.usagestat {
 		background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
 	}
-	.usagestat .uv { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
-	.usagestat .ul { font-size: 10.5px; color: var(--dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
-	.calcnote { font-size: 12px; color: var(--dim); margin-bottom: 10px; }
+	.usagestat .uv { font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+	.usagestat .ul { font-size: 0.6875rem; color: var(--dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+	.calcnote { font-size: 0.75rem; color: var(--dim); margin-bottom: 10px; }
 	.calcout {
 		margin-top: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-		padding: 12px 14px; font-size: 13px; line-height: 1.7; font-variant-numeric: tabular-nums;
+		padding: 12px 14px; font-size: 0.8125rem; line-height: 1.7; font-variant-numeric: tabular-nums;
 	}
 	.calcout b { font-weight: 700; }
 	.calcout .cwarn { color: var(--warn); }
@@ -1388,12 +1402,12 @@
 	}
 	.chainstep .csbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 	.chainstep select, .chainstep input, .chainstep textarea { margin: 0; }
-	.chainstep .csdrop { flex: none; background: none; border: none; color: var(--dim); cursor: pointer; font-size: 15px; padding: 2px 4px; }
+	.chainstep .csdrop { flex: none; background: none; border: none; color: var(--dim); cursor: pointer; font-size: 0.9375rem; padding: 2px 4px; }
 	.chainstep .csdrop:hover { color: var(--err); }
-	.chainkind { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
-	.chainargerr { font-size: 11.5px; color: var(--err); }
+	.chainkind { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--dim); }
+	.chainargerr { font-size: 0.71875rem; color: var(--err); }
 
-	.keylink { color: var(--ring); text-decoration: none; font-size: 11.5px; font-weight: 500; margin-left: 4px; }
+	.keylink { color: var(--ring); text-decoration: none; font-size: 0.71875rem; font-weight: 500; margin-left: 4px; }
 	.keylink:hover { text-decoration: underline; }
 
 	/* ---- signing in ---- */
@@ -1407,7 +1421,7 @@
 
 	/* ---- onboarding ---- */
 	#onboardDlg { max-width: 440px; }
-	.obhint { font-size: 12px; color: var(--dim); margin-top: 8px; min-height: 16px; }
+	.obhint { font-size: 0.75rem; color: var(--dim); margin-top: 8px; min-height: 16px; }
 	.obhint.bad { color: var(--err); }
 	.obhint.good { color: var(--ok); }
 	.obdots { display: flex; justify-content: center; gap: 6px; margin: 22px 0 10px; }
@@ -1424,27 +1438,27 @@
 	.qabtn:hover { background: var(--panel-3); }
 	.qabtn:active { transform: scale(0.96); }
 	.qabtn svg { color: var(--dim); }
-	.qabtn span { font-size: 11px; font-weight: 600; }
-	.actrow { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; padding: 7px 0; border-top: 1px solid var(--line-soft); }
+	.qabtn span { font-size: 0.6875rem; font-weight: 600; }
+	.actrow { display: flex; align-items: baseline; gap: 8px; font-size: 0.78125rem; padding: 7px 0; border-top: 1px solid var(--line-soft); }
 	.actrow:first-of-type { border-top: none; }
 	.actrow .atext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.actrow .atime { color: var(--dim); font-size: 10.5px; flex: none; }
+	.actrow .atime { color: var(--dim); font-size: 0.6875rem; flex: none; }
 
 	.gauges { display: flex; justify-content: space-between; gap: 8px; margin: 14px 0 4px; }
 	.gauge { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
 	.gauge svg { width: 56px; height: 56px; }
 	.gtrack { fill: none; stroke: var(--line-soft); stroke-width: 4; }
 	.gfill { fill: none; stroke: var(--ring); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 169.6; stroke-dashoffset: 169.6; transition: stroke-dashoffset 0.6s ease; }
-	.gval { font-size: 15px; font-weight: 700; margin-top: -40px; }
-	.glabel { font-size: 11px; font-weight: 500; color: var(--dim); margin-top: 4px; }
-	.sysfoot { font-size: 11.5px; color: var(--dim); margin-top: 4px; }
+	.gval { font-size: 0.9375rem; font-weight: 700; margin-top: -40px; }
+	.glabel { font-size: 0.6875rem; font-weight: 500; color: var(--dim); margin-top: 4px; }
+	.sysfoot { font-size: 0.71875rem; color: var(--dim); margin-top: 4px; }
 	.taskrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line-soft); }
 	.taskrow:first-of-type { border-top: none; }
-	.taskrow .ttext { flex: 1; min-width: 0; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.taskrow .ttime { font-size: 11px; color: var(--dim); flex: none; }
+	.taskrow .ttext { flex: 1; min-width: 0; font-size: 0.78125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.taskrow .ttime { font-size: 0.6875rem; color: var(--dim); flex: none; }
 	.appsgrid { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 	.appbadge {
-		width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-size: 11px; font-weight: 700;
+		width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; font-size: 0.6875rem; font-weight: 700;
 		background: var(--panel-3); color: var(--dim); border: 1px solid var(--line);
 		transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 	}
@@ -1452,33 +1466,33 @@
 
 	.quote {
 		flex: none; text-align: center; padding: 16px 30px calc(16px + env(safe-area-inset-bottom));
-		font-size: 12px; color: var(--dim); border-top: 1px solid var(--line-soft);
+		font-size: 0.75rem; color: var(--dim); border-top: 1px solid var(--line-soft);
 	}
 
 	/* generic list rows reused across views */
 	.row-item { display: flex; align-items: flex-start; gap: 10px; background: var(--panel-2); border-radius: 10px; padding: 11px 13px; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
-	.row-item .txt { flex: 1; min-width: 0; font-size: 13.5px; }
-	.row-item .txt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
-	.row-item .txt b { font-size: 13.5px; }
+	.row-item .txt { flex: 1; min-width: 0; font-size: 0.84375rem; }
+	.row-item .txt small { display: block; color: var(--dim); font-size: 0.6875rem; margin-top: 2px; }
+	.row-item .txt b { font-size: 0.84375rem; }
 	.row-item button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px; border-radius: 6px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.row-item button:hover { color: var(--err); }
 	.viewhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-	.viewhead h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+	.viewhead h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.01em; }
 	.viewlist { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
-	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: left; color: var(--text); transition: background 0.15s ease; }
+	button.row-item { width: 100%; border: none; cursor: pointer; font: inherit; text-align: start; color: var(--text); transition: background 0.15s ease; }
 	button.row-item:hover { background: var(--panel-3); }
 	/* keyboard highlight in search — distinct from :hover so the two can
 	   coexist without the mouse position overriding the arrow keys */
 	button.row-item.sel { background: var(--ring-soft); box-shadow: inset 2px 0 0 var(--ring); }
 	.morerow { align-items: center; }
-	.morerow .txt { font-size: 14.5px; font-weight: 600; }
+	.morerow .txt { font-size: 0.90625rem; font-weight: 600; }
 
 	/* chat view */
 	/* overflow-wrap is load-bearing: a pasted URL or a long id is one unbreakable
 	   token, and without it the row rendered 522px wide inside a 316px column on
 	   a phone. Desktop only looked fine because 640px happened to exceed it. */
-	.logmsg { font-size: 13.5px; padding: 4px 0; max-width: 640px; overflow-wrap: anywhere; }
-	.logmsg .role { font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 2px; }
+	.logmsg { font-size: 0.84375rem; padding: 4px 0; max-width: 640px; overflow-wrap: anywhere; }
+	.logmsg .role { font-size: 0.75rem; font-weight: 600; color: var(--dim); margin-bottom: 2px; }
 	.logmsg.assistant .role { color: var(--text); }
 
 	/* devices/home */
@@ -1500,7 +1514,7 @@
 	}
 	.devgroup {
 		display: flex; align-items: baseline; gap: 8px;
-		margin: 14px 2px 2px; font-size: 11px; font-weight: 650;
+		margin: 14px 2px 2px; font-size: 0.6875rem; font-weight: 650;
 		letter-spacing: 0.07em; text-transform: uppercase; color: var(--dim);
 	}
 	.devgroup:first-child { margin-top: 2px; }
@@ -1516,37 +1530,37 @@
 	   and was the most saturated thing on any screen. The accent is the accent. */
 	.toggle.on { background: var(--ring); }
 	.toggle.on::after { transform: translateX(17px); }
-	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-3); border: none; color: var(--text); font-size: 16px; cursor: pointer; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.stepbtn { width: 30px; height: 30px; border-radius: 50%; background: var(--panel-3); border: none; color: var(--text); font-size: 1rem; cursor: pointer; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.stepbtn:hover { background: var(--line); }
 	.addrow { display: flex; gap: 8px; margin-top: 4px; max-width: 640px; }
-	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 13px; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.addrow input, .addrow select { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 0.8125rem; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.addrow select { flex: 0 0 108px; }
 	.addrow button { flex: none; }
 
 	/* transcripts */
 	.row-item.trow { flex-direction: column; align-items: stretch; max-width: 640px; }
 	.trow-head { display: flex; align-items: center; gap: 6px; }
-	.ttitle { width: 100%; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-size: 14px; font-weight: 650; padding: 2px 0; }
-	.ttitle:focus { outline: none; border-bottom-color: var(--text); }
-	.tmeta { color: var(--dim); font-size: 11px; margin-top: 2px; }
-	.ttext { max-height: 120px; overflow-y: auto; font-size: 12.5px; color: var(--text); background: var(--panel-3); border-radius: 10px; padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; }
-	.tanalysis { margin-top: 8px; font-size: 12.5px; background: var(--panel-3); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
+	.ttitle { width: 100%; background: none; border: none; border-bottom: 1px solid transparent; color: var(--text); font-size: 0.875rem; font-weight: 650; padding: 2px 0; }
+	.ttitle:focus { outline: none; border-bottom-color: var(--ring); box-shadow: 0 1px 0 var(--ring); }
+	.tmeta { color: var(--dim); font-size: 0.6875rem; margin-top: 2px; }
+	.ttext { max-height: 120px; overflow-y: auto; font-size: 0.78125rem; color: var(--text); background: var(--panel-3); border-radius: 10px; padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; }
+	.tanalysis { margin-top: 8px; font-size: 0.78125rem; background: var(--panel-3); border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
 	.tactions { margin-top: 8px; display: flex; gap: 8px; }
 
 	/* apps view */
 	.provcard { display: flex; align-items: center; gap: 14px; max-width: 640px; }
-	.provcard .appbadge { width: 44px; height: 44px; border-radius: 12px; font-size: 12px; }
+	.provcard .appbadge { width: 44px; height: 44px; border-radius: 12px; font-size: 0.75rem; }
 	.provcard .ptext { flex: 1; min-width: 0; }
-	.provcard .ptitle { font-size: 14px; font-weight: 650; }
-	.provcard .psub { font-size: 12px; color: var(--dim); margin-top: 2px; }
-	.provcard .pstate { font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 999px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.provcard .ptitle { font-size: 0.875rem; font-weight: 650; }
+	.provcard .psub { font-size: 0.75rem; color: var(--dim); margin-top: 2px; }
+	.provcard .pstate { font-size: 0.75rem; font-weight: 600; padding: 5px 10px; border-radius: 999px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.provcard .pstate.on { background: var(--ok-soft); color: var(--ok); }
 	.provcard .pstate.off { background: var(--panel-3); color: var(--dim); }
 
 	/* models manager (settings) */
 	.modelrow { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
 	.modelrow.lead { outline: 1px solid var(--line); }
-	.modelrow .mname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.modelrow .mname { flex: 1; min-width: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.modelrow button { background: none; border: none; color: var(--dim); cursor: pointer; padding: 4px 6px; border-radius: 6px; flex: none; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.modelrow button:hover { color: var(--text); }
 	.modelrow button.leadbtn.on { color: var(--warn); }
@@ -1606,12 +1620,12 @@
 	   so a local `transition: none` would be dead code that reads like a
 	   working guard. sheetMorph() skips the pin-and-reflow separately. */
 	.sheetview { display: flex; flex-direction: column; gap: 12px; }
-	.sheettitle { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; margin: 0; }
-	.sheetsub { color: var(--dim); font-size: 13.5px; line-height: 1.5; margin: 0; }
+	.sheettitle { font-size: 1.1875rem; font-weight: 700; letter-spacing: -0.3px; margin: 0; }
+	.sheetsub { color: var(--dim); font-size: 0.84375rem; line-height: 1.5; margin: 0; }
 	/* One tappable destination. The whole row is the target, not a link
 	   inside it — this is a sheet on a phone before it is anything else. */
 	.sheetrow {
-		display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+		display: flex; align-items: center; gap: 12px; width: 100%; text-align: start;
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
 		border-radius: 14px; padding: 12px 14px; cursor: pointer; font: inherit;
 		transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
@@ -1622,8 +1636,8 @@
 	/* Both are spans, so both need to be told to be blocks — left inline they
 	   run together into "Anthropicnot stored", which every assertion about
 	   their textContent passes cleanly. */
-	.sheetrow .srname { display: block; font-weight: 600; font-size: 14px; }
-	.sheetrow .srsub { display: block; color: var(--dim); font-size: 12px; margin-top: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+	.sheetrow .srname { display: block; font-weight: 600; font-size: 0.875rem; }
+	.sheetrow .srsub { display: block; color: var(--dim); font-size: 0.75rem; margin-top: 3px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 	.sheetrow .srchev { color: var(--dim); flex: none; }
 	.sheetrow .sricon { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--panel-3); color: var(--dim); }
 	.sheetrow.danger { background: var(--err-soft); border-color: transparent; color: var(--err); }
@@ -1637,7 +1651,7 @@
 	.sheetrow[disabled]:active { transform: none; }
 	/* The three things worth saying about a secret, in the sheet that holds it. */
 	.sheetassure { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 12px; }
-	.sheetassure div { display: flex; align-items: center; gap: 12px; color: var(--dim); font-size: 13.5px; }
+	.sheetassure div { display: flex; align-items: center; gap: 12px; color: var(--dim); font-size: 0.84375rem; }
 	.sheetassure svg { flex: none; color: var(--dim); }
 	.sheetact { display: flex; gap: 10px; flex-wrap: wrap; }
 	.sheetact button { flex: 1 1 130px; }
@@ -1647,7 +1661,7 @@
 	/* The key itself. Wraps rather than scrolls — a key you have to scroll to
 	   read is a key you cannot check against the one in your other window. */
 	.keyval {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.6;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; line-height: 1.6;
 		background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px;
 		padding: 12px 14px; overflow-wrap: anywhere; user-select: all;
 	}
@@ -1670,8 +1684,8 @@
 		#activityDlg[open] { opacity: 0; transform: translateX(30px); }
 	}
 
-	dialog h2 { font-size: 19px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
-	dialog h3 { font-size: 13px; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
+	dialog h2 { font-size: 1.1875rem; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+	dialog h3 { font-size: 0.8125rem; font-weight: 600; color: var(--text); margin: 20px 0 8px; }
 	/* Settings navigation. Eight tabs never fit one horizontal strip: at 390px
 	   three of them (Business, Calendar, Data) sat entirely off-screen behind a
 	   scroll with no affordance, and selecting a tab didn't scroll it into view
@@ -1681,7 +1695,7 @@
 	.settabs { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 14px 0 12px; }
 	.settabs button {
 		background: none; border: none; color: var(--dim); padding: 9px 11px; border-radius: 8px;
-		font-size: 13px; font-weight: 500; cursor: pointer; text-align: left;
+		font-size: 0.8125rem; font-weight: 500; cursor: pointer; text-align: start;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 		transition: background 0.15s ease, color 0.15s ease;
 	}
@@ -1720,7 +1734,7 @@
 	.skinpresets { display: flex; flex-wrap: wrap; gap: 6px; }
 	.skinpresets button {
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-		border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 500; cursor: pointer;
+		border-radius: 999px; padding: 6px 13px; font-size: 0.78125rem; font-weight: 500; cursor: pointer;
 		transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
 	}
 	.skinpresets button:hover { background: var(--panel-3); }
@@ -1731,7 +1745,7 @@
 	.skinopt {
 		display: flex; flex-direction: column; align-items: center; gap: 5px;
 		background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-		padding: 8px 4px 6px; cursor: pointer; color: var(--dim); font-size: 10.5px; font-weight: 500;
+		padding: 8px 4px 6px; cursor: pointer; color: var(--dim); font-size: 0.6875rem; font-weight: 500;
 		transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.14s ease;
 	}
 	.skinopt:hover { background: var(--panel-3); color: var(--text); }
@@ -1746,14 +1760,14 @@
 	.settab.on { display: block; animation: rise 0.16s ease-out; }
 	@keyframes rise { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 	.settab h3:first-child { margin-top: 4px; }
-	dialog p { font-size: 13.5px; color: var(--dim); margin: 8px 0; }
-	dialog label { font-size: 13px; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
+	dialog p { font-size: 0.84375rem; color: var(--dim); margin: 8px 0; }
+	dialog label { font-size: 0.8125rem; display: flex; flex-direction: column; gap: 6px; margin: 10px 0; }
 	dialog input[type="text"], dialog input[type="password"], dialog input[type="time"], dialog select, dialog textarea {
 		width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 10px;
-		padding: 11px 13px; font: inherit; font-size: 13.5px;
+		padding: 11px 13px; font: inherit; font-size: 0.84375rem;
 	}
 	dialog textarea { resize: vertical; min-height: 88px; line-height: 1.5; }
-	dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; border-color: var(--ring); }
+	dialog input:focus, dialog select:focus, dialog textarea:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px var(--ring-soft); }
 	dialog input[type="color"] { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); cursor: pointer; flex: none; }
 
 	/* -------------------------------- business ----------------------------- */
@@ -1762,36 +1776,38 @@
 	.bizlogo {
 		width: 64px; height: 64px; border-radius: 16px; flex: none; overflow: hidden;
 		display: grid; place-items: center; background: var(--panel-3); border: 1px solid var(--line);
-		font-size: 22px; font-weight: 800; letter-spacing: 0.02em; color: #fff;
+		font-size: 1.375rem; font-weight: 800; letter-spacing: 0.02em; color: #fff;
 	}
 	.bizlogo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 	.bizrow { display: flex; align-items: center; gap: 12px; }
-	.bizrow .bizlogo { width: 44px; height: 44px; border-radius: 12px; font-size: 16px; }
+	.bizrow .bizlogo { width: 44px; height: 44px; border-radius: 12px; font-size: 1rem; }
 	.bizrow .biztext { flex: 1; min-width: 0; }
-	.bizrow .bizname { font-size: 14.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.bizrow .bizwhat { font-size: 12px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-	.bizempty { font-size: 12.5px; color: var(--dim); margin-bottom: 10px; }
+	.bizrow .bizname { font-size: 0.90625rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.bizrow .bizwhat { font-size: 0.75rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.bizempty { font-size: 0.78125rem; color: var(--dim); margin-bottom: 10px; }
 	dialog input[type="range"] { width: 100%; accent-color: var(--ring); }
 	dialog .rangerow { display: flex; align-items: center; gap: 10px; }
-	dialog .rangerow span { flex: none; width: 34px; font-size: 12px; color: var(--dim); text-align: right; }
+	dialog .rangerow span { flex: none; width: 34px; font-size: 0.75rem; color: var(--dim); text-align: end; }
 	.seg2 { display: flex; background: var(--panel-2); border-radius: 999px; padding: 3px; margin: 8px 0; }
-	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
+	.seg2 button { flex: 1; border: none; background: none; color: var(--dim); border-radius: 999px; padding: 8px 6px; font-size: 0.78125rem; font-weight: 600; cursor: pointer; transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease; }
 	.seg2 button.on { background: var(--panel-3); color: var(--text); }
 	.row { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
 	.row label.inline { flex-direction: row; align-items: center; margin: 0 auto 0 0; }
 	dialog code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
-	.hint { font-size: 11.5px; color: var(--dim); margin-top: -4px; }
+	.hint { font-size: 0.71875rem; color: var(--dim); margin-top: -4px; }
 
 	/* -------------------------------- toasts ------------------------------ */
 	#toasts { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 80; display: flex; flex-direction: column; gap: 8px; max-width: min(320px, 88vw); }
 	.toast {
-		background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px;
+		background: var(--panel-3); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 0.8125rem;
 		box-shadow: var(--shadow); animation: toastIn 0.25s ease-out; display: flex; gap: 10px; align-items: flex-start;
 		backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 	}
 	.toast.out { animation: toastOut 0.35s ease-in forwards; }
-	.toast b { display: block; font-size: 13px; color: var(--text); margin-bottom: 3px; }
+	.toast b { display: block; font-size: 0.8125rem; color: var(--text); margin-bottom: 3px; }
+	.toast .toastact { flex: none; margin-inline-start: auto; align-self: center; min-height: 32px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel-2); color: var(--ring); font: inherit; font-size: 0.78125rem; font-weight: 650; cursor: pointer; }
+	.toast .toastact:hover { color: var(--text); }
 	@keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 	@keyframes toastOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(16px) scale(0.96); } }
 
@@ -1826,7 +1842,7 @@
 	#navSheet::before { content: none; }
 	.navsheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 18px; }
 	.navsheet-list { display: flex; flex-direction: column; gap: 2px; }
-	.navsheet-list .navitem { font-size: 15px; padding: 12px 12px; border-radius: 10px; }
+	.navsheet-list .navitem { font-size: 0.9375rem; padding: 12px 12px; border-radius: 10px; }
 	.navsheet-rule { height: 1px; background: var(--line); margin: 12px 4px; }
 
 	/* ================================ mobile ================================ */
@@ -1839,7 +1855,7 @@
 			backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 			-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
 		}
-		#mobileTop .brand { flex: 1; font-size: 15px; }
+		#mobileTop .brand { flex: 1; font-size: 0.9375rem; }
 
 		.quote { display: none; }
 		/* no bottom tab bar to clear any more, so the viewport reclaims that space */
@@ -1857,12 +1873,12 @@
 		   from the scale rather than hand-tuning it (-40px, for 0.78) means
 		   changing the scale cannot leave a hole under the orb again. */
 		#orbWrap { --orb-scale: 0.78; margin-bottom: calc(180px * (var(--orb-scale) - 1)); }
-		.statusbig { font-size: 30px; letter-spacing: -0.03em; }
-		.heroeyebrow { font-size: 9.5px; gap: 7px; margin-bottom: 7px; }
+		.statusbig { font-size: 1.875rem; letter-spacing: -0.03em; }
+		.heroeyebrow { font-size: 0.6875rem; gap: 7px; margin-bottom: 7px; }
 		.instrument > div { padding: 12px 12px; }
 		.instrument > div:first-child { padding-left: 0; }
-		.ikey { font-size: 8.5px; letter-spacing: 0.12em; }
-		.ival { font-size: 13px; }
+		.ikey { font-size: 0.6875rem; letter-spacing: 0.12em; }
+		.ival { font-size: 0.8125rem; }
 		.composer { padding: 5px 5px 5px 16px; }
 		.gauges { margin: 12px 0 2px; }
 		.gauge svg { width: 50px; height: 50px; }
@@ -1893,9 +1909,9 @@
 	@media (max-width: 900px) and (min-height: 780px) {
 		#orbWrap { --orb-scale: 1.06; }
 		.orbstage { gap: 14px; padding: 24px 0 10px; }
-		#stateLabel { font-size: 13px; }
-		#caption { font-size: 17px; }
-		#caption.dim { font-size: 15.5px; }
+		#stateLabel { font-size: 0.8125rem; }
+		#caption { font-size: 1.0625rem; }
+		#caption.dim { font-size: 0.96875rem; }
 	}
 
 	@media (max-width: 420px) {
@@ -1912,7 +1928,7 @@
 	#termload {
 		position: relative; margin: 2px auto 0; width: -moz-fit-content; width: fit-content;
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-		font-size: 10px; line-height: 1.15; letter-spacing: 0.3em;
+		font-size: 0.6875rem; line-height: 1.2; letter-spacing: 0.3em;
 		color: var(--dim); opacity: 0.85; user-select: none;
 	}
 	#termload .tlrow { white-space: pre; }
@@ -2135,7 +2151,7 @@
 	.swatch {
 		display: flex; align-items: center; gap: 8px;
 		background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-		border-radius: 999px; padding: 6px 14px 6px 7px; font-size: 12.5px; font-weight: 550;
+		border-radius: 999px; padding: 6px 14px 6px 7px; font-size: 0.78125rem; font-weight: 550;
 		cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease, transform 0.14s ease;
 	}
 	.swatch:hover { background: var(--panel-3); }
@@ -2191,17 +2207,19 @@
 	#searchDlg::before { display: none; }   /* no grab pill; the esc chip is the way out */
 	#searchDlg.gooey { filter: url(#spotgoo); }
 	.spotbar { display: flex; align-items: center; gap: 12px; padding: 0 12px 0 20px; height: 64px; border-bottom: 1px solid transparent; transition: border-color 0.2s ease; }
+	/* The field has no outline of its own; the glass lights up while it has focus. */
+	.spotbar:focus-within .spoticon { color: var(--ring); }
 	#searchDlg.hasresults .spotbar { border-bottom-color: var(--line); }
 	.spoticon { flex: none; color: var(--dim); }
 	.spotfield { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
 	#searchInput {
 		width: 100%; background: none; border: none; outline: none; box-shadow: none;
-		color: var(--text); font: inherit; font-size: 21px; letter-spacing: -0.012em;
+		color: var(--text); font: inherit; font-size: 1.3125rem; letter-spacing: -0.012em;
 		padding: 0; height: 42px;
 	}
 	.spotph { position: absolute; inset: 0; display: flex; align-items: center; pointer-events: none; overflow: hidden; transition: opacity 0.16s ease; }
 	.spotph span {
-		display: block; color: var(--dim); font-size: 21px; letter-spacing: -0.012em;
+		display: block; color: var(--dim); font-size: 1.3125rem; letter-spacing: -0.012em;
 		white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 		animation: spotswap 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
@@ -2213,13 +2231,13 @@
 	.spotdo {
 		flex: none; max-width: 40%; overflow: hidden; border-radius: 999px;
 		background: var(--ring-soft); color: var(--ring); border: 1px solid var(--ring);
-		font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase;
+		font-size: 0.71875rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase;
 		padding: 5px 10px;
 	}
 	.spotdo span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: spotswap 0.24s cubic-bezier(0.22, 1, 0.36, 1) both; }
 	.spotesc {
 		flex: none; background: var(--panel-2); border: 1px solid var(--line); color: var(--dim);
-		border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 11px; font-weight: 650;
+		border-radius: 8px; padding: 5px 9px; font: inherit; font-size: 0.6875rem; font-weight: 650;
 		letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
 		transition: background 0.15s ease, color 0.15s ease, transform 0.14s ease;
 	}
@@ -2244,7 +2262,7 @@
 		/* Still a bottom sheet here; only the bar's proportions change. */
 		#searchDlg { border-radius: 22px 22px 0 0; padding: 0; }
 		.spotbar { height: 58px; padding: 0 10px 0 16px; gap: 10px; }
-		#searchInput, .spotph span { font-size: 18px; }
+		#searchInput, .spotph span { font-size: 1.125rem; }
 		.spotdo { display: none; }   /* nothing hovers or arrow-keys on a phone */
 		#searchResults { max-height: 46dvh; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
 	}
@@ -2542,8 +2560,8 @@
 		from { opacity: 0; transform: translateY(16px); filter: blur(7px); }
 		to { opacity: 1; transform: none; filter: blur(0); }
 	}
-	#onboardDlg h2 { font-size: 34px; letter-spacing: -0.032em; margin: 0 0 10px; }
-	#onboardDlg .obstep > p { font-size: 14.5px; line-height: 1.6; }
+	#onboardDlg h2 { font-size: 2.125rem; letter-spacing: -0.032em; margin: 0 0 10px; }
+	#onboardDlg .obstep > p { font-size: 0.90625rem; line-height: 1.6; }
 	#onboardDlg .signinbox { background: rgba(var(--ring-rgb), 0.06); }
 	/* The dialog's ground moved from --panel to --bg, which left the provider
 	   rows sitting on almost their own colour. */
@@ -2553,7 +2571,7 @@
 	@media (max-width: 900px) {
 		#onboardDlg { border-radius: 0; padding: 0; width: 100vw; height: 100dvh; margin: 0; transform: none; }
 		@starting-style { #onboardDlg[open] { transform: none; } }
-		#onboardDlg h2 { font-size: 29px; }
+		#onboardDlg h2 { font-size: 1.8125rem; }
 		.obmark { width: 56px; height: 56px; margin-bottom: 20px; }
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -2579,9 +2597,9 @@
 	#arcadeGate .dlgclose-float { position: fixed; top: 14px; right: 14px; float: none; margin: 0; z-index: 3; width: 44px; height: 44px; }
 	.gatebox { width: min(400px, calc(100vw - 40px)); }
 	.gatemark { margin-bottom: 20px; }
-	#arcadeGate h2 { font-size: 31px; letter-spacing: -0.03em; margin: 0 0 8px; }
+	#arcadeGate h2 { font-size: 1.9375rem; letter-spacing: -0.03em; margin: 0 0 8px; }
 	#gateCode {
-		width: 100%; font-size: 30px; letter-spacing: 0.5em; text-align: center;
+		width: 100%; font-size: 1.875rem; letter-spacing: 0.5em; text-align: center;
 		font-variant-numeric: tabular-nums; padding: 12px 0 12px 0.5em; min-height: 44px;
 	}
 	.gatedots { display: flex; justify-content: center; gap: 12px; margin: 16px 0 10px; }
@@ -2589,7 +2607,7 @@
 	.gatedots i.on { background: var(--ring); transform: scale(1.25); }
 	.gatedots.bad { animation: gateShake 0.4s ease; }
 	@keyframes gateShake { 10%, 90% { transform: translateX(-3px); } 30%, 70% { transform: translateX(5px); } 50% { transform: translateX(-5px); } }
-	.gatewarn { margin-top: 16px; font-size: 11.5px; line-height: 1.5; opacity: 0.75; }
+	.gatewarn { margin-top: 16px; font-size: 0.71875rem; line-height: 1.5; opacity: 0.75; }
 
 	.arcpick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 	/* Width is capped from the game's own aspect in arcadeStart(), so a square
@@ -2604,7 +2622,7 @@
 	.arcover {
 		position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
 		background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(3px); color: #fff;
-		font-size: 20px; font-weight: 650; letter-spacing: -0.01em; padding: 20px;
+		font-size: 1.25rem; font-weight: 650; letter-spacing: -0.01em; padding: 20px;
 	}
 	.arcbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 	.arcscore { font-variant-numeric: tabular-nums; font-weight: 650; margin-right: auto; }
@@ -2612,13 +2630,16 @@
 	.elbtn {
 		display: flex; align-items: center; gap: 7px; cursor: pointer; color: var(--text);
 		background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
-		padding: 5px 12px 5px 6px; font: inherit; font-size: 12px; font-weight: 550;
+		padding: 5px 12px 5px 6px; font: inherit; font-size: 0.75rem; font-weight: 550;
 		transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 	}
 	.elbtn i { width: 14px; height: 14px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
 	.elbtn:hover { background: var(--panel-3); }
 	.elbtn.on { border-color: var(--ring); background: var(--ring-soft); font-weight: 650; }
-	@media (max-width: 900px) { .elbtn { font-size: 11.5px; padding: 5px 10px 5px 5px; } }
+	@media (max-width: 900px) { .elbtn { font-size: 0.71875rem; padding: 5px 10px 5px 5px; } }
+	/* Type is in rem so the OS/browser text-size preference scales it — the web's
+	   Dynamic Type. Boxes stay in px on purpose: text grows inside a stable frame
+	   and wraps rather than pushing the whole layout outward. */
 	/* ============================ final touches ============================
 	   Small things a second look catches once everything else is in place. */
 
@@ -2637,7 +2658,7 @@
 	/* An empty state sits where its content would, in the same alignment as
 	   the heading above it, and points somewhere. Centred grey text in a big
 	   box under a left-aligned heading was the tell across the Tasks view. */
-	.empty { text-align: left; padding: 12px 4px 16px; line-height: 1.55; }
+	.empty { text-align: start; padding: 12px 4px 16px; line-height: 1.55; }
 	/* The one action in an empty state is the accent, not the sentence's grey:
 	   it is the thing to do next, and it has to read as one. */
 	.empty .linkbtn { padding: 0 2px; font-size: inherit; vertical-align: baseline; color: var(--ring); font-weight: 600; }
@@ -2691,28 +2712,28 @@
 <aside id="sidebar">
 	<div class="brandrow">
 		<div class="brand" id="brandSide">JARVIS</div>
-		<button type="button" class="navtoggle" id="navToggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg class="ico ico-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
+		<button type="button" class="navtoggle" id="navToggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><svg aria-hidden="true" class="ico ico-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7" /></svg></button>
 	</div>
 	<nav id="navList">
-		<button class="navitem on" data-view="dashboard"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg><span class="navlabel">Dashboard</span></button>
-		<button class="navitem" data-view="overview"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg><span class="navlabel">Overview</span></button>
-		<button class="navitem" data-view="chat"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg><span class="navlabel">Chat</span></button>
-		<button class="navitem" data-view="tasks"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg><span class="navlabel">Tasks</span></button>
-		<button class="navitem" data-view="graph"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg><span class="navlabel">Graph</span></button>
-		<button class="navitem" data-view="memory"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg><span class="navlabel">Memory</span></button>
-		<button class="navitem" data-view="systems"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg><span class="navlabel">Systems</span></button>
-		<button class="navitem" data-view="apps"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg><span class="navlabel">Apps</span></button>
-		<button class="navitem" id="navSearch"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg><span class="navlabel">Search</span></button>
-		<button class="navitem" id="navActivity"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg><span class="navlabel">Activity</span></button>
-		<button class="navitem" id="navSettings"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg><span class="navlabel">Settings</span></button>
-		<button class="navitem" id="navArcade" data-view="arcade" hidden><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg><span class="navlabel">Arcade</span></button>
+		<button class="navitem on" data-view="dashboard"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg><span class="navlabel">Dashboard</span></button>
+		<button class="navitem" data-view="overview"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg><span class="navlabel">Overview</span></button>
+		<button class="navitem" data-view="chat"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg><span class="navlabel">Chat</span></button>
+		<button class="navitem" data-view="tasks"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg><span class="navlabel">Tasks</span></button>
+		<button class="navitem" data-view="graph"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg><span class="navlabel">Graph</span></button>
+		<button class="navitem" data-view="memory"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg><span class="navlabel">Memory</span></button>
+		<button class="navitem" data-view="systems"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg><span class="navlabel">Systems</span></button>
+		<button class="navitem" data-view="apps"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg><span class="navlabel">Apps</span></button>
+		<button class="navitem" id="navSearch"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg><span class="navlabel">Search</span></button>
+		<button class="navitem" id="navActivity"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg><span class="navlabel">Activity</span></button>
+		<button class="navitem" id="navSettings"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg><span class="navlabel">Settings</span></button>
+		<button class="navitem" id="navArcade" data-view="arcade" hidden><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg><span class="navlabel">Arcade</span></button>
 	</nav>
 	<div class="voicecard">
 		<div id="sideBars" aria-hidden="true"></div>
 		<div class="vlabel" id="voiceModeLabel">Voice mode<br /><b>Standby</b></div>
 		<button id="micBtn" class="metal" title="Talk to Jarvis" aria-label="Talk to Jarvis">
 			<canvas class="metalcanvas" aria-hidden="true"></canvas><span class="metalcore" aria-hidden="true"></span>
-			<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
+			<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg>
 			<span class="miclabel">Tap to Speak</span>
 		</button>
 	</div>
@@ -2720,9 +2741,9 @@
 
 <div id="contentArea">
 	<div id="mobileTop">
-		<button class="iconbtn" id="mobileMenuBtn" aria-label="Open menu" aria-haspopup="dialog"><svg class="ico ico-menu" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line class="mn mn1" x1="3" y1="6" x2="21" y2="6" /><line class="mn mn2" x1="3" y1="12" x2="21" y2="12" /><line class="mn mn3" x1="3" y1="18" x2="21" y2="18" /></svg></button>
+		<button class="iconbtn" id="mobileMenuBtn" aria-label="Open menu" aria-haspopup="dialog"><svg aria-hidden="true" class="ico ico-menu" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line class="mn mn1" x1="3" y1="6" x2="21" y2="6" /><line class="mn mn2" x1="3" y1="12" x2="21" y2="12" /><line class="mn mn3" x1="3" y1="18" x2="21" y2="18" /></svg></button>
 		<div class="brand" id="brandMobile">JARVIS</div>
-		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg class="ico ico-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle class="lens" cx="11" cy="11" r="7" /><path class="handle" d="m21 21-4.3-4.3" /></svg></button>
+		<button class="iconbtn" id="mobileSearchBtn" aria-label="Search"><svg aria-hidden="true" class="ico ico-search" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle class="lens" cx="11" cy="11" r="7" /><path class="handle" d="m21 21-4.3-4.3" /></svg></button>
 	</div>
 	<div id="topRow">
 		<div id="main">
@@ -2737,9 +2758,9 @@
 									<div class="statussub"><span class="dot ok" id="dashStatusDot"></span><span id="dashStatusSub">How can I help you today?</span></div>
 								</div>
 								<div class="herotools">
-									<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice"><svg class="ico ico-vol" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path class="wv wv2" d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path class="wv wv1" d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path class="slash" d="M15.5 9.5l6 5M21.5 9.5l-6 5" stroke-linecap="round" /></svg></button>
-									<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record"><svg class="ico ico-rec" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg></button>
-									<button class="iconbtn" id="skinBtn" title="Customize Jarvis" aria-label="Customize Jarvis"><svg class="ico ico-face" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><circle class="ey" cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><circle class="ey" cx="15.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><path d="M4 8a9 9 0 0 1 16 0" /></svg></button>
+									<button class="iconbtn" id="muteBtn" title="Mute Jarvis' voice" aria-label="Mute voice"><svg aria-hidden="true" class="ico ico-vol" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z" /><path class="wv wv2" d="M19.07 4.93a10 10 0 0 1 0 14.14" /><path class="wv wv1" d="M15.54 8.46a5 5 0 0 1 0 7.07" /><path class="slash" d="M15.5 9.5l6 5M21.5 9.5l-6 5" stroke-linecap="round" /></svg></button>
+									<button class="iconbtn" id="recordBtn" title="Record and transcribe a conversation" aria-label="Record"><svg aria-hidden="true" class="ico ico-rec" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" /></svg></button>
+									<button class="iconbtn" id="skinBtn" title="Customize Jarvis" aria-label="Customize Jarvis"><svg aria-hidden="true" class="ico ico-face" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><circle class="ey" cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><circle class="ey" cx="15.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" /><path d="M4 8a9 9 0 0 1 16 0" /></svg></button>
 								</div>
 							</div>
 							<div class="orbstage">
@@ -2766,7 +2787,7 @@
 								<div id="nextbar" role="group" aria-label="Follow-up suggestions"></div>
 								<div id="turnbar">
 									<button type="button" id="retryBtn" class="ghost small" hidden>Retry</button>
-									<button type="button" id="usageChip" class="usagechip" hidden title="Tokens and cost"></button>
+									<button type="button" id="usageChip" class="usagechip" hidden title="Tokens and cost" aria-label="Tokens and cost"></button>
 								</div>
 							</div>
 							<div class="instrument" aria-label="Session status">
@@ -2776,9 +2797,9 @@
 							</div>
 							<div class="composer">
 								<input type="text" id="textInput" placeholder="How can I help you today?" autocomplete="off" />
-								<button id="composerMicBtn" class="micinline" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ico ico-mic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect class="cap" x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg></button>
-								<button id="textSend" title="Send" aria-label="Send"><svg class="ico ico-send" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
-								<button id="stopBtn" title="Stop" aria-label="Stop generating" hidden><svg class="ico ico-stop" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5" /></svg></button>
+								<button id="composerMicBtn" class="micinline" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg aria-hidden="true" class="ico ico-mic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect class="cap" x="9" y="2" width="6" height="12" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3" /></svg></button>
+								<button id="textSend" title="Send" aria-label="Send"><svg aria-hidden="true" class="ico ico-send" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" /></svg></button>
+								<button id="stopBtn" title="Stop" aria-label="Stop generating" hidden><svg aria-hidden="true" class="ico ico-stop" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2.5" /></svg></button>
 							</div>
 					</div>
 				</div>
@@ -2806,9 +2827,9 @@
 								<div class="dsec">
 									<div class="eyebrow">System Overview</div>
 									<div class="gauges">
-										<div class="gauge"><svg viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeMemoryRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeMemoryVal">0</div><div class="glabel">Memory</div></div>
-										<div class="gauge"><svg viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeTasksRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeTasksVal">0</div><div class="glabel">Tasks</div></div>
-										<div class="gauge"><svg viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeDevicesRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeDevicesVal">0</div><div class="glabel">Devices</div></div>
+										<div class="gauge"><svg aria-hidden="true" viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeMemoryRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeMemoryVal">0</div><div class="glabel">Memory</div></div>
+										<div class="gauge"><svg aria-hidden="true" viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeTasksRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeTasksVal">0</div><div class="glabel">Tasks</div></div>
+										<div class="gauge"><svg aria-hidden="true" viewBox="0 0 64 64"><circle class="gtrack" cx="32" cy="32" r="27" /><circle class="gfill" id="gaugeDevicesRing" cx="32" cy="32" r="27" transform="rotate(-90 32 32)" /></svg><div class="gval" id="gaugeDevicesVal">0</div><div class="glabel">Devices</div></div>
 									</div>
 									<div class="sysfoot" id="sysFoot">All systems stable.</div>
 								</div>
@@ -2960,22 +2981,22 @@
 <dialog id="navSheet" aria-label="Menu">
 	<div class="navsheet-head">
 		<div class="brand" id="brandSheet">JARVIS</div>
-		<button class="iconbtn" id="navSheetClose" data-dlg-close aria-label="Close menu"><svg class="ico ico-x" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+		<button class="iconbtn" id="navSheetClose" data-dlg-close aria-label="Close menu"><svg aria-hidden="true" class="ico ico-x" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
 	</div>
 	<nav class="navsheet-list">
-		<button class="navitem" data-view="dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h13V10" /></svg>Home</button>
-		<button class="navitem" data-view="overview"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>Overview</button>
-		<button class="navitem" data-view="chat"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg>Chat</button>
-		<button class="navitem" data-view="tasks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg>Tasks</button>
-		<button class="navitem" data-view="graph"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg>Graph</button>
-		<button class="navitem" data-view="memory"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>Memory</button>
-		<button class="navitem" data-view="systems"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>Systems</button>
-		<button class="navitem" data-view="apps"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
+		<button class="navitem" data-view="dashboard"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v9.5h13V10" /></svg>Home</button>
+		<button class="navitem" data-view="overview"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" /></svg>Overview</button>
+		<button class="navitem" data-view="chat"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.5 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1 6.7-13 8.5 8.5 0 0 1 9.4 9.2Z" /></svg>Chat</button>
+		<button class="navitem" data-view="tasks"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></svg>Tasks</button>
+		<button class="navitem" data-view="graph"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="7" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="17" r="2.5" /><path d="M8.2 8.3 10.6 15M15.9 7.7 13.4 15M8.4 6.6h7.2" /></svg>Graph</button>
+		<button class="navitem" data-view="memory"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>Memory</button>
+		<button class="navitem" data-view="systems"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>Systems</button>
+		<button class="navitem" data-view="apps"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>Apps</button>
 		<div class="navsheet-rule"></div>
-		<button class="navitem" id="sheetSearchBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Search</button>
-		<button class="navitem" id="sheetActivityBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>Activity</button>
-		<button class="navitem" id="sheetSettingsBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>Settings</button>
-		<button class="navitem" id="sheetArcadeBtn" data-view="arcade" hidden><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg>Arcade</button>
+		<button class="navitem" id="sheetSearchBtn"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></svg>Search</button>
+		<button class="navitem" id="sheetActivityBtn"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4" /></svg>Activity</button>
+		<button class="navitem" id="sheetSettingsBtn"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>Settings</button>
+		<button class="navitem" id="sheetArcadeBtn" data-view="arcade" hidden><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="12" rx="4" /><path d="M7 11v4M5 13h4M16 12h.01M18.5 15h.01" /></svg>Arcade</button>
 	</nav>
 </dialog>
 
@@ -3087,10 +3108,11 @@
 
 		<h3>Appearance</h3>
 		<div class="seg2" id="themeSeg">
+			<button type="button" data-theme-opt="auto">Auto</button>
 			<button type="button" data-theme-opt="dark">Dark</button>
 			<button type="button" data-theme-opt="light">Light</button>
 		</div>
-		<p class="hint">Applies everywhere, including the boot intro.</p>
+		<p class="hint">Auto follows your system. Applies everywhere, including the boot intro.</p>
 		<label>Frosted glass<div class="rangerow"><input type="range" id="glassIntensityInput" min="0" max="100" step="1" /><span id="glassIntensityVal"></span></div></label>
 		<p class="hint">Surfaces are flat by default. Raise this to blur and see through them.</p>
 
@@ -3475,19 +3497,19 @@
 	<div class="eyebrow" style="margin: 20px 0 8px">Jump To</div>
 	<div class="viewlist">
 		<button type="button" class="row-item morerow" data-view="memory">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>
+			<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>
 			<span class="txt">Memory</span>
 		</button>
 		<button type="button" class="row-item morerow" data-view="systems">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>
+			<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1" /><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" /></svg>
 			<span class="txt">Systems</span>
 		</button>
 		<button type="button" class="row-item morerow" data-view="apps">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>
+			<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="1.6" /><circle cx="12" cy="6" r="1.6" /><circle cx="18" cy="6" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="6" cy="12" r="1.6" /><circle cx="18" cy="12" r="1.6" /><circle cx="6" cy="18" r="1.6" /><circle cx="12" cy="18" r="1.6" /><circle cx="18" cy="18" r="1.6" /></svg>
 			<span class="txt">Apps</span>
 		</button>
 		<button type="button" class="row-item morerow" id="activitySettingsBtn">
-			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>
+			<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2" /><path d="M12 2.2a1.4 1.4 0 0 1 1.4 1.4v.9c.5.14.97.34 1.4.6l.64-.64a1.4 1.4 0 0 1 1.98 1.98l-.64.64c.26.43.46.9.6 1.4h.9a1.4 1.4 0 0 1 0 2.8h-.9c-.14.5-.34.97-.6 1.4l.64.64a1.4 1.4 0 0 1-1.98 1.98l-.64-.64c-.43.26-.9.46-1.4.6v.9a1.4 1.4 0 0 1-2.8 0v-.9c-.5-.14-.97-.34-1.4-.6l-.64.64a1.4 1.4 0 0 1-1.98-1.98l.64-.64a5.6 5.6 0 0 1-.6-1.4h-.9a1.4 1.4 0 0 1 0-2.8h.9c.14-.5.34-.97.6-1.4l-.64-.64a1.4 1.4 0 0 1 1.98-1.98l.64.64c.43-.26.9-.46 1.4-.6v-.9A1.4 1.4 0 0 1 12 2.2Z" /></svg>
 			<span class="txt">Settings</span>
 		</button>
 	</div>
@@ -3749,8 +3771,10 @@ const store = {
 	set calendarUrl(v) { localStorage.setItem('jarvis.calendarUrl', v); },
 	get calendarSyncedAt() { return parseInt(localStorage.getItem('jarvis.calendarSyncedAt') || '0', 10); },
 	set calendarSyncedAt(v) { localStorage.setItem('jarvis.calendarSyncedAt', String(v)); },
-	get theme() { return localStorage.getItem('jarvis.theme') === 'light' ? 'light' : 'dark'; }, // dark unless explicitly set to light
-	set theme(v) { localStorage.setItem('jarvis.theme', v === 'light' ? 'light' : 'dark'); },
+	/* 'auto' follows the system appearance (HIG: avoid an app-specific appearance
+	   setting). Dark stays the default for anyone who never chose. */
+	get theme() { const t = localStorage.getItem('jarvis.theme'); return t === 'light' || t === 'auto' ? t : 'dark'; },
+	set theme(v) { localStorage.setItem('jarvis.theme', v === 'light' || v === 'auto' ? v : 'dark'); },
 	get glassIntensity() { const v = parseInt(localStorage.getItem('jarvis.glassIntensity'), 10); return Number.isFinite(v) ? v : 0; }, // flat by default
 	set glassIntensity(v) { localStorage.setItem('jarvis.glassIntensity', String(v)); },
 	get navCollapsed() { return localStorage.getItem('jarvis.navCollapsed') === '1'; },
@@ -4707,8 +4731,15 @@ function applyLiquidMetal() {
 	else liquidMetal.retint();
 }
 
+/* Resolves 'auto' against the OS at call time; the media listener below
+ * re-applies it when the system flips, so the app follows without a reload. */
+function resolveTheme(theme) {
+	if (theme === 'auto') return window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+	return theme === 'light' ? 'light' : 'dark';
+}
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (store.theme === 'auto') applyTheme('auto'); });
 function applyTheme(theme) {
-	const dark = theme !== 'light';
+	const dark = resolveTheme(theme) !== 'light';
 	document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 	// keep the browser/OS chrome (iOS status bar, Android address bar) in step
 	const meta = document.querySelector('meta[name="theme-color"]');
@@ -4947,10 +4978,10 @@ function setReplyStyle(n) {
 }
 
 function setTheme(theme) {
-	store.theme = theme === 'light' ? 'light' : 'dark';
+	store.theme = theme === 'light' || theme === 'auto' ? theme : 'dark';
 	applyTheme(store.theme);
 	document.querySelectorAll('#themeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.themeOpt === store.theme));
-	toast(store.theme === 'light' ? 'Light mode' : 'Dark mode', 'Switched the theme.');
+	toast(store.theme === 'auto' ? 'Auto' : store.theme === 'light' ? 'Light mode' : 'Dark mode', store.theme === 'auto' ? 'Following your system appearance.' : 'Switched the theme.');
 }
 
 /* the Appearance slider in Settings drives these two custom properties live, no reload needed */
@@ -4972,16 +5003,47 @@ function setCaption(text, dim) {
 	termLoad(false);
 }
 
-function toast(title, body, ms) {
+function toast(title, body, ms, action) {
 	const el = document.createElement('div');
 	el.className = 'toast';
 	el.innerHTML = '<div><b>' + esc(title) + '</b>' + esc(body) + '</div>';
+	/* One optional action, which is how a quick delete gets its Undo (HIG:
+	   undo over "Are you sure?"). Taking it dismisses the toast at once. */
+	if (action && action.label) {
+		const b = document.createElement('button');
+		b.type = 'button'; b.className = 'toastact'; b.textContent = action.label;
+		b.addEventListener('click', () => { el.remove(); try { action.run(); } catch (e) { console.error(e); } });
+		el.appendChild(b);
+	}
 	toastsEl.appendChild(el);
 	setTimeout(() => {
 		el.classList.add('out');
 		el.addEventListener('animationend', () => el.remove(), { once: true });
 		setTimeout(() => el.remove(), 400); // fallback in case animationend doesn't fire
 	}, ms || 6000);
+}
+
+/* A one-click delete that can be taken back. The item goes at once (no
+ * confirmation), the toast offers Undo for a few seconds, and Undo puts it
+ * back at the index it came from. Confirmations stay only where a deletion
+ * reaches beyond this device — vault notes sync to disk, chains are built
+ * work — per the HIG's "warn when data loss is unexpected and irreversible". */
+function removeWithUndo(key, id, what, rerender, onRestore) {
+	const list = store[key];
+	const idx = list.findIndex((x) => x.id === id);
+	if (idx < 0) return false;
+	const item = list[idx];
+	store[key] = list.filter((x) => x.id !== id);
+	rerender();
+	toast(what + ' removed', 'Gone from this device.', 7000, { label: 'Undo', run: () => {
+		const now = store[key].slice();
+		if (now.some((x) => x.id === id)) return;
+		now.splice(Math.min(idx, now.length), 0, item);
+		store[key] = now;
+		if (onRestore) onRestore(item);
+		rerender();
+	} });
+	return true;
 }
 
 /* Every dialog gets a way out, stated once here rather than fourteen times
@@ -4993,7 +5055,7 @@ function toast(title, body, ms) {
  * marking itself done. A plain close() would skip all three — confirmAction's
  * promise would stay pending for ever, and the caller awaiting it would hang.
  */
-const DLG_CLOSE_SVG = '<svg class="ico ico-x" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>';
+const DLG_CLOSE_SVG = '<svg aria-hidden="true" class="ico ico-x" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>';
 function installDialogCloses() {
 	document.querySelectorAll('dialog').forEach((dlg) => {
 		if (dlg.querySelector('[data-dlg-close]')) return;   // already has one by hand
@@ -5060,7 +5122,7 @@ document.addEventListener('pointerdown', (e) => {
  * The eye re-hides whenever the dialog closes. Leaving a key on screen behind
  * you is the exact risk type=password exists to remove, and nobody remembers
  * to click it back — so the app remembers instead. */
-const EYE_SVG = '<svg class="ico ico-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+const EYE_SVG = '<svg aria-hidden="true" class="ico ico-eye" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
 	+ '<path class="lid" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />'
 	+ '<circle class="pup" cx="12" cy="12" r="3.2" />'
 	+ '<line class="cut" x1="3.5" y1="20.5" x2="20.5" y2="3.5" /></svg>';
@@ -8377,7 +8439,7 @@ function renderMemory() {
 		const txt = document.createElement('button');
 		txt.type = 'button';
 		txt.className = 'txt';
-		txt.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:left;flex:1;min-width:0;cursor:pointer';
+		txt.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:start;flex:1;min-width:0;cursor:pointer';
 		txt.innerHTML = '<b>' + esc(note.title) + '</b><small>' + esc(note.body.replace(/\s+/g, ' ').slice(0, 120)) + '</small>';
 		txt.addEventListener('click', () => openNote(note.id));
 		row.append(folder, txt);
@@ -8448,7 +8510,7 @@ function renderNoteBacklinks(note) {
 	const back = backlinksFor(note.title);
 	box.innerHTML = back.length
 		? back.map((b) => '<button type="button" class="notelink" data-open="' + esc(b.id) + '">' + esc(b.title) + '</button>').join('')
-		: '<span class="dim" style="font-size:12px">Nothing links here yet.</span>';
+		: '<span class="dim" style="font-size:0.75rem">Nothing links here yet.</span>';
 	box.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => openNote(b.dataset.open)));
 }
 function saveOpenNote() {
@@ -8723,7 +8785,12 @@ function renderReminders() {
 		const del = document.createElement('button');
 		del.innerHTML = '✕';
 		del.title = 'Cancel';
-		del.addEventListener('click', () => cancelReminder(r.id));
+		/* The timer is torn down with the row and re-armed on Undo. */
+		del.addEventListener('click', () => {
+			clearTimeout(reminderTimers[r.id]);
+			delete reminderTimers[r.id];
+			removeWithUndo('reminders', r.id, 'Reminder', renderReminders, scheduleReminderTimer);
+		});
 		row.appendChild(del);
 		box.appendChild(row);
 	});
@@ -8741,7 +8808,7 @@ function renderNotes() {
 		const del = document.createElement('button');
 		del.innerHTML = '✕';
 		del.title = 'Delete';
-		del.addEventListener('click', () => { store.notes = store.notes.filter((x) => x.id !== n.id); renderNotes(); });
+		del.addEventListener('click', () => removeWithUndo('notes', n.id, 'Note', renderNotes));
 		row.appendChild(del);
 		box.appendChild(row);
 	});
@@ -8797,7 +8864,7 @@ function deviceRow(d) {
 	const tile = document.createElement('div');
 	tile.className = 'devicon';
 	tile.setAttribute('aria-hidden', 'true');
-	tile.innerHTML = '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + deviceIcon(d.type) + '</svg>';
+	tile.innerHTML = '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + deviceIcon(d.type) + '</svg>';
 	const txt = document.createElement('div');
 	txt.className = 'txt';
 	txt.innerHTML = '<b>' + esc(d.name) + '</b><small>' + esc(deviceState(d)) + '</small>';
@@ -8843,7 +8910,7 @@ function deviceRow(d) {
 	const del = document.createElement('button');
 	del.innerHTML = '✕';
 	del.title = 'Remove device';
-	del.addEventListener('click', () => { store.devices = store.devices.filter((x) => x.id !== d.id); renderHome(); });
+	del.addEventListener('click', () => removeWithUndo('devices', d.id, 'Device', renderHome));
 	row.append(tile, txt, ctrl, del);
 	return row;
 }
@@ -8944,7 +9011,7 @@ function transcriptRow(t) {
 	const del = document.createElement('button');
 	del.innerHTML = '✕';
 	del.title = 'Delete recording';
-	del.addEventListener('click', () => { store.transcripts = store.transcripts.filter((x) => x.id !== t.id); renderTranscripts(); });
+	del.addEventListener('click', () => removeWithUndo('transcripts', t.id, 'Recording', renderTranscripts));
 	head.append(title, del);
 	const meta = document.createElement('div');
 	meta.className = 'tmeta';
@@ -9186,7 +9253,7 @@ function buildQuickAccess() {
 		const btn = document.createElement('button');
 		btn.type = 'button';
 		btn.className = 'qabtn';
-		btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + a.icon + '</svg><span>' + esc(a.label) + '</span>';
+		btn.innerHTML = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + a.icon + '</svg><span>' + esc(a.label) + '</span>';
 		btn.addEventListener('click', () => {
 			if (a.view) { showView(a.view); return; }
 			if (a.cmd) { submitCommand(a.cmd); return; }
@@ -9641,7 +9708,7 @@ function renderConvoList() {
 		const open = document.createElement('button');
 		open.type = 'button';
 		open.className = 'txt';
-		open.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:left;flex:1;min-width:0;cursor:pointer';
+		open.style.cssText = 'background:none;border:none;color:inherit;font:inherit;text-align:start;flex:1;min-width:0;cursor:pointer';
 		const count = c.msgs.filter((m) => m.role === 'user' || m.role === 'assistant').length;
 		open.innerHTML = '<b>' + esc(c.title) + '</b><small>' + count + ' message' + (count === 1 ? '' : 's') + ' · ' + new Date(c.at).toLocaleString() + '</small>';
 		open.addEventListener('click', () => { document.getElementById('convosDlg').close(); switchConversation(c.id); });
@@ -9654,6 +9721,13 @@ function renderConvoList() {
 		const del = document.createElement('button');
 		del.type = 'button'; del.innerHTML = '✕'; del.title = 'Delete';
 		del.addEventListener('click', async () => {
+			/* A conversation with nothing in it goes without a question; one with
+			   messages still asks, since they are the only copy. */
+			if (!count) {
+				const wasOpen = store.convoId === c.id;
+				removeWithUndo('convos', c.id, 'Conversation', () => { if (wasOpen && !store.convos.some((x) => x.id === c.id)) { store.convoId = ''; activeConvo(); } renderConvoHead(); renderConvoList(); });
+				return;
+			}
 			if (!(await confirmAction('Delete this conversation?', '“' + c.title + '” and its ' + count + ' message' + (count === 1 ? '' : 's') + ' will be gone from this device.'))) return;
 			deleteConversation(c.id);
 			renderConvoList();
@@ -10684,13 +10758,13 @@ function sheetMorph(wrap, mutate) {
 }
 
 const SHEET_ICONS = {
-	lock: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>',
-	shield: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8.2-7 9-4-.8-7-4.6-7-9V6z" /></svg>',
-	noshare: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></svg>',
-	nocloud: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 3.5 3.5 0 0 0 7 18z" /><path d="M4 4l16 16" /></svg>',
-	trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" /></svg>',
-	warn: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2v.1" /></svg>',
-	chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7" /></svg>',
+	lock: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>',
+	shield: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 8.2-7 9-4-.8-7-4.6-7-9V6z" /></svg>',
+	noshare: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5" /><path d="M6 6l12 12" /></svg>',
+	nocloud: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.1 9.2 3.5 3.5 0 0 0 7 18z" /><path d="M4 4l16 16" /></svg>',
+	trash: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13" /></svg>',
+	warn: '<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z" /><path d="M12 10v4M12 17.2v.1" /></svg>',
+	chev: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7" /></svg>',
 };
 
 /* Derived from KEY_SHAPES rather than listed again — a second copy of the
