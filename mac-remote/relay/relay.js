@@ -17,6 +17,9 @@
 //                    "0"      no proxy in front; the TCP peer address
 //   CLIENT_IP_HEADER  name of a header your proxy sets to the real client IP; overrides TRUST_PROXY when present
 //   MAX_PENDING    max concurrent in-flight requests (default 64)
+//   MAX_PER_IP     max concurrent in-flight requests from one phone IP (default 12)
+//   MAX_UNAUTH     max concurrent requests carrying no session cookie or bearer token (default 16); such requests
+//                  can only be the login page, static files and POST /api/login, and get a 15 s deadline
 //   MAX_BODY_MB    max request or response body streamed per request (default 512)
 //
 // Wire protocol (each WebSocket binary message = [uint32 header length][JSON header][chunk]):
@@ -33,11 +36,15 @@ const SECRET = process.env.RELAY_SECRET;
 const PORT = Number(process.env.PORT) || 8080;
 const TRUST_PROXY = String(process.env.TRUST_PROXY ?? '1').toLowerCase();
 const MAX_PENDING = Number(process.env.MAX_PENDING) || 64;
+const MAX_PER_IP = Number(process.env.MAX_PER_IP) || 12;
+const MAX_UNAUTH = Number(process.env.MAX_UNAUTH) || 16;
+const UNAUTH_DEADLINE_MS = 15 * 1000;
 const MAX_BODY = (Number(process.env.MAX_BODY_MB) || 512) * 1024 * 1024;
 const MAX_MESSAGE = 4 * 1024 * 1024; // a single WebSocket message (one chunk + header)
 const WINDOW = 8;                    // chunks in flight per request before waiting for acks
-const HEAD_TIMEOUT_MS = 90 * 1000;   // time for the Mac to start answering
-const IDLE_TIMEOUT_MS = 90 * 1000;   // time between body chunks
+const HEAD_TIMEOUT_MS = 150 * 1000;  // silence allowed before the Mac's first byte (shell commands may run up to 120 s)
+const IDLE_TIMEOUT_MS = 90 * 1000;   // silence allowed between body chunks once headers are out
+const UPLOAD_STALL_MS = Number(process.env.UPLOAD_STALL_MS) || 30 * 1000;   // a phone that stops sending its body for this long is dropped (slowloris)
 const PING_EVERY_MS = 25 * 1000;
 const PONG_GRACE_MS = 15 * 1000;
 
@@ -47,6 +54,8 @@ if (!SECRET || SECRET.length < 16) {
 }
 
 let agent = null; // { conn, name, since, pending: Map<id, entry>, seq, lastPong }
+const inflightByIp = new Map(); // phone IP -> in-flight request count
+let inflightUnauth = 0;         // in-flight requests without any credential
 const startedAt = Date.now();
 let served = 0;
 
@@ -113,33 +122,54 @@ const server = http.createServer((req, res) => {
 	if (!agent) return statusPage(req, res, 503, 'Your Mac is offline', 'The Mac has not connected to this relay. It reconnects automatically when it is awake and online.');
 	const a = agent;
 	if (a.pending.size >= MAX_PENDING) return statusPage(req, res, 503, 'Relay busy', 'Too many requests in flight. Try again in a moment.');
+	const ip = clientIp(req);
+	const perIp = (inflightByIp.get(ip) || 0);
+	if (perIp >= MAX_PER_IP) return statusPage(req, res, 429, 'Too many requests', 'Too many requests from your address at once. Try again in a moment.');
+	// Requests without a credential cannot do anything but log in or load the shell, so they share a small pool
+	// and a short deadline; a stranger hammering the relay cannot crowd out the phone that is logged in.
+	const unauth = !/(?:^|;\s*)mr_session=/.test(String(req.headers.cookie || '')) && !req.headers.authorization;
+	if (unauth && inflightUnauth >= MAX_UNAUTH) return statusPage(req, res, 429, 'Too many requests', 'The relay is busy. Try again in a moment.');
+	inflightByIp.set(ip, perIp + 1);
+	if (unauth) inflightUnauth++;
 
 	const headers = {};
 	for (const [k, v] of Object.entries(req.headers)) if (!STRIP_REQ.has(k) && !k.startsWith('x-forwarded-')) headers[k] = v;
-	headers['x-forwarded-for'] = clientIp(req);
+	headers['x-forwarded-for'] = ip;
 	headers['x-forwarded-proto'] = clientProto(req);
 	headers['x-forwarded-host'] = req.headers.host || '';
 	headers['x-relayed'] = '1';
 
 	const id = ++a.seq;
-	const e = { id, req, res, upInflight: 0, upBytes: 0, downBytes: 0, headersSent: false, done: false, timer: null };
+	const e = { id, req, res, ip, upInflight: 0, upBytes: 0, upDone: false, downBytes: 0, headersSent: false, done: false, timer: null, stallTimer: null };
 	a.pending.set(id, e);
 	const send = (h, body) => { if (a.conn.readyState === 1) a.conn.send(ws.pack(h, body)); };
-	const finish = () => { if (e.done) return; e.done = true; clearTimeout(e.timer); a.pending.delete(id); };
+	const finish = () => {
+		if (e.done) return;
+		e.done = true;
+		clearTimeout(e.timer); clearTimeout(e.stallTimer);
+		a.pending.delete(id);
+		const n = (inflightByIp.get(ip) || 1) - 1; if (n > 0) inflightByIp.set(ip, n); else inflightByIp.delete(ip);
+		if (unauth) inflightUnauth = Math.max(0, inflightUnauth - 1);
+		if (!e.upDone) { req.removeAllListeners('data'); req.on('data', () => {}); req.resume(); } // the Mac answered early: drain the rest so the socket is not left paused
+	};
 	const fail = (status, title, detail) => { if (e.done) return; send({ id, t: 'abort' }); finish(); statusPage(req, res, status, title, detail); };
-	const touch = () => { clearTimeout(e.timer); e.timer = setTimeout(() => fail(504, 'The Mac did not answer', 'The relay is connected but the Mac stopped responding.'), e.headersSent ? IDLE_TIMEOUT_MS : HEAD_TIMEOUT_MS); };
+	// Any traffic in either direction (phone body chunks, Mac acks, Mac response bytes) counts as liveness.
+	const touch = () => { clearTimeout(e.timer); e.timer = setTimeout(() => fail(504, 'The Mac did not answer', 'The relay is connected but the Mac stopped responding.'), e.headersSent ? IDLE_TIMEOUT_MS : unauth ? UNAUTH_DEADLINE_MS : HEAD_TIMEOUT_MS); };
+	const stall = () => { clearTimeout(e.stallTimer); if (!e.upDone) e.stallTimer = setTimeout(() => fail(408, 'Upload stalled', 'Your phone stopped sending data.'), UPLOAD_STALL_MS); };
 	e.fail = fail; e.finish = finish; e.touch = touch; e.send = send;
 	touch();
+	if (req.headers['content-length'] !== '0' && !(req.method === 'GET' || req.method === 'HEAD')) stall(); else e.upDone = true;
 
 	send({ id, t: 'req', method: req.method, url: req.url, headers });
 	req.on('data', (chunk) => {
 		e.upBytes += chunk.length;
 		if (e.upBytes > MAX_BODY) return fail(413, 'Upload too large', `Bodies over ${MAX_BODY / 1048576} MB cannot go through the relay.`);
 		e.upInflight++;
+		touch(); stall();
 		send({ id, t: 'data' }, chunk);
 		if (e.upInflight >= WINDOW) req.pause();
 	});
-	req.on('end', () => send({ id, t: 'end' }));
+	req.on('end', () => { e.upDone = true; clearTimeout(e.stallTimer); send({ id, t: 'end' }); });
 	req.on('error', () => fail(400, 'Bad request', 'Upload interrupted.'));
 	res.on('close', () => { if (!e.done) { send({ id, t: 'abort' }); finish(); } });
 });
@@ -167,7 +197,7 @@ function onAgentMessage(a, data) {
 			break;
 		}
 		case 'end': { e.finish(); if (e.headersSent) e.res.end(); else e.res.writeHead(502).end(); served++; break; }
-		case 'ack': { e.upInflight = Math.max(0, e.upInflight - 1); if (e.upInflight < WINDOW && e.req.isPaused()) e.req.resume(); break; }
+		case 'ack': { e.touch(); e.upInflight = Math.max(0, e.upInflight - 1); if (e.upInflight < WINDOW && e.req.isPaused()) e.req.resume(); break; }
 		case 'err': { e.fail(502, 'The Mac could not handle the request', String(h.message || 'unknown error')); break; }
 	}
 }
@@ -215,4 +245,4 @@ server.listen(PORT, '0.0.0.0', () => {
 	log(`Mac Remote relay listening on :${PORT} (TRUST_PROXY=${TRUST_PROXY})`);
 	log('The Mac connects to exactly one relay process: run a single instance (fly deploy --ha=false; one Render instance).');
 });
-process.on('SIGTERM', () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });
+process.on('SIGTERM', () => { console.log(`%s: SIGTERM received, shutting down`.replace('%s', 'relay')); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });

@@ -18,6 +18,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
+const { pipeline } = require('node:stream');
 const mac = require('./lib/mac');
 const ws = require('./lib/ws');
 
@@ -214,10 +215,10 @@ function streamFile(req, res, file, stat, download) {
 		const end = range[2] ? Math.min(parseInt(range[2], 10), stat.size - 1) : stat.size - 1;
 		if (start > end || start >= stat.size) { res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` }); return res.end(); }
 		res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${stat.size}`, 'Content-Length': end - start + 1 });
-		return fs.createReadStream(file, { start, end }).pipe(res);
+		return pipeline(fs.createReadStream(file, { start, end }), res, () => {}); // pipeline closes the fd if the client goes away mid-stream
 	}
 	res.writeHead(200, { ...headers, 'Content-Length': stat.size });
-	fs.createReadStream(file).pipe(res);
+	pipeline(fs.createReadStream(file), res, () => {});
 }
 
 // ---------------------------------------------------------------- API
@@ -406,14 +407,22 @@ async function handleLogin(req, res) {
 	return { ok: true, hostname: os.hostname() };
 }
 
-// Cookie-authenticated state changes must come from our own origin.
+// Cookie-authenticated state changes must come from our own origin. SameSite=Strict on the cookie is the
+// primary defence; this is belt and braces. Through the relay the expected host is pinned to the configured
+// relay URL rather than to anything the client sent.
 function checkOrigin(req) {
+	const sfs = req.headers['sec-fetch-site'];
+	if (sfs && sfs !== 'same-origin' && sfs !== 'none') throw new HttpError(403, 'Cross-site request blocked');
 	const origin = req.headers.origin;
 	if (!origin) return;
 	let host;
-	try { host = new URL(origin).host; } catch { throw new HttpError(403, 'Bad origin'); }
-	const ours = req.headers['x-forwarded-host'] || req.headers.host;
-	if (host !== ours) throw new HttpError(403, 'Cross-origin request blocked');
+	try { host = new URL(origin).host.toLowerCase(); } catch { throw new HttpError(403, 'Bad origin'); }
+	const relayed = req.headers['x-relayed'] === '1' && isLoopback(req.socket.remoteAddress) && cfg.relay;
+	const ours = relayed ? new URL(cfg.relay.url.replace(/^ws/, 'http')).host.toLowerCase() : String(req.headers.host || '').toLowerCase();
+	if (host !== ours) {
+		if (relayed) throw new HttpError(403, `Open the app at ${cfg.relay.url.replace(/^ws/, 'http')} (the address configured with --relay), not ${origin}`);
+		throw new HttpError(403, 'Cross-origin request blocked');
+	}
 }
 
 async function serveStatic(req, res, pathname) {
@@ -425,7 +434,8 @@ async function serveStatic(req, res, pathname) {
 	if (st.isDirectory()) throw new HttpError(404, 'Not found');
 	const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
 	res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Cache-Control': rel === '/index.html' ? 'no-cache' : 'public, max-age=3600' });
-	fs.createReadStream(file).pipe(res);
+	if (req.method === 'HEAD') return res.end();
+	pipeline(fs.createReadStream(file), res, () => {});
 }
 
 async function handler(req, res) {
@@ -547,8 +557,8 @@ function relaySession(conn) {
 						send({ id: h.id, t: 'data' }, chunk);
 						if (entry.inflight >= RELAY_WINDOW) res.pause();
 					});
-					res.on('end', () => { streams.delete(h.id); send({ id: h.id, t: 'end' }); });
-					res.on('error', (e) => { streams.delete(h.id); send({ id: h.id, t: 'err', message: e.message }); });
+					res.on('end', () => { streams.delete(h.id); send({ id: h.id, t: 'end' }); if (!entry.req.writableEnded) entry.req.destroy(); });
+					res.on('error', (e) => { streams.delete(h.id); send({ id: h.id, t: 'err', message: e.message }); entry.req.destroy(); });
 				});
 				entry.req.on('error', (e) => { if (streams.get(h.id) === entry) { streams.delete(h.id); send({ id: h.id, t: 'err', message: e.message }); } });
 				streams.set(h.id, entry);
@@ -599,5 +609,5 @@ async function relayLoop() {
 	}
 }
 
-process.on('SIGTERM', () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });
+process.on('SIGTERM', () => { console.log(`%s: SIGTERM received, shutting down`.replace('%s', 'server')); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });
 process.on('SIGINT', () => process.exit(0));

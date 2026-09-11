@@ -63,7 +63,10 @@ launchctl kickstart -k gui/$(id -u)/com.macremote.agent
 tail -n 20 ~/.mac-remote/server.log      # expect: relay: connected to wss://…
 ```
 
-`https://<your-relay-host>/relay/status` shows `"agent": {"name": "…"}` when the Mac is connected.
+`https://<your-relay-host>/relay/status` shows `"agent": {"connected": true}` when the Mac is connected.
+
+Use the exact same host on the phone as in `--relay`: the Mac only accepts logins whose page was loaded from that
+address (a custom domain and the `.fly.dev` name are two different addresses; pick one and configure it).
 
 ## 3. Install on the phone
 
@@ -102,7 +105,10 @@ only to a browser that has never loaded the app before).
 * Request and response bodies are streamed in 64 KB chunks with flow control, so memory stays flat on both
   sides no matter how large the file is; a single body is capped at `MAX_BODY_MB` (512 MB) and that one
   request gets a 413/502 without affecting anything else.
-* At most `MAX_PENDING` (64) requests in flight; extra ones get a 503 "Relay busy" page.
-* The Mac has 90 s to start answering and 90 s between body chunks, after which the phone gets a 504.
+* At most `MAX_PENDING` (64) requests in flight and `MAX_PER_IP` (12) per phone address; extra ones get a
+  503/429 page. A phone that stops sending an upload for 30 s is dropped, so stalled connections cannot hog slots.
+* The Mac may be silent for 150 s before its first byte (long shell commands) and 90 s between body chunks;
+  any traffic in either direction, including upload acks, resets those clocks, so a slow upload never times out
+  while it is progressing.
 * The phone's requests are buffered by nobody but the relay's socket buffers; the Mac never sees more than
   8 chunks ahead of what the phone has already received.
