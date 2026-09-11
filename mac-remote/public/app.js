@@ -6,11 +6,16 @@
 
 	// ---------------------------------------------------------------- api
 	class ApiError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
-	async function api(method, path, body, raw) {
+	async function api(method, path, body, raw, timeoutMs) {
 		const opts = { method, credentials: 'same-origin', headers: {} };
 		if (body !== undefined && !(body instanceof Blob)) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
 		else if (body instanceof Blob) { opts.headers['Content-Type'] = 'application/octet-stream'; opts.body = body; }
-		const res = await fetch(path, opts);
+		let timer;
+		if (timeoutMs) { const ac = new AbortController(); opts.signal = ac.signal; timer = setTimeout(() => ac.abort(), timeoutMs); }
+		let res;
+		try { res = await fetch(path, opts); }
+		catch (e) { throw new ApiError(0, e.name === 'AbortError' ? 'No answer from the Mac' : navigator.onLine ? 'Cannot reach the relay' : 'Your phone is offline'); } // status 0 = unreachable
+		finally { clearTimeout(timer); }
 		if (res.status === 401 && path !== '/api/login') { showLogin(); throw new ApiError(401, 'Logged out'); }
 		if (raw) { if (!res.ok) throw new ApiError(res.status, (await res.json().catch(() => ({}))).error || res.statusText); return res; }
 		const data = await res.json().catch(() => ({}));
@@ -26,7 +31,12 @@
 		clearTimeout(toastTimer);
 		toastTimer = setTimeout(() => { t.className = ''; }, kind === 'err' ? 3500 : 1600);
 	}
-	const fail = (e) => { if (e.status !== 401) toast(e.message || String(e), 'err'); };
+	const unreachable = (e) => !e.status || (e.status >= 502 && e.status <= 504);
+	const fail = (e) => {
+		if (e.status === 401) return;
+		if (e instanceof ApiError && unreachable(e)) return showOffline(`${e.message}. Retrying…`);
+		toast(e.message || String(e), 'err');
+	};
 	const act = (p) => p.then(() => {}, fail);
 
 	function haptic() { try { navigator.vibrate?.(8); } catch {} }
@@ -34,14 +44,12 @@
 	// ---------------------------------------------------------------- login
 	function showLogin() { $('#login').hidden = false; $('#app').hidden = true; $('#offline').hidden = true; stopLive(); }
 	function showApp() { $('#login').hidden = true; $('#app').hidden = false; }
-	$('#loginForm').addEventListener('submit', async (e) => {
+	let pendingToken = null; // a token we still have to log in with (kept until the Mac accepts or rejects it)
+	$('#loginForm').addEventListener('submit', (e) => {
 		e.preventDefault();
 		$('#loginError').textContent = '';
-		try {
-			await post('/api/login', { token: $('#tokenInput').value });
-			$('#tokenInput').value = '';
-			boot();
-		} catch (err) { $('#loginError').textContent = err.message; }
+		pendingToken = $('#tokenInput').value.trim();
+		if (pendingToken) boot();
 	});
 	$('#logoutBtn').addEventListener('click', () => act(post('/api/logout').then(showLogin)));
 
@@ -64,7 +72,7 @@
 	let screen = null;
 	async function refreshStatus() {
 		try {
-			const s = await api('GET', '/api/status');
+			const s = await api('GET', '/api/status', undefined, false, 12000);
 			$('#dot').className = 'dot on';
 			$('#hostname').textContent = s.hostname.replace(/\.local$/, '');
 			$('#front').textContent = s.frontApp ? `· ${s.frontApp}` : '';
@@ -98,11 +106,12 @@
 		const q = QUAL[qualIdx];
 		const t0 = performance.now();
 		try {
-			const res = await api('GET', `/api/screen.jpg?w=${q.w}&q=${q.q}&t=${Date.now()}`, undefined, true);
+			const res = await api('GET', `/api/screen.jpg?w=${q.w}&q=${q.q}&t=${Date.now()}`, undefined, true, 20000);
 			const blob = await res.blob();
 			const url = URL.createObjectURL(blob);
 			const old = shot.src;
 			shot.onload = () => { shot.classList.add('ready'); hint.hidden = true; if (old.startsWith('blob:')) URL.revokeObjectURL(old); };
+			shot.onerror = () => { URL.revokeObjectURL(url); if (old.startsWith('blob:')) URL.revokeObjectURL(old); };
 			shot.src = url;
 			const dt = performance.now() - t0;
 			$('#fps').textContent = `${Math.round(dt)} ms · ${fmtBytes(blob.size)}`;
@@ -113,9 +122,10 @@
 			if (e.status === 401) return stopLive();
 			$('#fps').textContent = 'error';
 			hint.hidden = false;
-			hint.firstElementChild.innerHTML = e.status >= 502 && e.status <= 504 ? `<b>Mac unreachable</b>${escapeHtml(e.message)} · retrying` : `<b>Screen capture failed</b>${escapeHtml(e.message)}`;
 			// Relay hiccups (502/503/504) and network errors are transient: keep polling, but slowly.
 			if (!liveRetrying && liveTimer) { liveRetrying = true; clearInterval(liveTimer); liveTimer = setInterval(grab, 5000); }
+			const msg = unreachable(e) ? `<b>Mac unreachable</b>${escapeHtml(e.message)}` : `<b>Screen capture failed</b>${escapeHtml(e.message)}`;
+			hint.firstElementChild.innerHTML = liveTimer ? `${msg} · retrying` : `${msg} · tap Live to retry`;
 		} finally { fetching = false; }
 	}
 	let liveRetrying = false;
@@ -402,26 +412,43 @@
 		const res = await api('GET', `/api/files/download?path=${encodeURIComponent(rel)}&inline=1`, undefined, true);
 		return res.blob();
 	}
+	// Files are never rendered as documents of this origin: text (including HTML source) goes into a <pre>,
+	// media into <img>/<video>/<audio>, and only PDFs into an iframe (the PDF viewer is isolated by the browser).
+	const TEXT_LIMIT = 2 * 1024 * 1024;
+	let viewerBusy = false, viewerUrl = null;
+	function closeViewer() {
+		$('#viewer').hidden = true;
+		$('#viewerBody').innerHTML = '';
+		if (viewerUrl) { URL.revokeObjectURL(viewerUrl); viewerUrl = null; }
+		$('#viewerSave').onclick = null; // drop the reference to the Blob so it can be collected
+	}
+	$('#viewerClose').addEventListener('click', closeViewer);
 	async function openFile(it, rel) {
 		const ext = it.name.split('.').pop().toLowerCase();
-		const kind = /^(png|jpe?g|gif|webp|svg|bmp|heic|avif)$/.test(ext) ? 'image' : /^(mp4|m4v|mov|webm)$/.test(ext) ? 'video' : /^(mp3|m4a|wav|aac|ogg|flac)$/.test(ext) ? 'audio' : /^(pdf|txt|md|json|js|ts|py|sh|html|css|log|csv|xml|yml|yaml)$/.test(ext) ? 'frame' : null;
+		const kind = /^(png|jpe?g|gif|webp|bmp|heic|avif)$/.test(ext) ? 'image' : /^(mp4|m4v|mov|webm)$/.test(ext) ? 'video' : /^(mp3|m4a|wav|aac|ogg|flac)$/.test(ext) ? 'audio' : ext === 'pdf' ? 'pdf' : /^(txt|md|json|js|ts|py|sh|html|htm|css|log|csv|xml|svg|yml|yaml|ini|conf|plist|env)$/.test(ext) ? 'text' : null;
 		if (!kind) return downloadFile(it, rel);
+		if (viewerBusy) return;
+		viewerBusy = true;
 		try {
+			if (kind === 'text' && it.size > TEXT_LIMIT) throw new Error(`Too big to show as text (${fmtBytes(it.size)}). Use Download.`);
 			const blob = await fetchFileBlob(it, rel);
-			const url = URL.createObjectURL(blob);
-			const v = $('#viewer'), body = $('#viewerBody');
-			body.innerHTML = '';
+			closeViewer();
+			const body = $('#viewerBody');
 			$('#viewerTitle').textContent = it.name;
 			let el;
-			if (kind === 'image') { el = document.createElement('img'); el.src = url; el.alt = it.name; }
-			else if (kind === 'video') { el = document.createElement('video'); el.src = url; el.controls = true; el.playsInline = true; el.autoplay = true; }
-			else if (kind === 'audio') { el = document.createElement('audio'); el.src = url; el.controls = true; el.autoplay = true; }
-			else { el = document.createElement('iframe'); el.src = url; el.title = it.name; }
+			if (kind === 'text') { el = document.createElement('pre'); el.className = 'mono'; el.textContent = await blob.text(); }
+			else {
+				viewerUrl = URL.createObjectURL(blob);
+				if (kind === 'image') { el = document.createElement('img'); el.src = viewerUrl; el.alt = it.name; }
+				else if (kind === 'video') { el = document.createElement('video'); el.src = viewerUrl; el.controls = true; el.playsInline = true; el.autoplay = true; }
+				else if (kind === 'audio') { el = document.createElement('audio'); el.src = viewerUrl; el.controls = true; el.autoplay = true; }
+				else { el = document.createElement('iframe'); el.src = viewerUrl; el.title = it.name; el.setAttribute('sandbox', 'allow-same-origin'); el.setAttribute('referrerpolicy', 'no-referrer'); }
+			}
 			body.appendChild(el);
-			v.hidden = false;
-			$('#viewerClose').onclick = () => { v.hidden = true; body.innerHTML = ''; URL.revokeObjectURL(url); };
+			$('#viewer').hidden = false;
 			$('#viewerSave').onclick = () => saveBlob(blob, it.name);
 		} catch (e) { fail(e); }
+		finally { viewerBusy = false; }
 	}
 	function saveBlob(blob, name) {
 		const url = URL.createObjectURL(blob);
@@ -452,15 +479,27 @@
 		$('#login').hidden = true; $('#app').hidden = true;
 		$('#offline').hidden = false;
 		$('#offlineDetail').textContent = detail;
+		stopLive();
 		clearTimeout(retryTimer);
 		retryTimer = setTimeout(boot, 5000);
 	}
 	$('#offlineRetry').addEventListener('click', () => { clearTimeout(retryTimer); boot(); });
 	window.addEventListener('online', () => { if (!$('#offline').hidden) { clearTimeout(retryTimer); boot(); } });
 
+	let booting = false;
 	async function boot() {
+		if (booting) return;
+		booting = true;
+		clearTimeout(retryTimer);
 		try {
-			await api('GET', '/api/me');
+			if (pendingToken) {
+				try { await post('/api/login', { token: pendingToken }); pendingToken = null; $('#tokenInput').value = ''; }
+				catch (e) {
+					if (e.status === 401 || e.status === 429 || e.status === 400 || e.status === 403) { pendingToken = null; showLogin(); $('#loginError').textContent = e.message; return; }
+					throw e; // unreachable: keep the token and retry from the offline panel
+				}
+			}
+			await api('GET', '/api/me', undefined, false, 8000);
 			$('#offline').hidden = true;
 			showApp();
 			let tab = 'screen'; try { tab = localStorage.getItem('mr.tab') || 'screen'; } catch {}
@@ -469,10 +508,9 @@
 		} catch (e) {
 			if (e.status === 401) { $('#offline').hidden = true; return; } // showLogin() already ran
 			// No status = network failure (phone offline or relay unreachable); 502-504 = relay up, Mac not answering.
-			if (!e.status) showOffline(navigator.onLine ? 'Cannot reach the relay. Retrying…' : 'Your phone is offline. Retrying…');
-			else if (e.status >= 502 && e.status <= 504) showOffline(`${e.message}. Retrying…`);
+			if (unreachable(e)) showOffline(`${e.message}. Retrying…`);
 			else { showLogin(); $('#loginError').textContent = e.message; }
-		}
+		} finally { booting = false; }
 	}
 
 	if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
@@ -480,9 +518,14 @@
 	}
 
 	// Token in the URL fragment (from the login URL / QR code the server prints) logs in once and is scrubbed.
-	const hashToken = /(?:^|[#&])token=([^&]+)/.exec(location.hash);
-	if (hashToken) {
+	function takeHashToken() {
+		const m = /(?:^|[#&])token=([^&]+)/.exec(location.hash);
+		if (!m) return false;
+		pendingToken = decodeURIComponent(m[1]);
 		window.history.replaceState(null, '', location.pathname);
-		post('/api/login', { token: decodeURIComponent(hashToken[1]) }).then(boot, (e) => { $('#loginError').textContent = e.message; });
-	} else boot();
+		return true;
+	}
+	takeHashToken();
+	window.addEventListener('hashchange', () => { if (takeHashToken()) boot(); }); // a login URL pasted into an already-open tab
+	boot();
 })();

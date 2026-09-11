@@ -92,6 +92,7 @@ Display sleep is fine; the app has a **Wake display** button (screenshots of a s
 * 5 wrong tokens from one IP → 10 minute lockout. Constant‑time comparison.
 * Cookie‑authenticated state changes must come from the app's own origin (Origin header check).
 * Files API is confined to `filesRoot` (default: your home folder). Static files are served only from `public/`.
+* Files you open from the phone are shown as data (text goes into a read‑only pane, media into a player, PDFs into an isolated viewer); an HTML file in your home folder is displayed as source and can never run as part of the app. Downloads carry a `Content-Security-Policy: sandbox` header for the same reason.
 * Restart/shutdown need an explicit confirm and can be disabled with `"allowPowerOff": false`; the shell can be disabled with `"allowShell": false`.
 * Plain HTTP by default. Over Tailscale that is already encrypted. On any other network set `"tls": { "cert": "...", "key": "..." }` in the config or use `tailscale serve`.
 

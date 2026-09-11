@@ -203,11 +203,15 @@ const MIME = {
 	'.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml',
 	'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.pdf': 'application/pdf', '.txt': 'text/plain; charset=utf-8',
 	'.mp4': 'video/mp4', '.mov': 'video/quicktime', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.zip': 'application/zip', '.ico': 'image/x-icon',
+	'.md': 'text/plain; charset=utf-8', '.log': 'text/plain; charset=utf-8', '.csv': 'text/csv; charset=utf-8', '.py': 'text/plain; charset=utf-8',
+	'.sh': 'text/plain; charset=utf-8', '.yml': 'text/plain; charset=utf-8', '.yaml': 'text/plain; charset=utf-8', '.xml': 'text/plain; charset=utf-8',
+	'.ts': 'text/plain; charset=utf-8', '.webp': 'image/webp', '.heic': 'image/heic', '.webm': 'video/webm', '.wav': 'audio/wav', '.m4v': 'video/x-m4v',
 };
 
 function streamFile(req, res, file, stat, download) {
 	const type = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
-	const headers = { 'Content-Type': type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes' };
+	// User files are data, never a page of this app: CSP sandbox stops an HTML file from running scripts with our origin.
+	const headers = { 'Content-Type': type, 'Cache-Control': 'no-store', 'Accept-Ranges': 'bytes', 'Content-Security-Policy': 'sandbox', 'X-Content-Type-Options': 'nosniff' };
 	if (download) headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(path.basename(file))}`;
 	const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
 	if (range && stat.size) {
