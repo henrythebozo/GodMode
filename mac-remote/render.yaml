@@ -1,0 +1,16 @@
+# Render.com blueprint for the Mac Remote relay (Dashboard → New → Blueprint → this repo, root dir mac-remote).
+# Note: Render's free plan sleeps after 15 minutes without traffic; the Mac reconnects when it wakes, but the
+# first request from the phone will be slow. Use the Starter plan (or Fly/VPS) for an always-on relay.
+services:
+  - type: web
+    name: mac-remote-relay
+    runtime: docker
+    rootDir: mac-remote
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /relay/health
+    envVars:
+      - key: RELAY_SECRET
+        generateValue: true
+      - key: TRUST_PROXY
+        value: "1"

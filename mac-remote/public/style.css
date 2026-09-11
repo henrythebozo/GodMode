@@ -173,6 +173,20 @@ body.fs #screenbar { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
 #login form { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 10px; }
 #login .error { color: var(--err); font-size: 13px; min-height: 18px; }
 
+#offline { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 24px; gap: 14px; text-align: center; }
+#offline .logo { width: 72px; height: 72px; border-radius: 20px; background: linear-gradient(145deg, #a58bff, #5a3fd6); display: grid; place-items: center; margin-bottom: 8px; opacity: 0.6; }
+#offline .logo svg { width: 38px; height: 38px; }
+#offline h1 { font-size: 22px; }
+#offline p { color: var(--dim); font-size: 14px; max-width: 320px; }
+
+#viewer { position: fixed; inset: 0; background: #000; z-index: 58; display: flex; flex-direction: column; }
+#viewer .bar { display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; border-bottom: 1px solid var(--line); }
+#viewer .bar .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+#viewerBody { flex: 1; min-height: 0; display: grid; place-items: center; padding-bottom: env(safe-area-inset-bottom); }
+#viewerBody img, #viewerBody video { max-width: 100%; max-height: 100%; object-fit: contain; }
+#viewerBody iframe { width: 100%; height: 100%; border: none; background: #fff; }
+#viewerBody audio { width: 90%; }
+
 #toast {
 	position: fixed; left: 50%; bottom: calc(var(--tabbar) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
 	background: var(--surface-2); color: var(--text); padding: 10px 16px; border-radius: 99px; font-size: 13px;

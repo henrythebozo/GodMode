@@ -27,6 +27,13 @@
 	</form>
 </div>
 
+<div id="offline" hidden>
+	<div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></div>
+	<h1>Your Mac is unreachable</h1>
+	<p id="offlineDetail">Retrying…</p>
+	<button class="btn acc" id="offlineRetry" type="button">Retry now</button>
+</div>
+
 <div id="app" hidden>
 	<header>
 		<div class="dot" id="dot"></div>
@@ -142,6 +149,7 @@
 					<b>Load</b><span id="load">—</span>
 					<b>Screen</b><span id="screenSize">—</span>
 					<b>Mouse driver</b><span id="driver">—</span>
+					<b>Relay</b><span id="relay">—</span>
 				</div>
 			</div>
 
@@ -252,6 +260,10 @@
 	</nav>
 </div>
 
+<div id="viewer" hidden>
+	<div class="bar"><span id="viewerTitle" class="name"></span><button class="btn sm" id="viewerSave" type="button">Save</button><button class="btn sm soft" id="viewerClose" type="button">Close</button></div>
+	<div id="viewerBody"></div>
+</div>
 <div id="toast"></div>
 <div id="sheet" hidden></div>
 <script src="app.js"></script>

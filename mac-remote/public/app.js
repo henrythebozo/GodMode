@@ -32,7 +32,7 @@
 	function haptic() { try { navigator.vibrate?.(8); } catch {} }
 
 	// ---------------------------------------------------------------- login
-	function showLogin() { $('#login').hidden = false; $('#app').hidden = true; stopLive(); }
+	function showLogin() { $('#login').hidden = false; $('#app').hidden = true; $('#offline').hidden = true; stopLive(); }
 	function showApp() { $('#login').hidden = true; $('#app').hidden = false; }
 	$('#loginForm').addEventListener('submit', async (e) => {
 		e.preventDefault();
@@ -75,6 +75,8 @@
 			$('#load').textContent = s.load.map((n) => n.toFixed(1)).join(' ');
 			$('#screenSize').textContent = s.screen ? `${s.screen.w}×${s.screen.h}` : '—';
 			$('#driver').textContent = s.capabilities.cliclick ? 'cliclick' : 'CoreGraphics';
+			$('#relay').textContent = !s.relay ? 'not set up' : s.relay.connected ? 'connected' : `reconnecting${s.relay.lastError ? ` (${s.relay.lastError})` : ''}`;
+			$('#relay').style.color = s.relay && !s.relay.connected ? 'var(--err)' : '';
 			screen = s.screen;
 			if (s.volume) setVolumeUI(s.volume);
 			$('#nowPlaying').textContent = s.nowPlaying ? `${s.nowPlaying.state === 'playing' ? '▶' : '⏸'} ${s.nowPlaying.title} — ${s.nowPlaying.artist}` : '';
@@ -106,17 +108,23 @@
 			$('#fps').textContent = `${Math.round(dt)} ms · ${fmtBytes(blob.size)}`;
 			lastShotAt = Date.now();
 			$('#dot').className = 'dot on';
+			if (liveRetrying) { liveRetrying = false; startLive(); } // back to the normal cadence after an outage
 		} catch (e) {
-			if (e.status !== 401) { $('#fps').textContent = 'error'; hint.hidden = false; hint.firstElementChild.innerHTML = `<b>Screen capture failed</b>${escapeHtml(e.message)}`; }
-			if (e.status === 401 || e.status >= 500) stopLive(true);
+			if (e.status === 401) return stopLive();
+			$('#fps').textContent = 'error';
+			hint.hidden = false;
+			hint.firstElementChild.innerHTML = e.status >= 502 && e.status <= 504 ? `<b>Mac unreachable</b>${escapeHtml(e.message)} · retrying` : `<b>Screen capture failed</b>${escapeHtml(e.message)}`;
+			// Relay hiccups (502/503/504) and network errors are transient: keep polling, but slowly.
+			if (!liveRetrying && liveTimer) { liveRetrying = true; clearInterval(liveTimer); liveTimer = setInterval(grab, 5000); }
 		} finally { fetching = false; }
 	}
+	let liveRetrying = false;
 	function startLive() {
-		stopLive(true);
+		stopLive();
 		grab();
 		if (LIVE[liveIdx]) liveTimer = setInterval(grab, LIVE[liveIdx]);
 	}
-	function stopLive(keepIdx) { clearInterval(liveTimer); liveTimer = null; }
+	function stopLive() { clearInterval(liveTimer); liveTimer = null; liveRetrying = false; }
 	$('#liveBtn').addEventListener('click', () => { liveIdx = (liveIdx + 1) % LIVE.length; localStorage.setItem('mr.live', liveIdx); updateScreenBar(); startLive(); });
 	$('#qualBtn').addEventListener('click', () => { qualIdx = (qualIdx + 1) % QUAL.length; localStorage.setItem('mr.qual', qualIdx); updateScreenBar(); grab(); });
 	$('#dragBtn').addEventListener('click', () => { dragMode = !dragMode; updateScreenBar(); toast(dragMode ? 'Drag mode: swipe drags the mouse' : 'Swipe scrolls'); });
@@ -127,7 +135,7 @@
 		$('#dragBtn').classList.toggle('on', dragMode);
 	}
 	updateScreenBar();
-	document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentTab === 'screen' && !$('#app').hidden) startLive(); else if (document.visibilityState !== 'visible') stopLive(true); });
+	document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && currentTab === 'screen' && !$('#app').hidden) startLive(); else if (document.visibilityState !== 'visible') stopLive(); });
 
 	// Pointer gestures on the screenshot. Coordinates are normalized 0..1 relative to the image.
 	function norm(e) {
@@ -294,16 +302,16 @@
 
 	// ---------------------------------------------------------------- shell
 	const out = $('#out'), cmdInput = $('#cmd');
-	let history = []; try { history = JSON.parse(localStorage.getItem('mr.hist') || '[]'); } catch {}
-	let histIdx = history.length;
+	let cmdHistory = []; try { cmdHistory = JSON.parse(localStorage.getItem('mr.hist') || '[]'); } catch {}
+	let histIdx = cmdHistory.length;
 	let shellCwd = '';
 	function appendOut(text, cls) { const s = document.createElement('span'); if (cls) s.className = cls; s.textContent = text; out.appendChild(s); out.scrollTop = out.scrollHeight; }
 	async function runCmd() {
 		const cmd = cmdInput.value.trim();
 		if (!cmd) return;
 		cmdInput.value = '';
-		history = [...history.filter((h) => h !== cmd), cmd].slice(-100); histIdx = history.length;
-		try { localStorage.setItem('mr.hist', JSON.stringify(history)); } catch {}
+		cmdHistory = [...cmdHistory.filter((h) => h !== cmd), cmd].slice(-100); histIdx = cmdHistory.length;
+		try { localStorage.setItem('mr.hist', JSON.stringify(cmdHistory)); } catch {}
 		appendOut(`$ ${cmd}\n`, 'cmd');
 		const cdMatch = /^cd(?:\s+(.*))?$/.exec(cmd);
 		if (cdMatch) {
@@ -327,8 +335,8 @@
 		else if (e.key === 'ArrowUp') { e.preventDefault(); $('#histPrev').click(); }
 		else if (e.key === 'ArrowDown') { e.preventDefault(); $('#histNext').click(); }
 	});
-	$('#histPrev').addEventListener('click', () => { if (histIdx > 0) { histIdx--; cmdInput.value = history[histIdx]; cmdInput.focus(); } });
-	$('#histNext').addEventListener('click', () => { if (histIdx < history.length - 1) { histIdx++; cmdInput.value = history[histIdx]; } else { histIdx = history.length; cmdInput.value = ''; } cmdInput.focus(); });
+	$('#histPrev').addEventListener('click', () => { if (histIdx > 0) { histIdx--; cmdInput.value = cmdHistory[histIdx]; cmdInput.focus(); } });
+	$('#histNext').addEventListener('click', () => { if (histIdx < cmdHistory.length - 1) { histIdx++; cmdInput.value = cmdHistory[histIdx]; } else { histIdx = cmdHistory.length; cmdInput.value = ''; } cmdInput.focus(); });
 	$('#clearOut').addEventListener('click', () => { out.innerHTML = ''; });
 
 	// ---------------------------------------------------------------- files
@@ -353,7 +361,7 @@
 				row.className = 'item';
 				row.innerHTML = `<span class="ficon ${it.dir ? 'dir' : ''}">${it.dir ? '📁' : FILE_ICON(it.name)}</span><span class="name"></span><span class="meta">${it.dir ? '' : fmtBytes(it.size)}</span><button class="iconbtn"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>`;
 				row.querySelector('.name').textContent = it.name;
-				row.querySelector('.name').addEventListener('click', () => it.dir ? loadFiles(rel) : window.open(`/api/files/download?path=${encodeURIComponent(rel)}&inline=1`, '_blank'));
+				row.querySelector('.name').addEventListener('click', () => it.dir ? loadFiles(rel) : openFile(it, rel));
 				row.querySelector('.iconbtn').addEventListener('click', () => fileSheet(it, rel));
 				list.appendChild(row);
 			}
@@ -378,12 +386,50 @@
 	function fileSheet(it, rel) {
 		const actions = [];
 		if (!it.dir) {
-			actions.push({ label: 'Open', run: () => window.open(`/api/files/download?path=${encodeURIComponent(rel)}&inline=1`, '_blank') });
-			actions.push({ label: 'Download', run: () => { location.href = `/api/files/download?path=${encodeURIComponent(rel)}`; } });
+			actions.push({ label: 'Open', run: () => openFile(it, rel) });
+			actions.push({ label: 'Download', run: () => downloadFile(it, rel) });
 		} else actions.push({ label: 'Open folder', run: () => loadFiles(rel) });
 		actions.push({ label: 'Open on Mac', run: () => act(post('/api/shell', { cmd: `open -- "$HOME/${rel.replace(/(["$`\\])/g, '\\$1')}"` }).then(() => toast('Opened on Mac', 'ok'))) });
 		actions.push({ label: 'Delete', danger: true, run: () => { if (confirm(`Delete ${it.name}? This cannot be undone.`)) act(post('/api/files/delete', { path: rel }).then(() => loadFiles(filesPath))); } });
 		sheet(it.name, actions);
+	}
+	// Files are fetched with the session cookie and shown in-app (or saved via a blob link), so the
+	// installed app never navigates away and never depends on a separate browser cookie jar.
+	const VIEW_LIMIT = 200 * 1024 * 1024;
+	async function fetchFileBlob(it, rel) {
+		if (it.size > VIEW_LIMIT) throw new Error(`Too big to open on the phone (${fmtBytes(it.size)}). Use "Open on Mac".`);
+		toast(`Loading ${it.name}…`);
+		const res = await api('GET', `/api/files/download?path=${encodeURIComponent(rel)}&inline=1`, undefined, true);
+		return res.blob();
+	}
+	async function openFile(it, rel) {
+		const ext = it.name.split('.').pop().toLowerCase();
+		const kind = /^(png|jpe?g|gif|webp|svg|bmp|heic|avif)$/.test(ext) ? 'image' : /^(mp4|m4v|mov|webm)$/.test(ext) ? 'video' : /^(mp3|m4a|wav|aac|ogg|flac)$/.test(ext) ? 'audio' : /^(pdf|txt|md|json|js|ts|py|sh|html|css|log|csv|xml|yml|yaml)$/.test(ext) ? 'frame' : null;
+		if (!kind) return downloadFile(it, rel);
+		try {
+			const blob = await fetchFileBlob(it, rel);
+			const url = URL.createObjectURL(blob);
+			const v = $('#viewer'), body = $('#viewerBody');
+			body.innerHTML = '';
+			$('#viewerTitle').textContent = it.name;
+			let el;
+			if (kind === 'image') { el = document.createElement('img'); el.src = url; el.alt = it.name; }
+			else if (kind === 'video') { el = document.createElement('video'); el.src = url; el.controls = true; el.playsInline = true; el.autoplay = true; }
+			else if (kind === 'audio') { el = document.createElement('audio'); el.src = url; el.controls = true; el.autoplay = true; }
+			else { el = document.createElement('iframe'); el.src = url; el.title = it.name; }
+			body.appendChild(el);
+			v.hidden = false;
+			$('#viewerClose').onclick = () => { v.hidden = true; body.innerHTML = ''; URL.revokeObjectURL(url); };
+			$('#viewerSave').onclick = () => saveBlob(blob, it.name);
+		} catch (e) { fail(e); }
+	}
+	function saveBlob(blob, name) {
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a'); a.href = url; a.download = name; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+		setTimeout(() => URL.revokeObjectURL(url), 60000);
+	}
+	async function downloadFile(it, rel) {
+		try { saveBlob(await fetchFileBlob(it, rel), it.name); toast('Saved', 'ok'); } catch (e) { fail(e); }
 	}
 	$('#mkdirBtn').addEventListener('click', () => { const name = prompt('Folder name'); if (name) act(post('/api/files/mkdir', { path: (filesPath ? filesPath + '/' : '') + name }).then(() => loadFiles(filesPath))); });
 	$('#uploadBtn').addEventListener('click', () => $('#uploadInput').click());
@@ -401,20 +447,42 @@
 	// ---------------------------------------------------------------- misc
 	function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+	let retryTimer = null;
+	function showOffline(detail) {
+		$('#login').hidden = true; $('#app').hidden = true;
+		$('#offline').hidden = false;
+		$('#offlineDetail').textContent = detail;
+		clearTimeout(retryTimer);
+		retryTimer = setTimeout(boot, 5000);
+	}
+	$('#offlineRetry').addEventListener('click', () => { clearTimeout(retryTimer); boot(); });
+	window.addEventListener('online', () => { if (!$('#offline').hidden) { clearTimeout(retryTimer); boot(); } });
+
 	async function boot() {
 		try {
 			await api('GET', '/api/me');
+			$('#offline').hidden = true;
 			showApp();
 			let tab = 'screen'; try { tab = localStorage.getItem('mr.tab') || 'screen'; } catch {}
 			go(tab);
 			refreshStatus();
-		} catch (e) { if (e.status !== 401) fail(e); }
+		} catch (e) {
+			if (e.status === 401) { $('#offline').hidden = true; return; } // showLogin() already ran
+			// No status = network failure (phone offline or relay unreachable); 502-504 = relay up, Mac not answering.
+			if (!e.status) showOffline(navigator.onLine ? 'Cannot reach the relay. Retrying…' : 'Your phone is offline. Retrying…');
+			else if (e.status >= 502 && e.status <= 504) showOffline(`${e.message}. Retrying…`);
+			else { showLogin(); $('#loginError').textContent = e.message; }
+		}
+	}
+
+	if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+		navigator.serviceWorker.register('sw.js').catch(() => {});
 	}
 
 	// Token in the URL fragment (from the login URL / QR code the server prints) logs in once and is scrubbed.
 	const hashToken = /(?:^|[#&])token=([^&]+)/.exec(location.hash);
 	if (hashToken) {
-		history.replaceState(null, '', location.pathname);
+		window.history.replaceState(null, '', location.pathname);
 		post('/api/login', { token: decodeURIComponent(hashToken[1]) }).then(boot, (e) => { $('#loginError').textContent = e.message; });
 	} else boot();
 })();

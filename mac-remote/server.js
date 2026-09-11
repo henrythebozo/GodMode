@@ -6,6 +6,10 @@
 //   node server.js --init     only create the config and print the token
 //   node server.js --token    print the current token
 //   node server.js --rotate   generate a new token (logs every phone out)
+//   node server.js --relay wss://your-relay.example.com <relay secret>
+//                             dial out to your self-hosted relay (relay/relay.js) so the phone
+//                             can reach the Mac from anywhere without port forwarding
+//   node server.js --no-relay stop using the relay
 
 const http = require('node:http');
 const https = require('node:https');
@@ -15,6 +19,7 @@ const path = require('node:path');
 const os = require('node:os');
 const crypto = require('node:crypto');
 const mac = require('./lib/mac');
+const ws = require('./lib/ws');
 
 const CONFIG_DIR = process.env.MAC_REMOTE_HOME || path.join(os.homedir(), '.mac-remote');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
@@ -36,6 +41,7 @@ function loadConfig() {
 	cfg.allowShell ??= true;
 	cfg.allowPowerOff ??= true;
 	cfg.tls ??= null; // { cert: "/path/fullchain.pem", key: "/path/privkey.pem" }
+	cfg.relay ??= null; // { url: "wss://your-relay.fly.dev", secret: "..." }
 	if (dirty || !fs.existsSync(CONFIG_FILE)) {
 		fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
 	}
@@ -49,6 +55,21 @@ if (argv.includes('--rotate')) {
 	fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
 	try { fs.unlinkSync(path.join(CONFIG_DIR, 'sessions.json')); } catch {}
 	console.log('New token:', cfg.token);
+	process.exit(0);
+}
+if (argv.includes('--relay')) {
+	const i = argv.indexOf('--relay');
+	const url = argv[i + 1], secret = argv[i + 2];
+	if (!url || !secret || !/^(wss?|https?):\/\//.test(url)) { console.error('Usage: node server.js --relay wss://your-relay.example.com <relay secret>'); process.exit(2); }
+	cfg.relay = { url: url.replace(/^http/, 'ws').replace(/\/+$/, ''), secret };
+	fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
+	console.log(`Relay saved: ${cfg.relay.url}\nRestart the server to connect (launchctl kickstart -k gui/$(id -u)/com.macremote.agent).`);
+	process.exit(0);
+}
+if (argv.includes('--no-relay')) {
+	cfg.relay = null;
+	fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
+	console.log('Relay removed. Restart the server.');
 	process.exit(0);
 }
 if (argv.includes('--init') || argv.includes('--token')) {
@@ -85,8 +106,17 @@ function loginAllowed(ip) {
 	return !f || f.count < 5 || Date.now() - f.at > 10 * 60 * 1000;
 }
 function noteFailure(ip) {
+	const now = Date.now();
+	if (failures.size > 500) for (const [k, v] of failures) if (now - v.at > 10 * 60 * 1000 || failures.size > 1000) failures.delete(k);
 	const f = failures.get(ip);
-	if (f && Date.now() - f.at < 10 * 60 * 1000) { f.count++; f.at = Date.now(); } else failures.set(ip, { count: 1, at: Date.now() });
+	if (f && now - f.at < 10 * 60 * 1000) { f.count++; f.at = now; } else failures.set(ip, { count: 1, at: now });
+}
+
+function isLoopback(addr) { return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1'; }
+function clientIp(req) {
+	const xff = req.headers['x-forwarded-for'];
+	if (xff && req.headers['x-relayed'] === '1' && isLoopback(req.socket.remoteAddress)) return String(xff).split(',')[0].trim();
+	return req.socket.remoteAddress;
 }
 
 function parseCookies(req) {
@@ -192,7 +222,7 @@ function streamFile(req, res, file, stat, download) {
 
 // ---------------------------------------------------------------- API
 const api = {
-	'GET /api/status': () => mac.systemStatus(),
+	'GET /api/status': async () => ({ ...(await mac.systemStatus()), relay: relayState() }),
 
 	'GET /api/screen.jpg': async (req, res, url) => {
 		const w = Number(url.searchParams.get('w')) || 1280;
@@ -322,9 +352,24 @@ const api = {
 		const name = path.basename(url.searchParams.get('name') || 'upload.bin');
 		const dir = resolveFile(rel);
 		const target = path.join(dir, name);
-		const buf = await readBody(req, UPLOAD_LIMIT);
-		await fsp.writeFile(target, buf);
-		return { ok: true, path: path.relative(path.resolve(cfg.filesRoot), target), size: buf.length };
+		// Stream straight to disk (via a temp file) so a large upload never sits in memory.
+		const tmp = path.join(dir, `.${name}.uploading-${process.pid}-${Date.now()}`);
+		let size = 0;
+		try {
+			await new Promise((resolve, reject) => {
+				const out = fs.createWriteStream(tmp, { mode: 0o644 });
+				req.on('data', (c) => { size += c.length; if (size > UPLOAD_LIMIT) { req.destroy(); out.destroy(); reject(new HttpError(413, 'Upload too large')); } });
+				req.on('error', reject);
+				out.on('error', reject);
+				out.on('finish', resolve);
+				req.pipe(out);
+			});
+			await fsp.rename(tmp, target);
+		} catch (e) {
+			fsp.unlink(tmp).catch(() => {});
+			throw e;
+		}
+		return { ok: true, path: path.relative(path.resolve(cfg.filesRoot), target), size };
 	},
 	'POST /api/files/mkdir': async (req) => {
 		const b = await readJson(req);
@@ -348,7 +393,7 @@ const api = {
 };
 
 async function handleLogin(req, res) {
-	const ip = req.socket.remoteAddress;
+	const ip = clientIp(req);
 	if (!loginAllowed(ip)) throw new HttpError(429, 'Too many attempts. Wait 10 minutes.');
 	const b = await readJson(req);
 	if (!b.token || !safeEqual(String(b.token).trim(), cfg.token)) { noteFailure(ip); throw new HttpError(401, 'Wrong token'); }
@@ -431,19 +476,113 @@ server.listen(cfg.port, cfg.host, () => {
 	printLoginHint(proto, addrs);
 	if (!mac.IS_MAC) console.log('Warning: not running on macOS. Control endpoints will fail; UI and auth still work.');
 	mac.findCliclick().then((cc) => { if (mac.IS_MAC && !cc) console.log('Tip: brew install cliclick   (more reliable mouse control)'); });
+	if (cfg.relay && cfg.relay.url && cfg.relay.secret) relayLoop();
 });
 
 // One-tap login: open this URL on the phone and the token in the fragment logs it in, then is scrubbed.
 // If `qrencode` (brew install qrencode) is present, also draw it as a QR code.
 function printLoginHint(proto, addrs) {
 	const { execFile } = require('node:child_process');
-	const ip = addrs.find((a) => a.startsWith('100.')) || addrs[0]; // prefer the Tailscale address
-	if (!ip) return;
-	const url = `${proto}://${ip}:${cfg.port}/#token=${cfg.token}`;
+	let url;
+	if (cfg.relay) {
+		url = `${cfg.relay.url.replace(/^ws/, 'http')}/#token=${cfg.token}`;
+		console.log(`Relay: ${cfg.relay.url}  (works from anywhere once the relay shows the Mac as connected)`);
+	} else {
+		const ip = addrs.find((a) => a.startsWith('100.')) || addrs[0];
+		if (!ip) return;
+		url = `${proto}://${ip}:${cfg.port}/#token=${cfg.token}`;
+	}
 	console.log(`Login URL (keep private): ${url}`);
 	execFile('qrencode', ['-t', 'ANSIUTF8', '-m', '1', url], (err, out) => {
 		if (!err && out) console.log(out);
 	});
+}
+
+// ---------------------------------------------------------------- relay client
+// Dials out to relay/relay.js and serves every forwarded request by replaying it against
+// this very server over loopback, so the relay path and the LAN path behave identically.
+// Bodies are streamed both ways in chunks with an ack window (see relay/relay.js for the wire protocol).
+const relay = { connected: false, since: null, lastError: null, attempts: 0 };
+function relayState() { return cfg.relay ? { url: cfg.relay.url, ...relay } : null; }
+const RELAY_WINDOW = 8;
+const RELAY_MAX_MESSAGE = 4 * 1024 * 1024;
+
+function relaySession(conn) {
+	const streams = new Map(); // id -> { req, res, inflight }
+	const send = (h, body) => { if (conn.readyState === 1) conn.send(ws.pack(h, body)); };
+	const drop = (id) => { const st = streams.get(id); if (!st) return; streams.delete(id); try { st.req.destroy(); } catch {} try { st.res?.destroy(); } catch {} };
+
+	conn.on('message', (data, isBinary) => {
+		if (!isBinary) return;
+		let msg;
+		try { msg = ws.unpack(data); } catch { return; }
+		const h = msg.header;
+		const st = streams.get(h.id);
+		switch (h.t) {
+			case 'req': {
+				if (st) drop(h.id);
+				const headers = {};
+				for (const [k, v] of Object.entries(h.headers || {})) if (k !== 'transfer-encoding' && k !== 'connection' && k !== 'host') headers[k] = v;
+				headers.host = `127.0.0.1:${cfg.port}`;
+				const entry = { req: null, res: null, inflight: 0 };
+				entry.req = http.request({ host: '127.0.0.1', port: cfg.port, method: h.method, path: h.url, headers }, (res) => {
+					entry.res = res;
+					send({ id: h.id, t: 'res', status: res.statusCode, headers: res.headers });
+					res.on('data', (chunk) => {
+						entry.inflight++;
+						send({ id: h.id, t: 'data' }, chunk);
+						if (entry.inflight >= RELAY_WINDOW) res.pause();
+					});
+					res.on('end', () => { streams.delete(h.id); send({ id: h.id, t: 'end' }); });
+					res.on('error', (e) => { streams.delete(h.id); send({ id: h.id, t: 'err', message: e.message }); });
+				});
+				entry.req.on('error', (e) => { if (streams.get(h.id) === entry) { streams.delete(h.id); send({ id: h.id, t: 'err', message: e.message }); } });
+				streams.set(h.id, entry);
+				break;
+			}
+			case 'data': if (st) st.req.write(msg.body, () => send({ id: h.id, t: 'ack' })); break;
+			case 'end': if (st) st.req.end(); break;
+			case 'ack': if (st) { st.inflight = Math.max(0, st.inflight - 1); if (st.inflight < RELAY_WINDOW && st.res && st.res.isPaused()) st.res.resume(); } break;
+			case 'abort': drop(h.id); break;
+		}
+	});
+	conn.on('close', () => { for (const id of [...streams.keys()]) drop(id); });
+}
+
+async function relayLoop() {
+	const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+	let backoff = 1000;
+	for (;;) {
+		let conn;
+		relay.attempts++;
+		try {
+			conn = await ws.connect(`${cfg.relay.url}/agent/connect`, {
+				headers: { Authorization: `Bearer ${cfg.relay.secret}`, 'X-Agent-Name': os.hostname().replace(/\.local$/, '') },
+				maxMessage: RELAY_MAX_MESSAGE,
+			});
+		} catch (e) {
+			relay.lastError = e.message;
+			if (e.status === 401) console.error(`relay: rejected our secret (401). Fix it with: node server.js --relay ${cfg.relay.url} <secret>`);
+			else if (relay.attempts === 1 || relay.attempts % 20 === 0) console.error(`relay: connect failed (${e.message}); retrying`);
+			await sleep(backoff);
+			backoff = Math.min(backoff * 2, 30000);
+			continue;
+		}
+		relay.connected = true; relay.since = Date.now(); relay.lastError = null; backoff = 1000;
+		console.log(`relay: connected to ${cfg.relay.url}`);
+		let lastPong = Date.now();
+		const hb = setInterval(() => {
+			if (conn.readyState !== 1) return;
+			if (Date.now() - lastPong > 60 * 1000) { console.error('relay: heartbeat timeout, reconnecting'); conn.terminate(); return; }
+			conn.ping();
+		}, 20 * 1000);
+		conn.on('pong', () => { lastPong = Date.now(); });
+		conn.on('ping', () => { lastPong = Date.now(); });
+		conn.on('error', (e) => { relay.lastError = e.message; });
+		relaySession(conn);
+		await new Promise((resolve) => conn.on('close', (code, reason) => { clearInterval(hb); relay.connected = false; console.log(`relay: disconnected (${code} ${reason || ''}); reconnecting`); resolve(); }));
+		await sleep(backoff);
+	}
 }
 
 process.on('SIGTERM', () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });

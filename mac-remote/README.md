@@ -44,7 +44,21 @@ Without the LaunchAgent you can also just run `node server.js` in a Terminal win
 
 The server listens on port 7331 on all interfaces. Do **not** port‑forward that on your router. Use one of these instead:
 
-### Option A — Tailscale (recommended, free)
+### Option A — your own relay (all code in this repo)
+
+`relay/relay.js` is a ~200‑line, zero‑dependency server you host on any public machine (Fly.io, a $5 VPS, Render).
+The Mac dials out to it, so nothing on your router changes, and the phone gets a stable HTTPS URL to install as an app.
+Full steps in [relay/README.md](relay/README.md). Short version:
+
+```bash
+# on the relay host (Fly.io shown)
+cd mac-remote && fly launch --copy-config --no-deploy --name my-mac-relay && fly secrets set RELAY_SECRET="$(openssl rand -base64 24)" && fly deploy
+# on the Mac
+node server.js --relay wss://my-mac-relay.fly.dev "<RELAY_SECRET>" && launchctl kickstart -k gui/$(id -u)/com.macremote.agent
+# on the phone: open https://my-mac-relay.fly.dev, scan the QR from ~/.mac-remote/server.log, Add to Home Screen
+```
+
+### Option B — Tailscale (free, but third‑party software on both devices)
 
 1. Install Tailscale on the Mac and on your phone, sign in with the same account.
 2. On the phone open `http://<mac-tailscale-ip>:7331` (or `http://<mac-name>:7331` with MagicDNS). Find the IP with `tailscale ip -4` or in the Tailscale app.
@@ -53,13 +67,13 @@ The server listens on port 7331 on all interfaces. Do **not** port‑forward tha
 
 Tailscale is a WireGuard mesh: traffic is end‑to‑end encrypted and nothing is exposed to the public internet.
 
-### Option B — Cloudflare Tunnel
+### Option C — Cloudflare Tunnel
 
 If you need a public hostname (no app on the phone), run `cloudflared tunnel --url http://localhost:7331` or a named tunnel, and put **Cloudflare Access** in front of it so the token is not the only lock.
 
 ### Add to home screen
 
-In Safari, Share → *Add to Home Screen*. It installs as a standalone app called **Mac Remote** with its own icon; the cookie login carries over.
+iPhone: Safari → Share → *Add to Home Screen*. Android: Chrome → ⋮ → *Install app*. It installs as a standalone app called **Mac Remote** with its own icon; the cookie login carries over. A service worker keeps the app shell cached, so when the Mac is asleep or the relay is unreachable the app opens to its own "unreachable, retrying" panel rather than a browser error, and recovers on its own. Files open in an in‑app viewer and downloads are saved through the app, so it never navigates away from itself. Use the relay's HTTPS URL for this so the address never changes.
 
 ## Keep the Mac reachable
 
@@ -95,9 +109,12 @@ What this does **not** protect you from: someone who gets the token, or someone 
   "filesRoot": "/Users/you",
   "allowShell": true,
   "allowPowerOff": true,
-  "tls": null
+  "tls": null,
+  "relay": null
 }
 ```
+
+`relay` is set by `node server.js --relay wss://host secret` and cleared by `--no-relay`.
 
 Set `"host": "100.x.y.z"` (your Tailscale IP) to refuse connections from the LAN entirely.
 
@@ -136,7 +153,9 @@ curl -H "Authorization: Bearer $TOKEN" -X POST -H 'Content-Type: application/jso
 
 * `server.js` — HTTP server, auth, sessions, static files. Node built‑ins only.
 * `lib/mac.js` — every macOS action shells out to something Apple ships: `screencapture` + `sips` for the screen, `osascript` (AppleScript and JXA with the CoreGraphics bridge) for keys, mouse fallback, volume, apps, power; `pbcopy`/`pbpaste`, `pmset`, `caffeinate`, `open`, `say`. `cliclick` is used for the mouse when installed because it is more battle‑tested than the JXA fallback.
-* `public/` — the phone UI. Plain HTML/CSS/JS, no build step, installable as a PWA.
+* `lib/ws.js` — a small RFC 6455 WebSocket implementation (server and client) shared by the relay and the Mac, tested against the reference `ws` package.
+* `relay/relay.js` — the public relay: accepts the Mac's outbound WebSocket and streams every phone request through it (chunked, flow‑controlled, so a 2 GB download costs neither side any memory). `Dockerfile`, `fly.toml` and `render.yaml` deploy it.
+* `public/` — the phone UI. Plain HTML/CSS/JS, no build step, installable as a PWA (`sw.js` caches the shell).
 * `tools/make-icons.js` — draws the icon PNGs with a 60‑line PNG encoder so there is still no dependency.
 
 ## Troubleshooting
@@ -145,7 +164,8 @@ curl -H "Authorization: Bearer $TOKEN" -X POST -H 'Content-Type: application/jso
 * **Taps do nothing / "not permitted"** → Accessibility permission for `node`. Check `tail ~/.mac-remote/server.log`.
 * **Media buttons don't work** → they script Spotify/Music/TV/Podcasts. For a browser tab use ⌘ shortcuts or the Screen tab.
 * **Screen is black** → display asleep. Tap *Wake display*.
-* **Can't connect from LTE** → Tailscale not running on one side, or the Mac is asleep. `tailscale status` in the Shell tab (over Wi‑Fi) shows both.
+* **"Your Mac is offline" on the relay URL** → the Mac is asleep or its relay client can't connect. On the Mac: `tail ~/.mac-remote/server.log` (look for `relay: connected` or `rejected our secret`) and `curl https://<relay>/relay/status`.
+* **Can't connect from LTE with Tailscale** → Tailscale not running on one side, or the Mac is asleep.
 * **Run in the foreground for debugging**: `launchctl bootout gui/$(id -u)/com.macremote.agent; node server.js`.
 
 ## Uninstall

@@ -63,10 +63,13 @@ $(bold "Next steps")
    (Use the + button, press ⌘⇧G in the file dialog, paste the path above.)
    Then restart the server:  launchctl kickstart -k gui/$(id -u)/$LABEL
 
-2. Reach it from anywhere: install Tailscale on the Mac and the phone
-   (https://tailscale.com/download), sign in with the same account, then open
-   http://<mac-tailscale-ip>:$PORT on the phone. Run  tail -n 30 ~/.mac-remote/server.log
-   to see the login URL / QR code.
+2. Reach it from anywhere: deploy the relay in relay/README.md (Fly.io or any VPS),
+   then on this Mac:
+     $NODE $DIR/server.js --relay wss://<your-relay-host> "<RELAY_SECRET>"
+     launchctl kickstart -k gui/$(id -u)/$LABEL
+   On the phone open https://<your-relay-host> and Add to Home Screen.
+   Run  tail -n 40 ~/.mac-remote/server.log  to see the login URL / QR code.
+   (Alternative without a relay: Tailscale on both devices, then http://<mac-tailscale-ip>:$PORT)
 
 3. Keep the Mac awake so it stays reachable:
      sudo pmset -a sleep 0 disksleep 0 womp 1
