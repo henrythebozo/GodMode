@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<title>Mac Remote</title>
+<meta name="theme-color" content="#000000" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mac Remote" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="login">
+	<div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg></div>
+	<h1>Mac Remote</h1>
+	<p>Paste the token printed by the server on your Mac. It is remembered on this phone for 30 days.</p>
+	<form id="loginForm">
+		<input class="field mono" id="tokenInput" placeholder="Access token" autocomplete="off" autocapitalize="off" spellcheck="false" />
+		<button class="btn acc" type="submit">Connect</button>
+		<div class="error" id="loginError"></div>
+	</form>
+</div>
+
+<div id="app" hidden>
+	<header>
+		<div class="dot" id="dot"></div>
+		<h1><span id="hostname">Mac</span><span id="front"></span></h1>
+		<button class="iconbtn" id="refreshBtn" title="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg></button>
+		<button class="iconbtn" id="logoutBtn" title="Log out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
+	</header>
+
+	<main>
+		<!-- ================================================== SCREEN -->
+		<section class="tab tab-screen active" data-tab="screen">
+			<div id="stage">
+				<img id="shot" alt="" draggable="false" />
+				<div class="hint" id="stageHint"><div><b>Tap to click</b>Swipe to scroll · hold for right‑click · double‑tap to double‑click</div></div>
+				<div id="fps"></div>
+			</div>
+			<div id="screenbar">
+				<button class="btn sm" id="liveBtn">Live: 1s</button>
+				<button class="btn sm" id="qualBtn">Quality: Med</button>
+				<button class="btn sm" id="dragBtn">Drag mode</button>
+				<button class="btn sm" data-power="wake">Wake display</button>
+				<button class="btn sm" id="fsBtn">Fullscreen</button>
+				<button class="btn sm" data-key="escape">Esc</button>
+				<button class="btn sm" data-key="return">Return</button>
+				<button class="btn sm" data-shortcut="space" data-mods="cmd">⌘ Space</button>
+			</div>
+		</section>
+
+		<!-- ================================================== KEYS -->
+		<section class="tab" data-tab="keys">
+			<div class="card">
+				<h2>Type text</h2>
+				<textarea class="field" id="typeText" placeholder="Text to type on the Mac…" rows="3"></textarea>
+				<div class="grid g2" style="margin-top:8px">
+					<button class="btn acc" id="typeBtn">Type</button>
+					<button class="btn" id="typeEnterBtn">Type + Return</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Modifiers <span class="spacer"></span><span class="pill">sticky</span></h2>
+				<div class="grid g4" id="mods">
+					<button class="btn" data-mod="cmd">⌘ Cmd</button>
+					<button class="btn" data-mod="shift">⇧ Shift</button>
+					<button class="btn" data-mod="ctrl">⌃ Ctrl</button>
+					<button class="btn" data-mod="alt">⌥ Opt</button>
+				</div>
+				<div class="row" style="margin-top:8px">
+					<input class="field" id="keyChar" placeholder="Letter (e.g. c)" maxlength="1" style="flex:1" autocapitalize="off" />
+					<button class="btn acc" id="keyCharBtn">Press</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Keys</h2>
+				<div class="grid g4">
+					<button class="btn key" data-key="escape">Esc</button>
+					<button class="btn key" data-key="tab">Tab</button>
+					<button class="btn key" data-key="delete">⌫</button>
+					<button class="btn key" data-key="forwarddelete">⌦</button>
+					<button class="btn key" data-key="home">Home</button>
+					<button class="btn key" data-key="up">↑</button>
+					<button class="btn key" data-key="end">End</button>
+					<button class="btn key" data-key="pageup">PgUp</button>
+					<button class="btn key" data-key="left">←</button>
+					<button class="btn key" data-key="down">↓</button>
+					<button class="btn key" data-key="right">→</button>
+					<button class="btn key" data-key="pagedown">PgDn</button>
+					<button class="btn key" data-key="space" style="grid-column: span 3">Space</button>
+					<button class="btn key acc" data-key="return">Return</button>
+				</div>
+				<div class="grid g6" style="margin-top:8px">
+					<button class="btn key sm" data-key="f1">F1</button><button class="btn key sm" data-key="f2">F2</button><button class="btn key sm" data-key="f3">F3</button>
+					<button class="btn key sm" data-key="f4">F4</button><button class="btn key sm" data-key="f5">F5</button><button class="btn key sm" data-key="f6">F6</button>
+					<button class="btn key sm" data-key="f7">F7</button><button class="btn key sm" data-key="f8">F8</button><button class="btn key sm" data-key="f9">F9</button>
+					<button class="btn key sm" data-key="f10">F10</button><button class="btn key sm" data-key="f11">F11</button><button class="btn key sm" data-key="f12">F12</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Shortcuts</h2>
+				<div class="grid g3">
+					<button class="btn key" data-shortcut="space" data-mods="cmd">⌘ Space</button>
+					<button class="btn key" data-shortcut="tab" data-mods="cmd">⌘ Tab</button>
+					<button class="btn key" data-shortcut="h" data-mods="cmd">⌘ H</button>
+					<button class="btn key" data-shortcut="c" data-mods="cmd">⌘ C</button>
+					<button class="btn key" data-shortcut="v" data-mods="cmd">⌘ V</button>
+					<button class="btn key" data-shortcut="x" data-mods="cmd">⌘ X</button>
+					<button class="btn key" data-shortcut="z" data-mods="cmd">⌘ Z</button>
+					<button class="btn key" data-shortcut="a" data-mods="cmd">⌘ A</button>
+					<button class="btn key" data-shortcut="s" data-mods="cmd">⌘ S</button>
+					<button class="btn key" data-shortcut="t" data-mods="cmd">⌘ T</button>
+					<button class="btn key" data-shortcut="l" data-mods="cmd">⌘ L</button>
+					<button class="btn key" data-shortcut="r" data-mods="cmd">⌘ R</button>
+					<button class="btn key" data-shortcut="f" data-mods="cmd">⌘ F</button>
+					<button class="btn key" data-shortcut="w" data-mods="cmd">⌘ W</button>
+					<button class="btn key danger" data-shortcut="q" data-mods="cmd">⌘ Q</button>
+					<button class="btn key" data-shortcut="return" data-mods="cmd">⌘ ⏎</button>
+					<button class="btn key" data-shortcut="f" data-mods="cmd,ctrl">⌃⌘ F</button>
+					<button class="btn key" data-shortcut="escape" data-mods="cmd,alt">⌥⌘ Esc</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================================================== CONTROL -->
+		<section class="tab" data-tab="control">
+			<div class="card">
+				<h2>Status <span class="spacer"></span><span class="pill" id="uptime">—</span></h2>
+				<div class="kv">
+					<b>CPU</b><span id="cpu">—</span>
+					<b>Memory</b><span id="mem">—</span>
+					<b>Disk</b><span id="disk">—</span>
+					<b>Load</b><span id="load">—</span>
+					<b>Screen</b><span id="screenSize">—</span>
+					<b>Mouse driver</b><span id="driver">—</span>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Media <span class="spacer"></span><span class="muted" id="nowPlaying"></span></h2>
+				<div class="grid g3" style="margin-bottom:10px">
+					<button class="btn" data-media="prev">⏮</button>
+					<button class="btn acc" data-media="playpause">⏯</button>
+					<button class="btn" data-media="next">⏭</button>
+				</div>
+				<div class="row">
+					<button class="btn sm" id="muteBtn" style="min-width:72px">🔇</button>
+					<input type="range" id="volume" min="0" max="100" step="1" style="flex:1" />
+					<span class="muted" id="volLabel" style="width:36px;text-align:right">—</span>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Power</h2>
+				<div class="grid g3">
+					<button class="btn" data-power="wake">Wake display</button>
+					<button class="btn" data-power="lock">Lock</button>
+					<button class="btn" data-power="displaysleep">Display off</button>
+					<button class="btn" data-power="sleep">Sleep</button>
+					<button class="btn danger" data-power="restart">Restart</button>
+					<button class="btn danger" data-power="shutdown">Shut down</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Apps <span class="spacer"></span><button class="btn sm soft" id="appsRefresh">Refresh</button></h2>
+				<div class="row" style="margin-bottom:8px">
+					<input class="field" id="appName" list="appList" placeholder="Open an app…" style="flex:1" autocapitalize="words" />
+					<datalist id="appList">
+						<option>Safari</option><option>Google Chrome</option><option>Finder</option><option>Terminal</option><option>Music</option><option>Spotify</option>
+						<option>Messages</option><option>Mail</option><option>Notes</option><option>System Settings</option><option>Activity Monitor</option><option>TV</option>
+						<option>Visual Studio Code</option><option>Xcode</option><option>Photos</option><option>Calendar</option><option>Reminders</option><option>Preview</option>
+					</datalist>
+					<button class="btn acc" id="appOpenBtn">Open</button>
+				</div>
+				<div class="row" style="margin-bottom:8px">
+					<input class="field" id="urlInput" placeholder="https://…" style="flex:1" inputmode="url" autocapitalize="off" />
+					<button class="btn" id="urlOpenBtn">Open URL</button>
+				</div>
+				<div class="list" id="apps"><div class="muted">Loading…</div></div>
+			</div>
+
+			<div class="card">
+				<h2>Clipboard</h2>
+				<textarea class="field mono" id="clip" rows="3" placeholder="Mac clipboard"></textarea>
+				<div class="grid g2" style="margin-top:8px">
+					<button class="btn" id="clipGet">Read from Mac</button>
+					<button class="btn acc" id="clipSet">Send to Mac</button>
+				</div>
+			</div>
+
+			<div class="card">
+				<h2>Speak / notify</h2>
+				<div class="row">
+					<input class="field" id="sayText" placeholder="Make the Mac say something…" style="flex:1" />
+					<button class="btn" id="sayBtn">Say</button>
+					<button class="btn" id="notifyBtn">Notify</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================================================== SHELL -->
+		<section class="tab" data-tab="shell">
+			<div class="card">
+				<h2>Shell <span class="spacer"></span><span class="muted mono" id="cwd">~</span></h2>
+				<div id="out" class="mono"><span class="sys">Commands run with /bin/zsh -lc on the Mac. 30 s timeout.</span>
+</div>
+				<div class="row" style="margin-top:8px">
+					<input class="field mono" id="cmd" placeholder="$ command" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1" enterkeyhint="send" />
+					<button class="btn acc" id="runBtn">Run</button>
+				</div>
+				<div class="row" style="margin-top:8px">
+					<button class="btn sm" id="histPrev">↑ prev</button>
+					<button class="btn sm" id="histNext">↓ next</button>
+					<button class="btn sm" id="clearOut">Clear</button>
+					<button class="btn sm" data-cmd="uptime; top -l 1 -n 5 -o cpu | tail -n 6">Top</button>
+					<button class="btn sm" data-cmd="ls -la">ls</button>
+					<button class="btn sm" data-cmd="pmset -g">pmset</button>
+					<button class="btn sm" data-cmd="tailscale status 2>/dev/null || /Applications/Tailscale.app/Contents/MacOS/Tailscale status">Tailscale</button>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================================================== FILES -->
+		<section class="tab" data-tab="files">
+			<div class="card">
+				<h2><span id="crumbs" class="row" style="gap:4px"></span><span class="spacer"></span>
+					<button class="btn sm soft" id="mkdirBtn">New folder</button>
+					<button class="btn sm soft" id="uploadBtn">Upload</button>
+					<input type="file" id="uploadInput" hidden multiple />
+				</h2>
+				<div class="list" id="files"><div class="muted">Loading…</div></div>
+			</div>
+		</section>
+	</main>
+
+	<nav>
+		<button data-go="screen" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20h8" stroke-linecap="round"/></svg>Screen</button>
+		<button data-go="keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" stroke-linecap="round"/></svg>Keys</button>
+		<button data-go="control"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg>Control</button>
+		<button data-go="shell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>Shell</button>
+		<button data-go="files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Files</button>
+	</nav>
+</div>
+
+<div id="toast"></div>
+<div id="sheet" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

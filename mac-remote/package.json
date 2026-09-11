@@ -1,0 +1,16 @@
+{
+  "name": "mac-remote",
+  "version": "1.0.0",
+  "description": "Control your Mac from your phone's browser. Zero dependencies.",
+  "main": "server.js",
+  "bin": { "mac-remote": "server.js" },
+  "scripts": {
+    "start": "node server.js",
+    "token": "node server.js --token",
+    "rotate": "node server.js --rotate",
+    "icons": "node tools/make-icons.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "private": true
+}
