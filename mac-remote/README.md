@@ -52,7 +52,7 @@ Full steps in [relay/README.md](relay/README.md). Short version:
 
 ```bash
 # on the relay host (Fly.io shown)
-cd mac-remote && fly launch --copy-config --no-deploy --name my-mac-relay && fly secrets set RELAY_SECRET="$(openssl rand -base64 24)" && fly deploy
+cd mac-remote && fly launch --copy-config --no-deploy --name my-mac-relay && fly secrets set RELAY_SECRET="$(openssl rand -base64 24)" && fly deploy --ha=false
 # on the Mac
 node server.js --relay wss://my-mac-relay.fly.dev "<RELAY_SECRET>" && launchctl kickstart -k gui/$(id -u)/com.macremote.agent
 # on the phone: open https://my-mac-relay.fly.dev, scan the QR from ~/.mac-remote/server.log, Add to Home Screen
@@ -114,7 +114,8 @@ What this does **not** protect you from: someone who gets the token, or someone 
 }
 ```
 
-`relay` is set by `node server.js --relay wss://host secret` and cleared by `--no-relay`.
+`relay` is set by `node server.js --relay wss://host secret` and cleared by `--no-relay`. Relayed requests are replayed through a
+separate loopback‑only listener, so `host` and `tls` only affect direct (LAN/Tailscale) access and can be combined with the relay freely.
 
 Set `"host": "100.x.y.z"` (your Tailscale IP) to refuse connections from the LAN entirely.
 

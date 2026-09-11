@@ -2,7 +2,7 @@
 #   brew install flyctl && fly auth signup
 #   fly launch --copy-config --no-deploy --name <pick-a-name> --region <nearest, e.g. lax/ord/lhr>
 #   fly secrets set RELAY_SECRET="$(openssl rand -base64 24)"
-#   fly deploy
+#   fly deploy --ha=false      # ONE machine: the Mac can only be attached to one relay process
 app = "mac-remote-relay"
 primary_region = "lax"
 

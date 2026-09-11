@@ -476,7 +476,9 @@ server.listen(cfg.port, cfg.host, () => {
 	printLoginHint(proto, addrs);
 	if (!mac.IS_MAC) console.log('Warning: not running on macOS. Control endpoints will fail; UI and auth still work.');
 	mac.findCliclick().then((cc) => { if (mac.IS_MAC && !cc) console.log('Tip: brew install cliclick   (more reliable mouse control)'); });
-	if (cfg.relay && cfg.relay.url && cfg.relay.secret) relayLoop();
+	if (cfg.relay && cfg.relay.url && cfg.relay.secret) {
+		startLoopbackListener().then(relayLoop, (e) => console.error(`relay: could not open the loopback listener: ${e.message}`));
+	}
 });
 
 // One-tap login: open this URL on the phone and the token in the fragment logs it in, then is scrubbed.
@@ -507,6 +509,18 @@ function relayState() { return cfg.relay ? { url: cfg.relay.url, ...relay } : nu
 const RELAY_WINDOW = 8;
 const RELAY_MAX_MESSAGE = 4 * 1024 * 1024;
 
+// Relayed requests are replayed against a plain-HTTP listener bound to 127.0.0.1 only, so the main
+// listener may use TLS or bind to a single interface (e.g. a Tailscale IP) without affecting the relay.
+let loopbackPort = null;
+function startLoopbackListener() {
+	return new Promise((resolve, reject) => {
+		const l = http.createServer(handler);
+		l.requestTimeout = server.requestTimeout;
+		l.on('error', reject);
+		l.listen(0, '127.0.0.1', () => { loopbackPort = l.address().port; resolve(loopbackPort); });
+	});
+}
+
 function relaySession(conn) {
 	const streams = new Map(); // id -> { req, res, inflight }
 	const send = (h, body) => { if (conn.readyState === 1) conn.send(ws.pack(h, body)); };
@@ -523,9 +537,9 @@ function relaySession(conn) {
 				if (st) drop(h.id);
 				const headers = {};
 				for (const [k, v] of Object.entries(h.headers || {})) if (k !== 'transfer-encoding' && k !== 'connection' && k !== 'host') headers[k] = v;
-				headers.host = `127.0.0.1:${cfg.port}`;
+				headers.host = `127.0.0.1:${loopbackPort}`;
 				const entry = { req: null, res: null, inflight: 0 };
-				entry.req = http.request({ host: '127.0.0.1', port: cfg.port, method: h.method, path: h.url, headers }, (res) => {
+				entry.req = http.request({ host: '127.0.0.1', port: loopbackPort, method: h.method, path: h.url, headers }, (res) => {
 					entry.res = res;
 					send({ id: h.id, t: 'res', status: res.statusCode, headers: res.headers });
 					res.on('data', (chunk) => {

@@ -9,10 +9,13 @@
 // Zero dependencies. Env:
 //   RELAY_SECRET   required; the Mac must present it to register (Authorization: Bearer)
 //   PORT           listen port (default 8080)
-//   TRUST_PROXY    how to learn the phone's IP behind the TLS proxy in front of this relay:
-//                    "1"   (default) last hop of X-Forwarded-For — correct behind Caddy, nginx, Render, Railway
-//                    "fly" use Fly-Client-IP (set by Fly.io and not spoofable there)
-//                    "0"   no proxy in front; use the TCP peer address
+//   TRUST_PROXY    how to learn the phone's IP behind the TLS proxy in front of this relay (only used to key
+//                  the Mac's login lockout, so a wrong value cannot let anyone in):
+//                    "1"      (default) last hop of X-Forwarded-For — right behind one proxy you run (Caddy, nginx)
+//                    "fly"    Fly-Client-IP (Fly.io sets it; clients cannot spoof it)
+//                    "render" True-Client-IP / CF-Connecting-IP, else the FIRST X-Forwarded-For entry (Render, Cloudflare)
+//                    "0"      no proxy in front; the TCP peer address
+//   CLIENT_IP_HEADER  name of a header your proxy sets to the real client IP; overrides TRUST_PROXY when present
 //   MAX_PENDING    max concurrent in-flight requests (default 64)
 //   MAX_BODY_MB    max request or response body streamed per request (default 512)
 //
@@ -54,21 +57,32 @@ function safeEqual(a, b) {
 const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 
 // Hop-by-hop and relay-internal headers never cross the tunnel.
-const STRIP_REQ = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'forwarded', 'fly-client-ip', 'x-relayed', 'expect']);
+const STRIP_REQ = new Set(['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host', 'forwarded', 'fly-client-ip', 'true-client-ip', 'cf-connecting-ip', 'x-relayed', 'expect']);
 const STRIP_RES = new Set(['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'trailer']);
 
+const CLIENT_IP_HEADER = String(process.env.CLIENT_IP_HEADER || '').toLowerCase();
 function clientIp(req) {
-	if (TRUST_PROXY === 'fly' && req.headers['fly-client-ip']) return String(req.headers['fly-client-ip']);
-	if (TRUST_PROXY === '1' || TRUST_PROXY === 'fly') {
-		// The LAST x-forwarded-for entry is the one appended by the proxy directly in front of us;
-		// earlier entries are client-supplied and spoofable.
-		const xff = req.headers['x-forwarded-for'];
-		if (xff) { const parts = String(xff).split(',').map((s) => s.trim()).filter(Boolean); if (parts.length) return parts[parts.length - 1]; }
+	const first = (v) => String(v).split(',')[0].trim();
+	if (CLIENT_IP_HEADER && req.headers[CLIENT_IP_HEADER]) return first(req.headers[CLIENT_IP_HEADER]);
+	const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+	switch (TRUST_PROXY) {
+		case 'fly':
+			if (req.headers['fly-client-ip']) return first(req.headers['fly-client-ip']);
+			return xff.length ? xff[xff.length - 1] : req.socket.remoteAddress;
+		case 'render': case 'cloudflare': case 'first':
+			if (req.headers['true-client-ip']) return first(req.headers['true-client-ip']);
+			if (req.headers['cf-connecting-ip']) return first(req.headers['cf-connecting-ip']);
+			return xff.length ? xff[0] : req.socket.remoteAddress;
+		case '0': case 'false': case 'no':
+			return req.socket.remoteAddress;
+		default:
+			// The LAST x-forwarded-for entry is the one appended by the proxy directly in front of us;
+			// earlier entries are client-supplied and spoofable.
+			return xff.length ? xff[xff.length - 1] : req.socket.remoteAddress;
 	}
-	return req.socket.remoteAddress;
 }
 function clientProto(req) {
-	if (TRUST_PROXY !== '0' && req.headers['x-forwarded-proto']) return String(req.headers['x-forwarded-proto']).split(',')[0].trim();
+	if (!['0', 'false', 'no'].includes(TRUST_PROXY) && req.headers['x-forwarded-proto']) return String(req.headers['x-forwarded-proto']).split(',')[0].trim();
 	return 'http';
 }
 
@@ -197,5 +211,8 @@ function failPending(a, why) {
 
 server.keepAliveTimeout = 65 * 1000;
 server.headersTimeout = 70 * 1000;
-server.listen(PORT, '0.0.0.0', () => log(`Mac Remote relay listening on :${PORT} (TRUST_PROXY=${TRUST_PROXY})`));
+server.listen(PORT, '0.0.0.0', () => {
+	log(`Mac Remote relay listening on :${PORT} (TRUST_PROXY=${TRUST_PROXY})`);
+	log('The Mac connects to exactly one relay process: run a single instance (fly deploy --ha=false; one Render instance).');
+});
 process.on('SIGTERM', () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 2000); });

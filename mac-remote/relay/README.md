@@ -16,18 +16,20 @@ Whoever runs the relay can see the traffic, so run it yourself.
 
 Pick one. Each takes about five minutes.
 
-### Fly.io (always‑on, ~$2–3/month or free under the allowance)
+### Fly.io (always‑on, about $2–4/month for one shared‑cpu machine)
 
 ```bash
 brew install flyctl && fly auth signup
 cd ~/godmode/mac-remote
 fly launch --copy-config --no-deploy --name <pick-a-unique-name> --region lax   # or ord / lhr / syd…
 fly secrets set RELAY_SECRET="$(openssl rand -base64 24)"
-fly deploy
+fly deploy --ha=false
 fly secrets list      # confirm it is set; to read it back: fly ssh console -C 'printenv RELAY_SECRET'
 ```
 
-Your relay URL is `https://<name>.fly.dev`.
+`--ha=false` matters: Fly otherwise creates two machines, and the Mac can only be attached to one of them,
+so half of the phone's requests would land on an empty relay. If you already deployed without it, run
+`fly scale count 1`. Your relay URL is `https://<name>.fly.dev`.
 
 ### Any VPS with Docker (Hetzner, DigitalOcean, Oracle Cloud free ARM VM…)
 
@@ -82,17 +84,21 @@ only to a browser that has never loaded the app before).
   so a stranger who finds your relay URL only sees the login page and gets locked out after 5 wrong tokens.
 * TLS: phone → relay is HTTPS (the platform or Caddy terminates it). Mac → relay is `wss://`. The relay
   process itself sees plaintext; that is why you host it.
-* `TRUST_PROXY` tells the relay how to learn the phone's IP (used only for the Mac's login lockout):
-  `1` (default) takes the last hop of `X-Forwarded-For`, which is right behind Caddy, nginx, Render or Railway;
-  `fly` uses Fly's `Fly-Client-IP` (set automatically by `fly.toml`); `0` uses the TCP peer address, for a relay
-  exposed directly with no proxy in front. A wrong setting cannot let anyone in; it only makes the 5‑try lockout
-  key on the wrong address.
+* `TRUST_PROXY` tells the relay how to learn the phone's IP (used only to key the Mac's login lockout):
+  `1` (default) takes the last hop of `X-Forwarded-For`, which is right behind one proxy you run (Caddy, nginx);
+  `fly` uses `Fly-Client-IP` (set by `fly.toml`); `render` uses `True-Client-IP`/`CF-Connecting-IP` or the first
+  `X-Forwarded-For` entry (set by `render.yaml`; also right behind Cloudflare); `0` uses the TCP peer address for a
+  relay exposed directly. `CLIENT_IP_HEADER=<header>` overrides all of that for other hosts. A wrong setting cannot
+  let anyone in; it only makes the 5‑try lockout key on the wrong address, which lets a stranger lock you out of
+  *new* logins for 10 minutes at a time (existing sessions keep working).
 * Rotate: `fly secrets set RELAY_SECRET=…` (or restart the container with a new value), then re-run
   `--relay` on the Mac.
 
 ## Limits
 
-* One Mac per relay. A second Mac connecting with the same secret replaces the first.
+* One Mac per relay, and one relay process: the Mac's tunnel lives in that process's memory, so never scale the
+  relay to more than one instance (`fly deploy --ha=false`, `numInstances: 1` on Render). A second Mac connecting
+  with the same secret replaces the first.
 * Request and response bodies are streamed in 64 KB chunks with flow control, so memory stays flat on both
   sides no matter how large the file is; a single body is capped at `MAX_BODY_MB` (512 MB) and that one
   request gets a 413/502 without affecting anything else.

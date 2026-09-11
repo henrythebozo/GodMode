@@ -8,9 +8,10 @@ services:
     rootDir: mac-remote
     dockerfilePath: ./Dockerfile
     plan: starter
+    numInstances: 1
     healthCheckPath: /relay/health
     envVars:
       - key: RELAY_SECRET
         generateValue: true
       - key: TRUST_PROXY
-        value: "1"
+        value: "render"
