@@ -34,7 +34,7 @@ rendered screenshot) · **[~]** implemented, only partially verified · **[ ]** 
 - [x] ENet host/join/dedicated server, lobby, teams, ready check, spawning, match-state sync, latency display — verified with headless client vs dedicated server
 - [~] Client prediction & reconciliation, remote interpolation — run under simulated 120 ms latency / 10% loss / 40 ms jitter without errors while receiving replicated match state; feel not yet tuned on real networks
 - [x] Server-side validation of inputs/purchases/objectives
-- [~] Reconnect (token + 60 s grace) — implemented, not exercised end to end
+- [x] Reconnect (persisted token + 60 s grace) — verified: a restarted client reattached to its player (`[net] Operator reconnected: peer ... took over player ...`)
 - [x] LAN server browser foundation (UDP discovery)
 - [x] Network simulation (latency/loss/jitter)
 - [ ] Anti-cheat (out of scope; architecture documented)
@@ -53,3 +53,5 @@ rendered screenshot) · **[~]** implemented, only partially verified · **[ ]** 
 - Dedicated server + headless client: client connects, receives snapshots, auto-readies, match goes live, replicated players/kills visible on the client
 - Rendered under Xvfb (OpenGL3/llvmpipe): in-game HUD + view model, spectator view with kill feed, main menu, lobby, buy menu, asset galleries (docs/images)
 - Client vs dedicated server with `--net-sim 120,0.1,40`: no script errors, state and entities replicated
+- Two 5-minute bots-only matches (`--spectate --round-time 115`, difficulty 1 and 2): 5 and 7 rounds decided by elimination, time and a plant + detonation, money ranging $200–$10550, no script errors
+- Reconnect: client restarted with the same token within the grace period took over its player

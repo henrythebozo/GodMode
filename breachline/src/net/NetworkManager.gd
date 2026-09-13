@@ -56,7 +56,7 @@ var unreliable_seq := 0
 
 
 func _ready() -> void:
-	session_token = str(randi()) + str(Time.get_ticks_usec())
+	session_token = _load_or_create_token()
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
@@ -66,6 +66,23 @@ func _ready() -> void:
 	add_child(browser)
 	_load_sim_settings()
 	Events.settings_changed.connect(_load_sim_settings)
+
+
+## The reconnect token survives process restarts (user://session_token) so a crashed client can
+## rejoin within the grace period and take over its player. Override with BREACHLINE_TOKEN for tests.
+func _load_or_create_token() -> String:
+	if OS.has_environment("BREACHLINE_TOKEN"):
+		return OS.get_environment("BREACHLINE_TOKEN")
+	var f := FileAccess.open("user://session_token", FileAccess.READ)
+	if f:
+		var t := f.get_as_text().strip_edges()
+		if t.length() >= 8:
+			return t
+	var token := "%d-%d-%d" % [randi(), randi(), Time.get_ticks_usec()]
+	var w := FileAccess.open("user://session_token", FileAccess.WRITE)
+	if w:
+		w.store_string(token)
+	return token
 
 
 func _load_sim_settings() -> void:
@@ -272,6 +289,7 @@ func _server_reattach(old_id: int, new_id: int) -> void:
 		lagcomp.forget(old_id)
 		if input_queue.has(old_id):
 			input_queue.erase(old_id)
+	print("[net] %s reconnected: peer %d took over player %d" % [info.name, new_id, old_id])
 	Events.notification.emit("%s reconnected" % info.name, 4.0)
 	_server_send_welcome(new_id)
 	for pid in remote_human_peers():

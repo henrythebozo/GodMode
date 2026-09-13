@@ -16,7 +16,7 @@ only writer of health, money, ammo, position, round state and objective state. C
 | Lag compensation | Prototype | Analytic hurtbox rewind up to 20 ticks (~310 ms) using the client's reported view tick. Wall occlusion is checked against *current* world geometry (static, so equivalent). |
 | Server-side validation | Basic | `NetValidation`: NaN/range checks on inputs, tick monotonicity, command rate cap, name/chat sanitising, weapon-id validation; buy rules, buy zone, money, alive-state and objective conditions are all evaluated on the server. |
 | Anti-cheat | **Not implemented** | Only the sanity checks above. The design keeps every gameplay decision on the server so a dedicated anti-cheat (signature/behavioural) can be integrated at the `NetworkManager.rpc_*` boundary and in `_server_receive_input`. No claim of cheat resistance is made. |
-| Reconnect | Prototype | Client keeps a session token; the server keeps a disconnected player's node for 60 s and reattaches the new peer id. Automatic retry with back-off (5 attempts). |
+| Reconnect | Production-ready (LAN-tested) | Client persists a session token (`user://session_token`); the server keeps a disconnected player's node for 60 s and reattaches the new peer id. Automatic retry with back-off (5 attempts). Verified with a restarted headless client. |
 | Latency display | Production-ready | Ping RPC every second; shown in the HUD and scoreboard. |
 | Network simulation | Production-ready (testing tool) | Settings → Network or console `net_sim`: inbound latency, jitter and loss on both sides. |
 | Server browser | Foundation | LAN discovery over UDP broadcast (`ServerBrowser`), plus direct IP connect. No internet master server. |
