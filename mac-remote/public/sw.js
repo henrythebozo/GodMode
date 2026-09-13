@@ -1,7 +1,7 @@
 // Mac Remote service worker: makes the app installable and keeps the shell available while the Mac or the
 // relay is unreachable. API calls always go to the network; shell assets are network-first with a cached
 // fallback on network failure, on a relay 5xx, or when the network takes longer than a few seconds.
-const VERSION = 'mr-v5';
+const VERSION = 'mr-v6';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 const NETWORK_WAIT_MS = 4000;
 

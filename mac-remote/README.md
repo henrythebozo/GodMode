@@ -8,7 +8,7 @@ One Node.js file on the Mac, zero npm dependencies, a phone-sized web app you ca
 | **Screen** | Live screenshots (0.5–2 s), tap to click, double‑tap, hold for right‑click, swipe to scroll, drag mode, fullscreen |
 | **Keys** | Type text, Return/Esc/Tab/arrows/F‑keys, sticky ⌘⇧⌃⌥ modifiers, common shortcuts (⌘Space, ⌘Tab, ⌘Q…) |
 | **Control** | CPU/RAM/disk, volume + mute, play/pause/next (Spotify, Music, TV), lock, sleep, wake display, restart, shut down, running apps (focus/quit), open app or URL, clipboard both ways, make the Mac speak or show a notification |
-| **Shell** | Run any command in `zsh -lc` with history |
+| **Shell** | Run any command in `zsh -lc` with history. A **Claude tools** card installs Headroom and MemPalace on the Mac in one tap, shows install status, and opens a Terminal running Claude Code (plain or through Headroom) that you drive from the Screen tab |
 | **Files** | Browse your home folder, open/download/delete files, upload from the phone, new folder |
 
 ## Honest framing before you install this

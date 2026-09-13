@@ -236,6 +236,21 @@
 					<button class="btn sm" data-cmd="tailscale status 2>/dev/null || /Applications/Tailscale.app/Contents/MacOS/Tailscale status">Tailscale</button>
 				</div>
 			</div>
+
+			<div class="card">
+				<h2>Claude tools</h2>
+				<div class="muted" style="margin-bottom:8px">One-tap setup for the Claude Code extras in this repo. Install runs in the background; Log shows progress. The launch buttons open a Terminal window on the Mac, which you then drive from the Screen tab.</div>
+				<div class="row">
+					<button class="btn sm" data-cmd='export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; for t in claude headroom mempalace mempalace-mcp; do printf "%-14s %s\n" "$t" "$(command -v "$t" || echo missing)"; done'>Status</button>
+					<button class="btn sm" data-cmd='d=$(ls -d ~/godmode ~/GodMode 2>/dev/null | head -1); [ -n "$d" ] || { echo "Repo not found. Clone it to ~/godmode first."; exit 1; }; mkdir -p ~/.mac-remote; nohup bash "$d/setup-claude-tools.sh" > ~/.mac-remote/claude-tools.log 2>&amp;1 &amp; echo "Installing in the background. Tap Log to watch progress."'>Install</button>
+					<button class="btn sm" data-cmd='tail -n 40 ~/.mac-remote/claude-tools.log 2>/dev/null || echo "No install log yet. Tap Install first."'>Log</button>
+					<button class="btn sm" data-cmd='export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; mempalace status 2>&amp;1 | head -n 30'>MemPalace</button>
+				</div>
+				<div class="row" style="margin-top:8px">
+					<button class="btn sm acc" data-cmd='d=$(ls -d ~/godmode ~/GodMode 2>/dev/null | head -1); export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; h=$(command -v headroom) || { echo "Headroom is not installed. Tap Install first."; exit 1; }; osascript -e "tell application \"Terminal\" to activate" -e "tell application \"Terminal\" to do script \"cd ${d:-$HOME} &amp;&amp; $h wrap claude\"" >/dev/null &amp;&amp; echo "Opened Terminal on the Mac running Claude through Headroom. Switch to the Screen tab."'>Claude via Headroom</button>
+					<button class="btn sm" data-cmd='d=$(ls -d ~/godmode ~/GodMode 2>/dev/null | head -1); export PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; c=$(command -v claude) || { echo "Claude Code is not installed on the Mac."; exit 1; }; osascript -e "tell application \"Terminal\" to activate" -e "tell application \"Terminal\" to do script \"cd ${d:-$HOME} &amp;&amp; $c\"" >/dev/null &amp;&amp; echo "Opened Terminal on the Mac running Claude Code. Switch to the Screen tab."'>Claude</button>
+				</div>
+			</div>
 		</section>
 
 		<!-- ================================================== FILES -->
