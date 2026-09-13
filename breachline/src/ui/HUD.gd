@@ -409,6 +409,9 @@ func _process(delta: float) -> void:
 		if notify_t <= 0.0:
 			notify_lbl.text = ""
 	crosshair.visible = lp != null and lp.alive and not Net.spectating and not (Net.local_controller and Net.local_controller.ui_blocking)
+	var show_player_hud := lp != null and lp.alive and not Net.spectating
+	health_lbl.get_parent().visible = show_player_hud
+	ammo_lbl.get_parent().visible = show_player_hud
 	queue_redraw()
 
 

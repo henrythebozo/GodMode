@@ -7,7 +7,8 @@ are original and produced by the scripts in this repository.
 
 | | |
 |---|---|
-| ![in game](docs/images/screenshot_ingame.png) | ![buy menu](docs/images/screenshot_buy.png) |
+| ![in game](docs/images/screenshot_ingame.png) | ![spectator](docs/images/screenshot_spectator.png) |
+| ![buy menu](docs/images/screenshot_buy.png) | ![lobby](docs/images/screenshot_lobby.png) |
 | ![weapons](docs/images/gallery_weapons.png) | ![characters](docs/images/gallery_characters.png) |
 
 * `breachline/` – the Godot project (open it in Godot 4.4, or run headless, see below)

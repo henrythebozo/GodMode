@@ -12,6 +12,7 @@ extends Node
 ##   --bot-difficulty N  0..3
 ##   --open lobby|buy    (testing) open the offline lobby, or the buy menu during a smoke test
 ##   --spectate          (testing) host joins spectators so 5v5 bots play
+##   --net-sim L,P,J     (testing) simulate inbound latency L ms, loss P (0-1), jitter J ms
 ##   --screenshot-delay S (testing) take --screenshot after S seconds in any mode, then quit
 
 const DEFAULT_MAP := "foundry"
@@ -58,6 +59,9 @@ func _ready() -> void:
 		Match.rules.round_end_time = 3.0
 		Match.rules.halftime_time = 3.0
 	spectate_host = opts.has("spectate")
+	if opts.has("net-sim"):
+		var parts := str(opts["net-sim"]).split(",")
+		Net.set_network_sim(int(parts[0]), float(parts[1]) if parts.size() > 1 else 0.0, int(parts[2]) if parts.size() > 2 else 0)
 	if opts.has("bot-difficulty"):
 		Settings.data["gameplay"]["bot_difficulty"] = int(opts["bot-difficulty"])
 	screenshot_path = str(opts.get("screenshot", ""))

@@ -26,13 +26,13 @@ rendered screenshot) · **[~]** implemented, only partially verified · **[ ]** 
 - [x] Bomb: plant/defuse with progress, timer, kit, explosion damage, beeping
 - [x] Match flow: warmup, freeze, buy phase, live, planted, round end, halftime swap, match end, overtime blocks, surrender, rematch, return to lobby — unit tested
 - [x] Economy: start money, purchases, refunds, buy-zone restriction, win/loss rewards, loss streaks, plant/defuse/kill rewards, team-kill penalty — unit tested
-- [x] Spectator: follow teammates / free camera
+- [x] Spectator: follow teammates / free camera — screenshot-verified following a bot (docs/images/screenshot_spectator.png)
 - [x] Bots: navmesh navigation, FSM (BUY, ROAM, PUSH, DEFEND, INVESTIGATE, ENGAGE, SEEK_COVER, PLANT, RETAKE, DEFUSE, FETCH_BOMB), buying, grenades, 4 difficulty profiles — smoke match shows fights, kills, purchases
-- [~] Bots plant/defuse — logic implemented; observed frequency depends on round length (see long-run log in PROGRESS notes)
+- [x] Bots plant — observed in a dedicated-server run (`[match] charge planted at B by [BOT] Cinder`); defuse logic shares the same objective path (unit tested through `server_defuse_bomb`)
 
 ## Multiplayer
 - [x] ENet host/join/dedicated server, lobby, teams, ready check, spawning, match-state sync, latency display — verified with headless client vs dedicated server
-- [~] Client prediction & reconciliation, remote interpolation — implemented, runs without errors; needs real-network tuning
+- [~] Client prediction & reconciliation, remote interpolation — run under simulated 120 ms latency / 10% loss / 40 ms jitter without errors while receiving replicated match state; feel not yet tuned on real networks
 - [x] Server-side validation of inputs/purchases/objectives
 - [~] Reconnect (token + 60 s grace) — implemented, not exercised end to end
 - [x] LAN server browser foundation (UDP discovery)
@@ -51,4 +51,5 @@ rendered screenshot) · **[~]** implemented, only partially verified · **[ ]** 
 - `tests/run_tests.gd`: 295 checks passing (economy 30, damage 29, weapon config 104, net protocol 31, match state 101)
 - Headless smoke (`--smoke-test 70 --fast`): map loads, navmesh 1002 polygons, spawn validation OK, bots buy/fight/kill, rounds end and advance
 - Dedicated server + headless client: client connects, receives snapshots, auto-readies, match goes live, replicated players/kills visible on the client
-- Rendered under Xvfb (OpenGL3/llvmpipe): in-game HUD + view model, main menu, lobby, buy menu, asset galleries (docs/images)
+- Rendered under Xvfb (OpenGL3/llvmpipe): in-game HUD + view model, spectator view with kill feed, main menu, lobby, buy menu, asset galleries (docs/images)
+- Client vs dedicated server with `--net-sim 120,0.1,40`: no script errors, state and entities replicated

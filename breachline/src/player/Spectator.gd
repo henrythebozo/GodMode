@@ -22,9 +22,8 @@ func _ready() -> void:
 
 func _on_local_died() -> void:
 	var lp := Net.local_player()
-	if lp == null:
-		return
-	get_tree().create_timer(2.0).timeout.connect(func(): if lp and not lp.alive: start())
+	if lp:
+		lp.death_time = Time.get_ticks_msec() / 1000.0
 
 
 func start() -> void:
@@ -95,7 +94,16 @@ func _input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	if not active or cam == null:
+	if cam == null:
+		return
+	var lp := Net.local_player()
+	if lp and Match.state != Match.State.LOBBY:
+		var should := not lp.alive and (lp.team == Teams.SPECTATOR or Time.get_ticks_msec() / 1000.0 - lp.death_time > 2.0 or lp.death_time == 0.0)
+		if should and not active:
+			start()
+		elif lp.alive and active:
+			stop()
+	if not active:
 		return
 	var target: Player = Net.players.get(target_id)
 	if not free_cam and (target == null or not target.alive):
