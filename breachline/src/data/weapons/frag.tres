@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.6
+category = "grenade"
+damage = 98.0
+display_name = "Frag Grenade"
+effect_power = 98.0
+effect_radius = 8.0
+ejects_shells = false
+equip_time = 0.7
+fire_mode = 6
+fuse_time = 1.8
+id = "frag"
+kill_reward = 300
+max_carry = 1
+model = "res://assets/models/weapons/frag.glb"
+move_speed = 6.0
+price = 300
+slot = "grenade"
+sound_class = "grenade"
+throw_speed = 24.0
+tracer = false

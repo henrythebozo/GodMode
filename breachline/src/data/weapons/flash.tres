@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+category = "grenade"
+display_name = "Flash Grenade"
+effect_duration = 4.5
+effect_power = 1.0
+effect_radius = 18.0
+ejects_shells = false
+equip_time = 0.7
+fire_mode = 6
+fuse_time = 1.6
+id = "flash"
+kill_reward = 300
+max_carry = 2
+model = "res://assets/models/weapons/flash.glb"
+move_speed = 6.0
+price = 200
+slot = "grenade"
+sound_class = "grenade"
+throw_speed = 24.0
+tracer = false

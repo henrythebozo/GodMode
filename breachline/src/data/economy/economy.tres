@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="EconomyConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/match/EconomyConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+start_money = 800
+max_money = 16000
+overtime_start_money = 10000
+win_elimination = 3250
+win_bomb_explode = 3500
+win_bomb_defuse = 3500
+win_time_expired = 3250
+loss_bonus = PackedInt32Array(1400, 1900, 2400, 2900, 3400)
+plant_loss_bonus = 800
+plant_reward = 300
+defuse_reward = 300
+attacker_time_loss_survivor_penalty = true
+default_kill_reward = 300
+team_kill_penalty = -300
+suicide_penalty = 0
+loss_streak_decay_on_win = 1
+armor_price = 650
+helmet_price = 350
+helmet_upgrade_price = 350
+defuse_kit_price = 400

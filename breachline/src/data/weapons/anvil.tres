@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.8
+category = "lmg"
+damage = 35.0
+display_name = "Anvil LMG"
+equip_time = 1.4
+fire_mode = 0
+fire_rate_rpm = 750.0
+id = "anvil"
+inaccuracy_crouch = 0.6
+inaccuracy_fire = 0.45
+inaccuracy_move = 5.0
+inaccuracy_stand = 1.2
+kill_reward = 300
+mag_size = 100
+model = "res://assets/models/weapons/anvil.glb"
+move_speed = 4.8
+price = 5200
+range_modifier = 0.9
+recoil_magnitude = 1.9
+recoil_recovery_time = 0.5
+recoil_seed = 61
+reload_time = 5.5
+reload_time_empty = 5.5
+reserve_ammo = 200
+slot = "primary"
+sound_class = "lmg"
+spread_base = 0.4

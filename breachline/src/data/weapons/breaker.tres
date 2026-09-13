@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.5
+category = "shotgun"
+damage = 26.0
+display_name = "Breaker Pump"
+equip_time = 1.0
+fire_mode = 4
+fire_rate_rpm = 70.0
+head_mult = 2.5
+id = "breaker"
+inaccuracy_crouch = 0.3
+inaccuracy_fire = 1.0
+inaccuracy_move = 1.5
+inaccuracy_stand = 0.5
+kill_reward = 900
+mag_size = 7
+max_range = 60.0
+model = "res://assets/models/weapons/breaker.glb"
+move_speed = 5.6
+pellets = 9
+price = 1100
+range_modifier = 0.6
+recoil_magnitude = 4.0
+recoil_recovery_time = 0.5
+recoil_seed = 31
+reload_time = 0.55
+reload_time_empty = 0.55
+reserve_ammo = 32
+slot = "primary"
+sound_class = "shotgun"
+spread_base = 3.5

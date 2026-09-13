@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.6
+category = "smg"
+damage = 25.0
+display_name = "Reed PDW"
+equip_time = 0.85
+fire_mode = 0
+fire_rate_rpm = 950.0
+id = "reed"
+inaccuracy_crouch = 0.8
+inaccuracy_fire = 0.4
+inaccuracy_move = 2.0
+inaccuracy_stand = 1.1
+kill_reward = 600
+mag_size = 25
+model = "res://assets/models/weapons/reed.glb"
+move_speed = 6.0
+price = 1050
+range_modifier = 0.8
+recoil_magnitude = 0.9
+recoil_recovery_time = 0.3
+recoil_seed = 22
+reload_time = 2.1
+reload_time_empty = 2.5
+reserve_ammo = 100
+slot = "primary"
+sound_class = "smg"
+spread_base = 0.45

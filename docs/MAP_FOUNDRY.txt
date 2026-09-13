@@ -1,0 +1,67 @@
+Original bomb-defusal map "Foundry" for Breachline.
+
+The layout is authored as a 60 x 50 grid of 2 m cells (120 m x 100 m). `design()` carves rooms,
+corridors, props, catwalks and stairs into the grid; the grid is printed as ASCII for review,
+then turned into merged Blender geometry (chunked per 20 m tile for culling) and a JSON layout
+file consumed by Godot (spawns, bomb sites, buy zones, callouts, ladders, cover hints, zones).
+
+Coordinates: grid column -> +X (east), grid row -> -Y (row 0 is the north edge), Z up.
+Godot import converts to Y-up automatically; the layout JSON is written in Godot space
+(x, y_up, z) with z = -blender_y so the loader needs no conversion.
+
+Legend:
+  #  wall (4 m)        .  floor            A/D attacker/defender spawn floor
+  a/b bomb site floor  =  catwalk (3 m)    ^v<> stairs rising 1 m per cell in that direction
+  c crate  C tall crate  x barrier  s sandbag  B barrel  g generator  p pillar  v vent  k console
+  F furnace  O silo  K conveyor  L ladder  h low wall  w window wall  l lamp post  P pipe
+
+############################################################
+#######################DDDDDDDDDDDDDD#######################
+#######################DDDDDDDDDDDDDD#######################
+#######################DDDDDDDDDDDDDD#######################
+#######################DDDDDDDDDDDDDD#######################
+#######################DDDDDDDDDDDDDD#######################
+############################....############################
+####....................................................####
+####........p.......p.........p.........p.......p.......####
+####....................................................####
+######aaa###########..################..##########bbb#######
+###aaaaaaaaaaaaaa###..################..###bbbbbbbbbbbbbb###
+###aFFFaaaaaaaBBa##>>>================<<<##bBbbbbbbbOObbb###
+###aFFFaaaaaaaaaa##>>>================<<<##bbbbbbbbbOObbb###
+###aaaaaaaCcaaaaa#####..L..........L..#####bbcbbbbbbbbbbb###
+###aaaaaaaaaaaaaah####.B............B.#####bbCbbbbbbbbbgb###
+###aaaaaaaaaaaaaa..........................bbbbbbbbbbbbbb###
+###aaaaaaaaaacaaa.......................k..wbbbbbcbbbbbbb###
+###aaaaaaxxaaaaaa.........cC....cc.........wbbbbbbbbbbbbb###
+###aaasaaaaaaaaaah####.....................bbbbxxbbbbbsbb###
+###agaaaaaaaaaaaa#####......................bbbbbbvbbbbbb###
+###aaaaaaaaaaaaaa#####................#####bbbbbbbbbbbbbb###
+#..aaaa###############.......g........###############bbbb..#
+#....#################................#################....#
+#....#################..xx........xx..#################....#
+#....#################................#################....#
+#.......P...P...P............pp...................c.....C..#
+#..................h........................KKK............#
+#....#################................#################....#
+#....#################......s..s......#################....#
+#.x..#################................#################..x.#
+#....######################......######################....#
+#....######################......######################....#
+#....######################.x..x.######################....#
+#..B.######################......######################.c..#
+#....######################......######################....#
+#....######################......######################....#
+#....######################..cc..######################....#
+#.c..######################......######################....#
+#....######################h....h######################....#
+#....######################......######################....#
+#........##################......##################........#
+#........AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA........#
+#........AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA........#
+########AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA########
+########AAAAAAcAAAAAcAAAAAAAAAAAAAAAAAcAAAAAcAAAAAAA########
+########AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA########
+########AAgAAAAAAAAAAAAAlAAAAAAAAAAlAAAAAAAAAAAAAAAA########
+########AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA########
+############################################################

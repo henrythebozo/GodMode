@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+category = "objective"
+display_name = "Demolition Charge"
+ejects_shells = false
+equip_time = 0.8
+fire_mode = 7
+id = "bomb"
+kill_reward = 0
+model = "res://assets/models/weapons/bomb.glb"
+move_speed = 6.0
+price = 0
+slot = "bomb"
+sound_class = "none"
+team = "attackers"
+tracer = false

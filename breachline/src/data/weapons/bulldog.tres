@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.65
+category = "smg"
+damage = 30.0
+display_name = "Bulldog 9"
+equip_time = 0.95
+fire_mode = 0
+fire_rate_rpm = 750.0
+id = "bulldog"
+inaccuracy_crouch = 0.6
+inaccuracy_fire = 0.5
+inaccuracy_move = 2.4
+inaccuracy_stand = 0.9
+kill_reward = 600
+mag_size = 30
+model = "res://assets/models/weapons/bulldog.glb"
+move_speed = 5.7
+price = 1700
+range_modifier = 0.85
+recoil_magnitude = 1.15
+recoil_recovery_time = 0.38
+recoil_seed = 23
+reload_time = 2.6
+reload_time_empty = 3.0
+reserve_ammo = 120
+slot = "primary"
+sound_class = "smg"
+spread_base = 0.35

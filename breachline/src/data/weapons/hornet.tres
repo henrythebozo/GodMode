@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.5
+category = "pistol"
+damage = 22.0
+display_name = "Hornet Auto"
+equip_time = 0.6
+fire_mode = 0
+fire_rate_rpm = 800.0
+id = "hornet"
+inaccuracy_crouch = 1.0
+inaccuracy_fire = 0.7
+inaccuracy_move = 3.2
+inaccuracy_stand = 1.4
+kill_reward = 300
+mag_size = 20
+model = "res://assets/models/weapons/hornet.glb"
+move_speed = 5.8
+price = 600
+range_modifier = 0.8
+recoil_magnitude = 1.1
+recoil_recovery_time = 0.35
+recoil_seed = 13
+reload_time = 2.5
+reload_time_empty = 2.9
+reserve_ammo = 60
+slot = "secondary"
+sound_class = "pistol"
+spread_base = 0.5

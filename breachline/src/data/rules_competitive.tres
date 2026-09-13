@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MatchRules" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/match/MatchRules.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+max_rounds = 24
+rounds_to_win = 13
+overtime_enabled = true
+overtime_rounds = 6
+round_time = 115.0
+freeze_time = 15.0
+buy_time = 20.0
+bomb_timer = 40.0
+plant_time = 3.2
+defuse_time = 10.0
+kit_defuse_time = 5.0
+round_end_time = 7.0
+halftime_time = 15.0
+warmup_time = 30.0
+max_players = 10
+team_size = 5
+friendly_fire = false
+surrender_threshold = 0.8
+surrender_min_round = 3
+respawn_in_warmup = true
+fall_damage_min_speed = 9.0
+fall_damage_per_speed = 6.0
+max_health = 100
+max_armor = 100

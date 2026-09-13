@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.72
+category = "rifle"
+damage = 33.0
+display_name = "Lynx Carbine"
+equip_time = 1.0
+fire_mode = 0
+fire_rate_rpm = 660.0
+id = "lynx"
+inaccuracy_crouch = 0.3
+inaccuracy_fire = 0.5
+inaccuracy_move = 3.4
+inaccuracy_stand = 0.5
+kill_reward = 300
+mag_size = 30
+model = "res://assets/models/weapons/lynx.glb"
+move_speed = 5.4
+price = 3100
+range_modifier = 0.92
+recoil_magnitude = 1.5
+recoil_recovery_time = 0.42
+recoil_seed = 42
+reload_time = 2.3
+reload_time_empty = 2.8
+reserve_ammo = 90
+slot = "primary"
+sound_class = "rifle"
+spread_base = 0.2
+team = "defenders"
+zoom_levels = PackedFloat32Array(1.6)

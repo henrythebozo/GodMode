@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.9
+category = "grenade"
+damage = 10.0
+display_name = "Thermite Charge"
+effect_duration = 7.0
+effect_power = 10.0
+effect_radius = 4.5
+ejects_shells = false
+equip_time = 0.7
+fire_mode = 6
+fuse_time = 1.5
+id = "incendiary"
+kill_reward = 300
+max_carry = 1
+model = "res://assets/models/weapons/incendiary.glb"
+move_speed = 6.0
+price = 500
+slot = "grenade"
+sound_class = "grenade"
+throw_speed = 22.0
+tracer = false

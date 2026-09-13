@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.98
+category = "sniper"
+damage = 115.0
+display_name = "Longbow BA"
+equip_time = 1.25
+fire_mode = 3
+fire_rate_rpm = 41.0
+head_mult = 4.0
+id = "longbow"
+inaccuracy_crouch = 6.0
+inaccuracy_fire = 4.0
+inaccuracy_move = 20.0
+inaccuracy_stand = 8.0
+kill_reward = 100
+leg_mult = 0.75
+mag_size = 10
+model = "res://assets/models/weapons/longbow.glb"
+move_speed = 4.9
+price = 4750
+range_modifier = 0.99
+recoil_magnitude = 5.0
+recoil_recovery_time = 0.6
+recoil_seed = 51
+reload_time = 3.6
+reload_time_empty = 3.6
+reserve_ammo = 30
+slot = "primary"
+sound_class = "sniper"
+spread_base = 0.1
+zoom_levels = PackedFloat32Array(4.0, 8.0)

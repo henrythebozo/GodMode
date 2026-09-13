@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.9
+category = "pistol"
+damage = 70.0
+display_name = "Warden .357"
+equip_time = 0.75
+fire_mode = 1
+fire_rate_rpm = 150.0
+head_mult = 3.5
+id = "warden"
+inaccuracy_crouch = 0.3
+inaccuracy_fire = 2.0
+inaccuracy_move = 4.0
+inaccuracy_stand = 0.5
+kill_reward = 300
+mag_size = 6
+model = "res://assets/models/weapons/warden.glb"
+move_speed = 5.7
+price = 750
+range_modifier = 0.92
+recoil_magnitude = 3.0
+recoil_recovery_time = 0.5
+recoil_seed = 14
+reload_time = 3.0
+reload_time_empty = 3.0
+reserve_ammo = 18
+slot = "secondary"
+sound_class = "pistol"
+spread_base = 0.2

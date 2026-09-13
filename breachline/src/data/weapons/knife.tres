@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+backstab_mult = 3.0
+category = "melee"
+display_name = "Combat Knife"
+ejects_shells = false
+equip_time = 0.5
+fire_mode = 5
+fire_rate_rpm = 150.0
+id = "knife"
+kill_reward = 1500
+mag_size = 1
+melee_damage_heavy = 65.0
+melee_damage_light = 40.0
+melee_range = 1.7
+model = "res://assets/models/weapons/knife.glb"
+move_speed = 6.2
+price = 0
+reserve_ammo = 0
+slot = "melee"
+sound_class = "knife"
+tracer = false

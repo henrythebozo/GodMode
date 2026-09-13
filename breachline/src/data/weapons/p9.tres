@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.55
+category = "pistol"
+damage = 32.0
+display_name = "P9 Sidearm"
+equip_time = 0.6
+fire_mode = 1
+fire_rate_rpm = 400.0
+id = "p9"
+inaccuracy_crouch = 0.6
+inaccuracy_fire = 0.9
+inaccuracy_move = 2.6
+inaccuracy_stand = 0.9
+kill_reward = 300
+mag_size = 12
+model = "res://assets/models/weapons/p9.glb"
+move_speed = 5.8
+price = 0
+range_modifier = 0.86
+recoil_magnitude = 1.2
+recoil_recovery_time = 0.3
+recoil_seed = 11
+reload_time = 2.2
+reload_time_empty = 2.6
+reserve_ammo = 36
+slot = "secondary"
+sound_class = "pistol"
+spread_base = 0.35

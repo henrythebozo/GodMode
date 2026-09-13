@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+category = "objective"
+display_name = "Defusal Kit"
+ejects_shells = false
+equip_time = 0.1
+fire_mode = 7
+id = "defuse_kit"
+kill_reward = 0
+model = "res://assets/models/weapons/defuse_kit.glb"
+move_speed = 6.0
+price = 400
+slot = "kit"
+sound_class = "none"
+team = "defenders"
+tracer = false

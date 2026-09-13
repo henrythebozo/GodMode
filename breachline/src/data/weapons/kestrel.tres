@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="WeaponConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/weapons/WeaponConfig.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+armor_penetration = 0.6
+category = "pistol"
+damage = 38.0
+display_name = "Kestrel .45"
+equip_time = 0.6
+fire_mode = 1
+fire_rate_rpm = 340.0
+id = "kestrel"
+inaccuracy_crouch = 0.5
+inaccuracy_fire = 1.1
+inaccuracy_move = 2.8
+inaccuracy_stand = 0.8
+kill_reward = 300
+mag_size = 8
+model = "res://assets/models/weapons/kestrel.glb"
+move_speed = 5.8
+price = 500
+range_modifier = 0.84
+recoil_magnitude = 1.5
+recoil_recovery_time = 0.32
+recoil_seed = 12
+reload_time = 2.3
+reload_time_empty = 2.7
+reserve_ammo = 32
+slot = "secondary"
+sound_class = "pistol"
+spread_base = 0.3
