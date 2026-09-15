@@ -132,6 +132,50 @@
 	tr.hl td { color: var(--vio-lift); }
 	.note { font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 8px; }
 
+	/* tabs */
+	nav.tabs {
+		display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--line); flex: none;
+		overflow-x: auto; scrollbar-width: none;
+	}
+	nav.tabs::-webkit-scrollbar { display: none; }
+	nav.tabs button {
+		background: none; border: none; color: var(--dim); padding: 8px 12px 10px; cursor: pointer;
+		border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 600; font-size: 14px; white-space: nowrap;
+	}
+	nav.tabs button:hover { color: var(--text); }
+	nav.tabs button.on { color: var(--vio-lift); border-bottom-color: var(--vio); }
+	.pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+	.pane[hidden] { display: none !important; }
+	.scroll { flex: 1; overflow-y: auto; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
+	.wrap { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+	section.box { background: var(--surface); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+	section.box h2 { font-size: 17px; letter-spacing: -0.2px; }
+	section.box h2 small { color: var(--dim); font-weight: 500; font-size: 12.5px; margin-left: 8px; }
+	.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+	.seg button {
+		background: var(--surface-2); border: none; border-radius: 99px; padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--text);
+	}
+	.seg button.on { background: var(--vio-soft); color: var(--vio-lift); }
+	.btn {
+		background: var(--vio); color: #fff; border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; cursor: pointer; font-size: 13.5px;
+	}
+	.btn.ghost { background: var(--surface-2); color: var(--text); }
+	.btn:disabled { opacity: 0.5; cursor: default; }
+	.knob { display: grid; grid-template-columns: 150px 1fr 60px; gap: 10px; align-items: center; font-size: 13.5px; }
+	.knob .d { color: var(--dim); font-size: 12px; }
+	.knob output { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+	.knob input[type=range] { width: 100%; accent-color: var(--vio); }
+	@media (max-width: 560px) { .knob { grid-template-columns: 1fr 60px; } .knob input[type=range] { grid-column: 1 / -1; } }
+	.delta { font-size: 11.5px; margin-left: 4px; }
+	.delta.good { color: var(--ok); } .delta.bad { color: var(--err); } .delta.flat { color: var(--dim); }
+	.two.wide { grid-template-columns: 1fr 1fr; }
+	@media (max-width: 720px) { .two.wide { grid-template-columns: 1fr; } }
+	ul.plain { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+	ul.plain b { font-weight: 600; }
+	.tag { display: inline-block; font-size: 10.5px; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--dim); margin-left: 6px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.4px; }
+	.tag.big { color: var(--ok); } .tag.mid { color: var(--amber); }
+	pre { background: #0d0d0f; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; overflow-x: auto; }
+
 	/* composer */
 	form#composer {
 		flex: none;
@@ -173,6 +217,13 @@
 	<span class="badge" id="status">loading model…</span>
 </header>
 
+<nav class="tabs" role="tablist">
+	<button class="on" data-tab="chat" role="tab">Chat</button>
+	<button data-tab="tables" role="tab">Tables</button>
+	<button data-tab="better" role="tab">Make the bot better</button>
+</nav>
+
+<div class="pane" id="pane-chat">
 <main id="log" aria-live="polite"></main>
 
 <form id="composer" autocomplete="off">
@@ -185,6 +236,62 @@
 		</button>
 	</div>
 </form>
+</div>
+
+<div class="pane" id="pane-tables" hidden>
+	<div class="scroll"><div class="wrap">
+		<div class="seg" id="lgpick"></div>
+		<div class="two wide">
+			<section class="box" id="tbl-table"></section>
+			<section class="box" id="tbl-elo"></section>
+		</div>
+	</div></div>
+</div>
+
+<div class="pane" id="pane-better" hidden>
+	<div class="scroll"><div class="wrap">
+		<section class="box">
+			<h2>Tuning lab <small>adjust the model, see the score move</small></h2>
+			<p class="small">The trainer exported two seasons the model never learned from. Turn the knobs and the scores below recompute on every match of both seasons. Tune on <b id="lab-tune-season"></b>, then check whether the gain survives on <b id="lab-test-season"></b>. If it doesn't, it was noise.</p>
+			<div class="knob"><div>Confidence <div class="d">temperature: &gt;1 hedges, &lt;1 sharpens</div></div><input type="range" id="k-temp" min="0.5" max="2" step="0.01" value="1"><output id="o-temp">1.00</output></div>
+			<div class="knob"><div>Draw bias <div class="d">more or fewer draws</div></div><input type="range" id="k-draw" min="-0.5" max="0.5" step="0.01" value="0"><output id="o-draw">0.00</output></div>
+			<div class="knob"><div>Home bias <div class="d">more or less home advantage</div></div><input type="range" id="k-home" min="-0.5" max="0.5" step="0.01" value="0"><output id="o-home">0.00</output></div>
+			<div class="tablewrap" id="lab-table"></div>
+			<div class="seg">
+				<button class="btn" id="lab-auto">Auto-tune on the tune season</button>
+				<button class="btn" id="lab-apply">Apply to predictions</button>
+				<button class="btn ghost" id="lab-reset">Reset to trained model</button>
+			</div>
+			<p class="muted" id="lab-status"></p>
+			<div id="lab-misses"></div>
+		</section>
+
+		<section class="box">
+			<h2>Your prediction log <small>every fixture you ask about, graded once it's played</small></h2>
+			<p class="small">Predictions are kept in this browser. After the weekly retrain brings in results, each one is graded: was the model's favourite right, and how much probability did it put on what actually happened?</p>
+			<div id="plog"></div>
+			<div class="seg"><button class="btn ghost" id="plog-clear">Clear log</button></div>
+		</section>
+
+		<section class="box">
+			<h2>What would actually make it better</h2>
+			<p class="small">The model trails the bookmaker by about 0.01 log loss. That gap is information the market has and this data doesn't. In rough order of payoff:</p>
+			<ul class="plain">
+				<li><b>Injuries, suspensions and line-ups</b><span class="tag big">biggest gain</span> The single largest thing the market knows and the results file doesn't. Needs a lineup feed pulled before kick-off.</li>
+				<li><b>Expected goals (xG) history</b><span class="tag big">large</span> Shots on target are a crude proxy. football-data.co.uk now ships HxG/AxG for recent seasons; a rolling xG-for/against feature is a small change to <code>train.py</code>.</li>
+				<li><b>Time-decayed training</b><span class="tag mid">medium</span> Weight recent seasons more. Football in 2006 is not football in 2026.</li>
+				<li><b>Per-league home advantage in Elo</b><span class="tag mid">medium</span> Home advantage is 60 points everywhere right now; the Tables tab shows it differs by league.</li>
+				<li><b>Dixon–Coles correction</b><span class="tag mid">small</span> Independent Poisson under-predicts 0–0 and 1–1. Only affects scorelines, not the win/draw/loss call.</li>
+				<li><b>Market odds as a feature</b><span class="tag">circular</span> Would close most of the gap instantly, but then the bot is just repeating the bookmaker. Fine for a betting tool, pointless for analysis.</li>
+			</ul>
+			<p class="small">Retraining is one command and the weekly GitHub Action does it automatically:</p>
+			<pre>pip install -r sportsbot/requirements.txt
+python sportsbot/fetch_data.py --refresh-current
+python sportsbot/train.py</pre>
+			<p class="muted">Pipeline and README: <a href="https://github.com/henrythebozo/GodMode/tree/gh-pages/sportsbot" target="_blank" rel="noopener">sportsbot/</a> · retrain runs: <a href="https://github.com/henrythebozo/GodMode/actions/workflows/retrain-sportsbot.yml" target="_blank" rel="noopener">Actions</a> · spotted a bad call? <a href="https://github.com/henrythebozo/GodMode/issues/new?title=Pitchside%3A%20bad%20prediction" target="_blank" rel="noopener">open an issue</a>.</p>
+		</section>
+	</div></div>
+</div>
 
 <script src="engine.js"></script>
 <script>
@@ -193,6 +300,15 @@
 	const $ = (s) => document.querySelector(s);
 	const log = $("#log"), q = $("#q"), send = $("#send"), status = $("#status"), sugg = $("#sugg");
 	let model = null;
+
+	// --------------------------------------------------------------- persistence
+	const store = {
+		get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+		set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode etc. */ } },
+	};
+	let knobs = Object.assign({}, SportsEngine.DEFAULT_KNOBS, store.get("pitchside.knobs", {}));
+	const knobsAreDefault = (k) => Math.abs(k.temp - 1) < 1e-9 && Math.abs(k.draw) < 1e-9 && Math.abs(k.home) < 1e-9;
+	let plog = store.get("pitchside.log", []);
 
 	// --------------------------------------------------------------- names
 	const ALIASES = {
@@ -335,7 +451,9 @@
 	}
 
 	function renderPrediction(home, away, opts) {
+		opts = Object.assign({}, opts || {}, { knobs: knobs });
 		const r = SportsEngine.predict(model, home, away, opts);
+		logPrediction(r);
 		const p = r.probs;
 		const lg = leagueName(r.league);
 		const ctx = model.leagues[r.league];
@@ -360,35 +478,168 @@
 			'<div><div class="small" style="margin-bottom:6px">Most likely scorelines</div><div class="chips">' + r.top_scores.map((s) => '<span class="chip"><b>' + s.score + "</b> " + pct(s.p, 1) + "</span>").join("") + "</div></div>" +
 			'<div class="two">' + sideCard(home) + sideCard(away) + "</div>" +
 			h2hBlock(home, away) + note +
-			'<div class="note">Probabilities from a logistic model on Elo, form, shots and rest; goals from Poisson regressions. On the held-out ' + esc(model.meta.test_season) + " season it beat naive baselines but trailed the bookmaker (see <b>model</b>). Analysis, not betting advice.</div>" +
+			'<div class="note">Probabilities from a logistic model on Elo, form, shots and rest; goals from Poisson regressions. On the held-out ' + esc(model.meta.test_season) + " season it beat naive baselines but trailed the bookmaker (see <b>model</b>)." +
+			(knobsAreDefault(knobs) ? "" : " <b>Using your tuned settings</b> (confidence " + knobs.temp.toFixed(2) + ", draw " + knobs.draw.toFixed(2) + ", home " + knobs.home.toFixed(2) + ").") +
+			" Analysis, not betting advice.</div>" +
 			"</div>";
 		say(html);
 	}
 
 	function renderTeam(name) {
 		const t = model.teams[name];
-		const lgTeams = Object.keys(model.teams).filter((k) => model.teams[k].league === t.league).sort((a, b) => model.teams[b].elo - model.teams[a].elo);
+		const lgTeams = Object.keys(model.teams).filter((k) => model.teams[k].league === t.league && model.teams[k].current !== false).sort((a, b) => model.teams[b].elo - model.teams[a].elo);
 		const rank = lgTeams.indexOf(name) + 1;
 		say('<div class="card">' + sideCard(name) +
 			"<p class=\"small\">Ranked <b>#" + rank + "</b> of " + lgTeams.length + " in " + esc(leagueName(t.league)) + " by Elo. Points per game: <b>" + (t.ppg5 == null ? "–" : t.ppg5.toFixed(2)) + "</b> over the last 5, <b>" + (t.ppg10 == null ? "–" : t.ppg10.toFixed(2)) + "</b> over the last 10, <b>" + (t.sppg == null ? "–" : t.sppg.toFixed(2)) + "</b> this season.</p>" +
 			'<p class="muted">Ask “' + esc(name) + ' vs &lt;team&gt;” for a prediction.</p></div>');
 	}
 
-	function renderTable(lg) {
-		const rows = Object.keys(model.teams).filter((k) => model.teams[k].league === lg).map((k) => ({ name: k, ...model.teams[k].season, elo: model.teams[k].elo }));
+	function tableHtml(lg) {
+		const rows = Object.keys(model.teams).filter((k) => model.teams[k].league === lg && model.teams[k].current !== false).map((k) => ({ name: k, ...model.teams[k].season, elo: model.teams[k].elo }));
 		rows.sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.name.localeCompare(b.name));
-		if (!rows.some((r) => r.p > 0)) return say("No matches recorded yet this season for the " + esc(leagueName(lg)) + ".");
-		say('<div class="card"><b>' + esc(leagueName(lg)) + ' table</b><span class="muted">results through ' + esc(model.meta.data_through) + '</span><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Elo</th></tr>' +
+		if (!rows.some((r) => r.p > 0)) return "<p>No matches recorded yet this season for the " + esc(leagueName(lg)) + ".</p>";
+		return '<div class="card"><b>' + esc(leagueName(lg)) + ' table</b><span class="muted">results through ' + esc(model.meta.data_through) + '</span><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Elo</th></tr>' +
 			rows.map((r, i) => "<tr><td>" + (i + 1) + '</td><td class="l">' + esc(r.name) + "</td><td>" + r.p + "</td><td>" + r.w + "</td><td>" + r.d + "</td><td>" + r.l + "</td><td>" + r.gf + "</td><td>" + r.ga + "</td><td>" + (r.gf - r.ga > 0 ? "+" : "") + (r.gf - r.ga) + "</td><td><b>" + r.pts + "</b></td><td>" + r.elo.toFixed(0) + "</td></tr>").join("") +
-			"</table></div></div>");
+			"</table></div></div>";
+	}
+	const renderTable = (lg) => say(tableHtml(lg));
+
+	function ratingsHtml(lg) {
+		const rows = Object.keys(model.teams).filter((k) => (!lg || model.teams[k].league === lg) && model.teams[k].current !== false).sort((a, b) => model.teams[b].elo - model.teams[a].elo).slice(0, lg ? 30 : 20);
+		return '<div class="card"><b>' + (lg ? esc(leagueName(lg)) : "All leagues, top 20") + ' power rankings (Elo)</b><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th>' + (lg ? "" : '<th class="l">League</th>') + '<th>Elo</th><th>PPG last 10</th><th>Form</th></tr>' +
+			rows.map((k, i) => { const t = model.teams[k]; return "<tr><td>" + (i + 1) + '</td><td class="l">' + esc(k) + "</td>" + (lg ? "" : '<td class="l">' + esc(leagueName(t.league)) + "</td>") + "<td><b>" + t.elo.toFixed(0) + "</b></td><td>" + (t.ppg10 == null ? "–" : t.ppg10.toFixed(2)) + "</td><td>" + formPills(t) + "</td></tr>"; }).join("") +
+			"</table></div><p class=\"muted\">Elo: 1500 is average across the pool, +100 is roughly a 64% win expectation on neutral ground.</p></div>";
+	}
+	const renderRatings = (lg) => say(ratingsHtml(lg));
+
+	// --------------------------------------------------------------- tables tab
+	let tablesLeague = store.get("pitchside.league", "E0");
+	function drawTables() {
+		const pick = $("#lgpick");
+		pick.innerHTML = "";
+		Object.keys(model.leagues).forEach((lg) => {
+			const b = document.createElement("button");
+			b.textContent = leagueName(lg); b.className = lg === tablesLeague ? "on" : "";
+			b.addEventListener("click", () => { tablesLeague = lg; store.set("pitchside.league", lg); drawTables(); });
+			pick.appendChild(b);
+		});
+		$("#tbl-table").innerHTML = tableHtml(tablesLeague);
+		$("#tbl-elo").innerHTML = ratingsHtml(tablesLeague);
 	}
 
-	function renderRatings(lg) {
-		const rows = Object.keys(model.teams).filter((k) => !lg || model.teams[k].league === lg).sort((a, b) => model.teams[b].elo - model.teams[a].elo).slice(0, lg ? 30 : 20);
-		say('<div class="card"><b>' + (lg ? esc(leagueName(lg)) : "All leagues, top 20") + ' power rankings (Elo)</b><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th><th class="l">League</th><th>Elo</th><th>PPG last 10</th><th>Form</th></tr>' +
-			rows.map((k, i) => { const t = model.teams[k]; return "<tr><td>" + (i + 1) + '</td><td class="l">' + esc(k) + '</td><td class="l">' + esc(leagueName(t.league)) + "</td><td><b>" + t.elo.toFixed(0) + "</b></td><td>" + (t.ppg10 == null ? "–" : t.ppg10.toFixed(2)) + "</td><td>" + formPills(t) + "</td></tr>"; }).join("") +
-			"</table></div><p class=\"muted\">Elo: 1500 is average across the pool, +100 is roughly a 64% win expectation on neutral ground.</p></div>");
+	// --------------------------------------------------------------- tuning lab
+	const fmt3 = (x) => x.toFixed(3);
+	function deltaTag(now, base, lowerBetter) {
+		const d = now - base;
+		if (Math.abs(d) < 5e-4) return '<span class="delta flat">±0</span>';
+		const good = lowerBetter ? d < 0 : d > 0;
+		return '<span class="delta ' + (good ? "good" : "bad") + '">' + (d > 0 ? "+" : "") + (lowerBetter ? d.toFixed(3) : (100 * d).toFixed(1) + "pt") + "</span>";
 	}
+	function readKnobs() {
+		return { temp: +$("#k-temp").value, draw: +$("#k-draw").value, home: +$("#k-home").value };
+	}
+	function writeKnobs(k) {
+		$("#k-temp").value = k.temp; $("#k-draw").value = k.draw; $("#k-home").value = k.home;
+	}
+	function drawLab() {
+		const k = readKnobs();
+		$("#o-temp").value = k.temp.toFixed(2); $("#o-draw").value = k.draw.toFixed(2); $("#o-home").value = k.home.toFixed(2);
+		const sets = model.eval_sets;
+		$("#lab-tune-season").textContent = sets.tune.season; $("#lab-test-season").textContent = sets.test.season;
+		const row = (label, fn, hl) => {
+			const cells = ["tune", "test"].map((key) => {
+				const rows = sets[key].rows;
+				const base = SportsEngine.evaluate(rows, null);
+				const m = fn(rows);
+				const isBase = fn === baseFn;
+				return "<td>" + fmt3(m.log_loss) + (isBase ? "" : deltaTag(m.log_loss, base.log_loss, true)) + "</td><td>" + fmt3(m.rps) + "</td><td>" + pct(m.accuracy, 1) + (isBase ? "" : deltaTag(m.accuracy, base.accuracy, false)) + "</td>";
+			});
+			return '<tr class="' + (hl ? "hl" : "") + '"><td class="l">' + label + "</td>" + cells.join("") + "</tr>";
+		};
+		const baseFn = (rows) => SportsEngine.evaluate(rows, null);
+		$("#lab-table").innerHTML = '<table><tr><th class="l"></th><th colspan="3">tune · ' + esc(sets.tune.season) + '</th><th colspan="3">test · ' + esc(sets.test.season) + '</th></tr>' +
+			'<tr><th class="l">Model</th><th>Log loss</th><th>RPS</th><th>Accuracy</th><th>Log loss</th><th>RPS</th><th>Accuracy</th></tr>' +
+			row("Trained model", baseFn) +
+			row("With your knobs", (rows) => SportsEngine.evaluate(rows, k), true) +
+			row("Bookmaker", (rows) => SportsEngine.evaluateBookmaker(rows)) +
+			"</table>";
+		const applied = knobsAreDefault(knobs) ? "Predictions currently use the trained model as-is." : "Predictions currently use: confidence " + knobs.temp.toFixed(2) + ", draw " + knobs.draw.toFixed(2) + ", home " + knobs.home.toFixed(2) + ".";
+		$("#lab-status").textContent = applied;
+		drawMisses(k);
+	}
+	function drawMisses(k) {
+		const rows = model.eval_sets.test.rows.map((r) => {
+			const p = SportsEngine.probsFromLogits(r[4], model.outcome.classes, k);
+			const cls = ["H", "D", "A"][r[3]];
+			return { r, p, pActual: p[cls], cls };
+		}).sort((a, b) => a.pActual - b.pActual).slice(0, 5);
+		$("#lab-misses").innerHTML = '<div class="small" style="margin-bottom:6px">Biggest surprises in ' + esc(model.eval_sets.test.season) + ' with these settings</div><div class="chips">' +
+			rows.map(({ r, p, pActual, cls }) => '<span class="chip">' + esc(r[1]) + " v " + esc(r[2]) + " → " + (cls === "H" ? "home win" : cls === "D" ? "draw" : "away win") + " at <b>" + pct(pActual) + "</b></span>").join("") + "</div>";
+	}
+	function initLab() {
+		writeKnobs(knobs);
+		["#k-temp", "#k-draw", "#k-home"].forEach((id) => $(id).addEventListener("input", drawLab));
+		$("#lab-apply").addEventListener("click", () => { knobs = readKnobs(); store.set("pitchside.knobs", knobs); drawLab(); });
+		$("#lab-reset").addEventListener("click", () => { knobs = Object.assign({}, SportsEngine.DEFAULT_KNOBS); store.set("pitchside.knobs", knobs); writeKnobs(knobs); drawLab(); });
+		$("#lab-auto").addEventListener("click", () => {
+			const b = $("#lab-auto"); b.disabled = true; b.textContent = "Searching…";
+			setTimeout(() => {
+				const best = SportsEngine.autoTune(model.eval_sets.tune.rows);
+				writeKnobs(best.knobs); drawLab();
+				b.disabled = false; b.textContent = "Auto-tune on the tune season";
+				$("#lab-status").textContent = "Best on " + model.eval_sets.tune.season + ": confidence " + best.knobs.temp.toFixed(2) + ", draw " + best.knobs.draw.toFixed(2) + ", home " + best.knobs.home.toFixed(2) + ". Check the test column before applying: a gain that only shows on the tune season is overfitting.";
+			}, 30);
+		});
+		drawLab();
+	}
+
+	// --------------------------------------------------------------- prediction log
+	function logPrediction(r) {
+		const asked = new Date().toISOString().slice(0, 10);
+		const dup = plog.find((e) => e.home === r.home && e.away === r.away && e.asked === asked);
+		if (dup) return;
+		plog.push({ asked, home: r.home, away: r.away, p: [r.probs.H, r.probs.D, r.probs.A].map((v) => +v.toFixed(4)) });
+		if (plog.length > 200) plog = plog.slice(-200);
+		store.set("pitchside.log", plog);
+	}
+	function gradeEntry(e) {
+		const key = [e.home, e.away].sort().join("|");
+		const meetings = (model.h2h[key] || []).filter((m) => m[0] > e.asked && m[1] === e.home);
+		if (!meetings.length) return null;
+		const [date, , hg, ag] = meetings[0];
+		const y = hg > ag ? 0 : hg === ag ? 1 : 2;
+		const fav = e.p.indexOf(Math.max.apply(null, e.p));
+		return { date, score: hg + "–" + ag, y, hit: fav === y, ll: -Math.log(Math.max(e.p[y], 1e-9)) };
+	}
+	function drawLog() {
+		const el = $("#plog");
+		if (!plog.length) { el.innerHTML = '<p class="muted">Nothing yet. Ask about a fixture in the Chat tab and it will show up here.</p>'; return; }
+		const graded = [];
+		const rows = plog.slice().reverse().map((e) => {
+			const g = gradeEntry(e);
+			if (g) graded.push(g);
+			return "<tr><td>" + e.asked + '</td><td class="l">' + esc(e.home) + " v " + esc(e.away) + "</td><td>" + e.p.map((v) => pct(v)).join(" / ") + "</td><td>" +
+				(g ? g.date + " · " + g.score + (g.hit ? ' <span class="delta good">✓ favourite won</span>' : ' <span class="delta bad">✗ ' + pct(e.p[g.y]) + " on it</span>") : '<span class="muted">not played yet</span>') + "</td></tr>";
+		});
+		let summary = "";
+		if (graded.length) {
+			const acc = graded.filter((g) => g.hit).length / graded.length;
+			const ll = graded.reduce((s, g) => s + g.ll, 0) / graded.length;
+			summary = '<p class="small">' + graded.length + " graded · favourite right <b>" + pct(acc) + "</b> · log loss <b>" + ll.toFixed(3) + "</b> (the trained model scored " + model.metrics.model.log_loss.toFixed(3) + " over a whole season; a handful of games will swing wildly).</p>";
+		}
+		el.innerHTML = summary + '<div class="tablewrap"><table><tr><th>Asked</th><th class="l">Fixture</th><th>H / D / A</th><th>Outcome</th></tr>' + rows.join("") + "</table></div>";
+	}
+
+	// --------------------------------------------------------------- tabs
+	function showTab(name) {
+		document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+		document.querySelectorAll(".pane").forEach((p) => (p.hidden = p.id !== "pane-" + name));
+		if (name === "tables") drawTables();
+		if (name === "better") { drawLab(); drawLog(); }
+		if (name === "chat") q.focus();
+		store.set("pitchside.tab", name);
+	}
+	document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
 
 	function renderModel() {
 		const m = model.metrics, meta = model.meta;
@@ -406,7 +657,7 @@
 		say("<p>I predict football matches from a model trained on ~50,000 results. Things you can ask:</p>" +
 			'<div class="chips" style="margin-top:8px">' +
 			["Arsenal vs Chelsea", "Liverpool at Man City", "Real Madrid v Barcelona on 2026-10-25", "table premier league", "ratings bundesliga", "form Napoli", "h2h Inter Milan", "model", "leagues"].map((s) => '<span class="chip">' + s + "</span>").join("") +
-			"</div><p class=\"muted\" style=\"margin-top:8px\">“X at Y” means Y is at home. Covered: Premier League, Championship, La Liga, Bundesliga, Serie A, Ligue 1.</p>");
+			"</div><p class=\"muted\" style=\"margin-top:8px\">“X at Y” means Y is at home. Covered: Premier League, Championship, La Liga, Bundesliga, Serie A, Ligue 1. The <b>Tables</b> tab has standings and Elo rankings; <b>Make the bot better</b> lets you tune the model and grades your past predictions.</p>");
 	}
 
 	function renderLeagues() {
@@ -484,8 +735,12 @@
 			setSuggestions(["Arsenal vs Chelsea", "Liverpool at Man City", "Real Madrid v Barcelona", "Bayern Munich vs Dortmund", "table premier league", "ratings", "model"]);
 			say("<p>Hey. I'm a football prediction bot trained on " + model.meta.n_matches_trained.toLocaleString() + " matches across six leagues, with results through <b>" + esc(model.meta.data_through) + "</b>.</p><p>Give me a fixture like <b>Arsenal vs Chelsea</b> and I'll return win/draw/loss odds, expected goals, likely scorelines and both teams' form. Type <b>help</b> for everything else, or <b>model</b> to see how it scores against the bookmakers.</p>");
 			q.focus();
+			initLab();
+			$("#plog-clear").addEventListener("click", () => { plog = []; store.set("pitchside.log", plog); drawLog(); });
 			const initial = new URLSearchParams(location.search).get("q");
 			if (initial) { q.value = initial; $("#composer").requestSubmit(); }
+			const tab = (location.hash || "").replace("#", "") || (initial ? "chat" : store.get("pitchside.tab", "chat"));
+			if (["tables", "better"].includes(tab)) showTab(tab);
 		})
 		.catch((err) => {
 			status.textContent = "model failed to load";

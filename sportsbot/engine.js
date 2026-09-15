@@ -40,16 +40,74 @@
 		return x.map((v, i) => (v - mean[i]) / scale[i]);
 	}
 
-	function outcomeProbs(model, x) {
+	function outcomeLogits(model, x) {
 		const o = model.outcome;
 		const z = standardise(x, o.mean, o.scale);
-		const logits = o.coef.map((row, r) => o.intercept[r] + row.reduce((s, w, i) => s + w * z[i], 0));
-		const mx = Math.max.apply(null, logits);
-		const e = logits.map((l) => Math.exp(l - mx));
+		return o.coef.map((row, r) => o.intercept[r] + row.reduce((s, w, i) => s + w * z[i], 0));
+	}
+
+	// knobs: {temp, draw, home}. temp > 1 flattens, draw/home shift the draw/home logits.
+	const DEFAULT_KNOBS = { temp: 1, draw: 0, home: 0 };
+	function probsFromLogits(logits, classes, knobs) {
+		const k = Object.assign({}, DEFAULT_KNOBS, knobs || {});
+		const adj = logits.map((l, i) => l / k.temp + (classes[i] === "D" ? k.draw : classes[i] === "H" ? k.home : 0));
+		const mx = Math.max.apply(null, adj);
+		const e = adj.map((l) => Math.exp(l - mx));
 		const sum = e.reduce((a, b) => a + b, 0);
 		const p = {};
-		o.classes.forEach((c, i) => (p[c] = e[i] / sum));
+		classes.forEach((c, i) => (p[c] = e[i] / sum));
 		return p;
+	}
+
+	function outcomeProbs(model, x, knobs) {
+		return probsFromLogits(outcomeLogits(model, x), model.outcome.classes, knobs);
+	}
+
+	// rows: [date, home, away, y(0=H,1=D,2=A), logits[3], bookmaker[3]|null]
+	function scoreProbs(P, y) {
+		let ll = 0, brier = 0, rps = 0, acc = 0;
+		for (let i = 0; i < P.length; i++) {
+			const p = P[i], o = [0, 0, 0]; o[y[i]] = 1;
+			ll += -Math.log(Math.max(p[y[i]], 1e-9));
+			brier += (p[0] - o[0]) ** 2 + (p[1] - o[1]) ** 2 + (p[2] - o[2]) ** 2;
+			const c1 = p[0] - o[0], c2 = p[0] + p[1] - o[0] - o[1];
+			rps += (c1 * c1 + c2 * c2) / 2;
+			const best = p[0] >= p[1] && p[0] >= p[2] ? 0 : p[1] >= p[2] ? 1 : 2;
+			acc += best === y[i] ? 1 : 0;
+		}
+		const n = P.length || 1;
+		return { log_loss: ll / n, brier: brier / n, rps: rps / n, accuracy: acc / n, n: P.length };
+	}
+
+	function evaluate(rows, knobs, classes) {
+		classes = classes || ["H", "D", "A"];
+		const P = rows.map((r) => { const p = probsFromLogits(r[4], classes, knobs); return classes.map((c) => p[c]); });
+		return scoreProbs(P, rows.map((r) => r[3]));
+	}
+
+	function evaluateBookmaker(rows) {
+		const keep = rows.filter((r) => r[5]);
+		return scoreProbs(keep.map((r) => r[5]), keep.map((r) => r[3]));
+	}
+
+	function autoTune(rows, classes) {
+		const trial = (t, d, h) => ({ temp: +t.toFixed(3), draw: +d.toFixed(3), home: +h.toFixed(3) });
+		let best = { knobs: Object.assign({}, DEFAULT_KNOBS), score: evaluate(rows, DEFAULT_KNOBS, classes).log_loss };
+		const search = (center, span, step) => {
+			for (let t = center.temp - span; t <= center.temp + span + 1e-9; t += step) {
+				if (t < 0.5) continue;
+				for (let d = center.draw - span; d <= center.draw + span + 1e-9; d += step) {
+					for (let h = center.home - span; h <= center.home + span + 1e-9; h += step) {
+						const k = trial(t, d, h);
+						const s = evaluate(rows, k, classes).log_loss;
+						if (s < best.score - 1e-9) best = { knobs: k, score: s };
+					}
+				}
+			}
+		};
+		search(DEFAULT_KNOBS, 0.4, 0.1);                 // coarse: 9 x 9 x 9
+		search(best.knobs, 0.1, 0.02);                   // fine, around the coarse optimum (slider-representable)
+		return best;
 	}
 
 	function expectedGoals(model, x) {
@@ -76,8 +134,9 @@
 	}
 
 	function predict(model, home, away, opts) {
+		opts = opts || {};
 		const fv = featureVector(model, home, away, opts);
-		const probs = outcomeProbs(model, fv.x);
+		const probs = outcomeProbs(model, fv.x, opts.knobs);
 		const xg = expectedGoals(model, fv.x);
 		const M = scoreMatrix(xg.home, xg.away);
 		const n = M.length;
@@ -102,5 +161,7 @@
 		};
 	}
 
-	return { predict: predict, featureVector: featureVector, outcomeProbs: outcomeProbs, expectedGoals: expectedGoals, scoreMatrix: scoreMatrix };
+	return { predict: predict, featureVector: featureVector, outcomeProbs: outcomeProbs, outcomeLogits: outcomeLogits,
+		probsFromLogits: probsFromLogits, expectedGoals: expectedGoals, scoreMatrix: scoreMatrix,
+		evaluate: evaluate, evaluateBookmaker: evaluateBookmaker, autoTune: autoTune, DEFAULT_KNOBS: DEFAULT_KNOBS };
 });

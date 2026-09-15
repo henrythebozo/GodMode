@@ -403,6 +403,28 @@ def main():
         blend = 0.5 * lr.predict_proba(Xt[has_odds]) + 0.5 * bookmaker_probs(test_df[has_odds])
         metrics["blend_model_bookmaker"] = score(blend, yt[has_odds])
 
+    # ---- out-of-sample rows for the in-browser tuning lab ----
+    # tune season: scored by a model that never saw it (train only)
+    # test season: scored by the train+val model (same one the metrics above use)
+    def eval_rows(mask, lr_, sc_):
+        d = usable[mask]
+        logits = lr_.decision_function(sc_.transform(X_all[mask]))
+        rows = []
+        for i, r in enumerate(d.itertuples(index=False)):
+            bk = [r.odds_H, r.odds_D, r.odds_A]
+            if all(isinstance(v, float) and v == v and v > 1 for v in bk):
+                inv = [1 / v for v in bk]; tot = sum(inv); bk = [round(v / tot, 4) for v in inv]
+            else:
+                bk = None
+            rows.append([r.date.strftime("%Y-%m-%d"), r.home, r.away, int(y_all[mask][i]),
+                         [round(float(v), 3) for v in logits[i]], bk])
+        return rows
+    t_sc, t_lr = fit_outcome(X_all[train_mask], y_all[train_mask], C)
+    eval_sets = {
+        "tune": {"season": f"20{args.val_season[:2]}/{args.val_season[2:]}", "rows": eval_rows(val_mask, t_lr, t_sc)},
+        "test": {"season": f"20{args.test_season[:2]}/{args.test_season[2:]}", "rows": eval_rows(test_mask, lr, sc)},
+    }
+
     print("\n=== held-out season", args.test_season, "===")
     for k, v in metrics.items():
         print(f"  {k:<26} " + "  ".join(f"{kk}={vv}" for kk, vv in v.items()))
@@ -418,12 +440,15 @@ def main():
     active = matches[matches["season"] >= sorted(matches["season"].unique())[-2]]
     active_teams = set(active["home"]) | set(active["away"])
     now = matches["date"].max()
+    latest = matches[matches["season"] == latest_season]
+    current_members = set(latest["home"]) | set(latest["away"])
     teams = {}
     for t in sorted(active_teams):
         st = states[t]
         f = team_features(st, now, "x")
         teams[t] = {
             "league": st.league,
+            "current": t in current_members,
             "elo": round(st.elo, 1),
             "ppg5": f["ppg5_x"], "ppg10": f["ppg10_x"],
             "gf10": f["gf10_x"], "ga10": f["ga10_x"],
@@ -486,6 +511,7 @@ def main():
             "away": {"coef": pa.coef_.tolist(), "intercept": float(pa.intercept_)},
         },
         "leagues": league_stats,
+        "eval_sets": eval_sets,
         "teams": teams,
         "h2h": h2h,
     }

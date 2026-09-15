@@ -16,6 +16,20 @@ For any fixture between two tracked teams it returns:
 * both teams' Elo rating, recent form and season record
 * head-to-head history
 
+## The three tabs
+
+* **Chat**: ask about fixtures, teams, tables, rankings, head-to-head, or `model`.
+* **Tables**: current standings and Elo power rankings for each league.
+* **Make the bot better**: a tuning lab, your graded prediction log and a
+  roadmap. The trainer exports two seasons the model never learned from
+  (2024/25 to tune on, 2025/26 to check on) with the model's raw outputs and
+  the bookmaker's probabilities. Three knobs (confidence, draw bias, home
+  bias) re-score every match live; "Auto-tune" grid-searches them on the
+  tune season and the test column shows whether the gain is real. "Apply"
+  saves the knobs in the browser and every prediction uses them. Fixtures
+  you ask about are logged and graded once the weekly retrain brings in
+  the result.
+
 ## How it is trained
 
 `train.py` walks every match in date order and, for each fixture, builds
