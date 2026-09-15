@@ -1,0 +1,38 @@
+name: Retrain sports bot
+
+on:
+  schedule:
+    - cron: "30 4 * * 2"   # every Tuesday 04:30 UTC, after the weekend's results are in
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: sportsbot/requirements.txt
+      - run: pip install -r sportsbot/requirements.txt
+      - name: Download results
+        run: python sportsbot/fetch_data.py --refresh-current
+      - name: Train and export model.json
+        run: python sportsbot/train.py
+      - name: Commit updated model
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sportsbot/model.json
+          if git diff --cached --quiet; then
+            echo "model unchanged"
+          else
+            git commit -m "sportsbot: retrain on results through $(date -u +%Y-%m-%d)"
+            git push
+          fi

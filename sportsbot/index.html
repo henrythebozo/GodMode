@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pitchside — sports analytics bot</title>
+<meta name="theme-color" content="#000000" />
+<link rel="icon" type="image/png" href="../icon-512.png" />
+<style>
+	:root {
+		--bg: #000;
+		--surface: #1c1c1e;
+		--surface-2: #2c2c2e;
+		--surface-3: #3a3a3c;
+		--line: #2a2a2d;
+		--text: #fff;
+		--dim: #8e8e93;
+		--vio: #7b5cf0;
+		--vio-lift: #a58bff;
+		--vio-soft: rgba(123, 92, 240, 0.16);
+		--teal: #2dd4bf;
+		--amber: #f5b942;
+		--ok: #32d74b;
+		--err: #ff6b81;
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { height: 100dvh; }
+	body {
+		background: var(--bg);
+		color: var(--text);
+		font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+		display: flex;
+		flex-direction: column;
+		-webkit-font-smoothing: antialiased;
+		overscroll-behavior: none;
+	}
+	a { color: var(--vio-lift); }
+	button, input { font: inherit; color: inherit; }
+
+	header {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+		border-bottom: 1px solid var(--line);
+		flex: none;
+	}
+	header .back {
+		width: 36px; height: 36px; border-radius: 50%;
+		background: var(--surface); display: grid; place-items: center;
+		text-decoration: none; color: var(--text); flex: none;
+	}
+	header .back:hover { background: var(--surface-2); }
+	header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+	header .sub { font-size: 12px; color: var(--dim); }
+	header .spacer { flex: 1; }
+	.badge {
+		font-size: 11px; color: var(--dim); background: var(--surface);
+		padding: 4px 9px; border-radius: 99px; white-space: nowrap;
+	}
+	.badge.ok { color: var(--ok); }
+	.badge.err { color: var(--err); }
+
+	#log {
+		flex: 1;
+		overflow-y: auto;
+		padding: 18px 16px 8px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		scroll-behavior: smooth;
+	}
+	.msg { max-width: min(720px, 100%); }
+	.msg.user { align-self: flex-end; }
+	.msg.user .bubble {
+		background: var(--vio); color: #fff; border-radius: 18px 18px 4px 18px;
+		padding: 9px 14px; display: inline-block;
+	}
+	.msg.bot .bubble {
+		background: var(--surface); border-radius: 18px 18px 18px 4px;
+		padding: 12px 14px;
+	}
+	.msg.bot .bubble p + p { margin-top: 8px; }
+	.msg .who { font-size: 11px; color: var(--dim); margin: 0 0 4px 6px; }
+	.muted { color: var(--dim); font-size: 12.5px; }
+	.small { font-size: 13px; }
+
+	/* prediction card */
+	.card { display: flex; flex-direction: column; gap: 12px; }
+	.fixture { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+	.fixture .t { font-size: 18px; font-weight: 700; }
+	.fixture .vs { color: var(--dim); font-size: 13px; }
+	.fixture .lg { color: var(--dim); font-size: 12px; margin-left: auto; }
+	.bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+	.bar span {
+		display: grid; place-items: center; font-size: 12px; font-weight: 600;
+		color: #000; overflow: hidden; white-space: nowrap; min-width: 0;
+	}
+	.bar .h { background: var(--vio-lift); }
+	.bar .d { background: #9a9aa3; }
+	.bar .a { background: var(--teal); }
+	.legend { display: flex; gap: 14px; font-size: 12.5px; flex-wrap: wrap; }
+	.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+	.stat { background: var(--surface-2); border-radius: 10px; padding: 8px 10px; }
+	.stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+	.stat .v { font-size: 17px; font-weight: 700; margin-top: 2px; }
+	.stat .v small { font-size: 12px; color: var(--dim); font-weight: 500; }
+	.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+	.chip {
+		background: var(--surface-2); border-radius: 99px; padding: 4px 10px; font-size: 12.5px;
+		border: none; cursor: default;
+	}
+	.chip b { font-weight: 700; }
+	.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+	@media (max-width: 480px) { .two { grid-template-columns: 1fr; } }
+	.side { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+	.side h4 { font-size: 14px; margin-bottom: 4px; }
+	.side .row { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--dim); }
+	.side .row b { color: var(--text); font-weight: 600; }
+	.form { display: flex; gap: 4px; margin-top: 6px; }
+	.form i {
+		width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+		font-style: normal; font-size: 11px; font-weight: 700; color: #000;
+	}
+	.form .W { background: var(--ok); } .form .D { background: #9a9aa3; } .form .L { background: var(--err); }
+	table { border-collapse: collapse; width: 100%; font-size: 13px; }
+	th, td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+	th { color: var(--dim); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.3px; }
+	td:first-child, th:first-child, td.l, th.l { text-align: left; }
+	.tablewrap { overflow-x: auto; }
+	tr.hl td { color: var(--vio-lift); }
+	.note { font-size: 12px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 8px; }
+
+	/* composer */
+	form#composer {
+		flex: none;
+		padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+		border-top: 1px solid var(--line);
+		display: flex; flex-direction: column; gap: 8px;
+	}
+	.sugg { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+	.sugg::-webkit-scrollbar { display: none; }
+	.sugg button {
+		flex: none; background: var(--surface); border: none; border-radius: 99px;
+		padding: 6px 12px; font-size: 13px; cursor: pointer; color: var(--text);
+	}
+	.sugg button:hover { background: var(--surface-2); }
+	.inrow { display: flex; gap: 8px; }
+	#q {
+		flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+		padding: 11px 14px; outline: none; color: var(--text); min-width: 0;
+	}
+	#q:focus { border-color: var(--vio); }
+	#send {
+		width: 46px; border-radius: 14px; border: none; background: var(--vio); color: #fff;
+		cursor: pointer; display: grid; place-items: center;
+	}
+	#send:disabled { opacity: 0.4; cursor: default; }
+	:focus-visible { outline: 2px solid var(--vio); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+	<a class="back" href="../" aria-label="Back to Henry OS">
+		<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+	</a>
+	<div>
+		<h1>Pitchside</h1>
+		<div class="sub">Football analytics bot · six leagues · trained in the open</div>
+	</div>
+	<div class="spacer"></div>
+	<span class="badge" id="status">loading model…</span>
+</header>
+
+<main id="log" aria-live="polite"></main>
+
+<form id="composer" autocomplete="off">
+	<div class="sugg" id="sugg"></div>
+	<div class="inrow">
+		<input id="q" type="text" placeholder="Try: Arsenal vs Chelsea" list="teams" disabled />
+		<datalist id="teams"></datalist>
+		<button id="send" type="submit" aria-label="Send" disabled>
+			<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+		</button>
+	</div>
+</form>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+	"use strict";
+	const $ = (s) => document.querySelector(s);
+	const log = $("#log"), q = $("#q"), send = $("#send"), status = $("#status"), sugg = $("#sugg");
+	let model = null;
+
+	// --------------------------------------------------------------- names
+	const ALIASES = {
+		"spurs": "Tottenham", "tottenham hotspur": "Tottenham",
+		"man utd": "Man United", "manchester united": "Man United", "united": "Man United", "mufc": "Man United",
+		"manchester city": "Man City", "city": "Man City", "mcfc": "Man City",
+		"forest": "Nott'm Forest", "nottingham forest": "Nott'm Forest", "nottm forest": "Nott'm Forest",
+		"newcastle united": "Newcastle", "toon": "Newcastle",
+		"west ham united": "West Ham", "hammers": "West Ham",
+		"wolverhampton": "Wolves", "wolverhampton wanderers": "Wolves",
+		"villa": "Aston Villa", "palace": "Crystal Palace", "gunners": "Arsenal", "the blues": "Chelsea",
+		"lfc": "Liverpool", "reds": "Liverpool", "afc": "Arsenal", "cfc": "Chelsea",
+		"sheffield utd": "Sheffield United", "sheff utd": "Sheffield United", "blades": "Sheffield United",
+		"sheffield wednesday": "Sheffield Weds", "sheff wed": "Sheffield Weds", "owls": "Sheffield Weds",
+		"boro": "Middlesbrough", "west bromwich": "West Brom", "west bromwich albion": "West Brom", "baggies": "West Brom",
+		"leicester city": "Leicester", "foxes": "Leicester", "brighton and hove albion": "Brighton", "brighton & hove albion": "Brighton", "seagulls": "Brighton",
+		"leeds united": "Leeds", "ipswich town": "Ipswich", "hull city": "Hull", "coventry city": "Coventry",
+		"norwich city": "Norwich", "cardiff city": "Cardiff", "swansea city": "Swansea", "stoke city": "Stoke",
+		"derby county": "Derby", "preston north end": "Preston", "birmingham city": "Birmingham", "blackburn rovers": "Blackburn",
+		"bolton wanderers": "Bolton", "charlton athletic": "Charlton", "queens park rangers": "QPR", "oxford united": "Oxford",
+		"lincoln city": "Lincoln", "burnley fc": "Burnley",
+		"psg": "Paris SG", "paris saint germain": "Paris SG", "paris saint-germain": "Paris SG", "paris": "Paris SG",
+		"om": "Marseille", "ol": "Lyon", "losc": "Lille", "as monaco": "Monaco", "stade rennais": "Rennes", "le havre ac": "Le Havre",
+		"bayern": "Bayern Munich", "bayern munchen": "Bayern Munich", "fc bayern": "Bayern Munich", "bayern münchen": "Bayern Munich",
+		"borussia dortmund": "Dortmund", "bvb": "Dortmund", "bayer leverkusen": "Leverkusen", "leipzig": "RB Leipzig",
+		"gladbach": "M'gladbach", "monchengladbach": "M'gladbach", "mönchengladbach": "M'gladbach", "borussia monchengladbach": "M'gladbach",
+		"frankfurt": "Ein Frankfurt", "eintracht frankfurt": "Ein Frankfurt", "eintracht": "Ein Frankfurt",
+		"koln": "FC Koln", "köln": "FC Koln", "cologne": "FC Koln", "schalke": "Schalke 04", "hamburger sv": "Hamburg", "hsv": "Hamburg",
+		"bremen": "Werder Bremen", "werder": "Werder Bremen", "vfb stuttgart": "Stuttgart", "vfl wolfsburg": "Wolfsburg",
+		"union": "Union Berlin", "mainz 05": "Mainz", "tsg hoffenheim": "Hoffenheim", "sc freiburg": "Freiburg", "fc augsburg": "Augsburg",
+		"atletico": "Ath Madrid", "atletico madrid": "Ath Madrid", "atlético madrid": "Ath Madrid", "atleti": "Ath Madrid",
+		"athletic": "Ath Bilbao", "athletic bilbao": "Ath Bilbao", "athletic club": "Ath Bilbao", "bilbao": "Ath Bilbao",
+		"real": "Real Madrid", "madrid": "Real Madrid", "barca": "Barcelona", "barça": "Barcelona", "fc barcelona": "Barcelona",
+		"real sociedad": "Sociedad", "real betis": "Betis", "celta vigo": "Celta", "espanyol": "Espanol", "rayo": "Vallecano", "rayo vallecano": "Vallecano",
+		"deportivo": "La Coruna", "deportivo la coruna": "La Coruna", "depor": "La Coruna", "racing santander": "Santander", "real oviedo": "Oviedo",
+		"real valladolid": "Valladolid", "sevilla fc": "Sevilla", "valencia cf": "Valencia", "villarreal cf": "Villarreal", "getafe cf": "Getafe", "girona fc": "Girona",
+		"inter milan": "Inter", "internazionale": "Inter", "ac milan": "Milan", "juve": "Juventus", "as roma": "Roma", "ss lazio": "Lazio",
+		"ssc napoli": "Napoli", "fiorentina acf": "Fiorentina", "hellas verona": "Verona", "como 1907": "Como", "us lecce": "Lecce",
+	};
+	const norm = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
+	let NAME_INDEX = []; // [{key, team}] sorted by key length desc
+
+	function buildIndex() {
+		const idx = new Map();
+		for (const t in model.teams) idx.set(norm(t), t);
+		for (const a in ALIASES) if (model.teams[ALIASES[a]] && !idx.has(norm(a))) idx.set(norm(a), ALIASES[a]);
+		NAME_INDEX = [...idx.entries()].map(([key, team]) => ({ key, team })).sort((a, b) => b.key.length - a.key.length);
+	}
+
+	// find every team mentioned in the text, in order of appearance, longest match wins
+	function findTeams(text) {
+		const s = " " + norm(text) + " ";
+		const taken = [];
+		const found = [];
+		for (const { key, team } of NAME_INDEX) {
+			let from = 0;
+			while (true) {
+				const i = s.indexOf(" " + key + " ", from);
+				if (i < 0) break;
+				const a = i + 1, b = a + key.length;
+				if (!taken.some(([x, y]) => a < y && b > x)) { taken.push([a, b]); found.push({ team, at: a, end: b }); }
+				from = i + 1;
+			}
+		}
+		found.sort((x, y) => x.at - y.at);
+		const seen = new Set();
+		return found.filter((f) => !seen.has(f.team) && seen.add(f.team));
+	}
+
+	function resolveOne(text) {
+		const s = norm(text);
+		const exact = NAME_INDEX.find((e) => e.key === s);
+		if (exact) return { team: exact.team };
+		const hits = NAME_INDEX.filter((e) => e.key.startsWith(s) || e.key.includes(" " + s));
+		const teams = [...new Set(hits.map((h) => h.team))];
+		if (teams.length === 1) return { team: teams[0] };
+		return { ambiguous: teams.slice(0, 6) };
+	}
+
+	const LEAGUE_WORDS = {
+		E0: ["premier league", "epl", "prem", "england", "english"],
+		E1: ["championship", "efl"],
+		SP1: ["la liga", "laliga", "spain", "spanish", "primera"],
+		D1: ["bundesliga", "germany", "german"],
+		I1: ["serie a", "italy", "italian"],
+		F1: ["ligue 1", "ligue1", "france", "french"],
+	};
+	function findLeague(text) {
+		const s = " " + norm(text) + " ";
+		for (const lg in LEAGUE_WORDS) if (LEAGUE_WORDS[lg].some((w) => s.includes(" " + w + " "))) return lg;
+		return null;
+	}
+
+	// --------------------------------------------------------------- render helpers
+	const pct = (x, d = 0) => (100 * x).toFixed(d) + "%";
+	const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+	const leagueName = (lg) => (model.leagues[lg] || {}).name || lg;
+
+	function push(role, html) {
+		const el = document.createElement("div");
+		el.className = "msg " + role;
+		el.innerHTML = (role === "bot" ? '<div class="who">Pitchside</div>' : "") + '<div class="bubble">' + html + "</div>";
+		log.appendChild(el);
+		log.scrollTop = log.scrollHeight;
+		return el;
+	}
+	const say = (html) => push("bot", html);
+
+	function formPills(t) {
+		return '<div class="form">' + t.recent.map((r) => {
+			const [gf, ga] = r.split("-").map(Number);
+			const c = gf > ga ? "W" : gf < ga ? "L" : "D";
+			return '<i class="' + c + '" title="' + r + '">' + c + "</i>";
+		}).join("") + "</div>";
+	}
+
+	function sideCard(name) {
+		const t = model.teams[name], s = t.season;
+		return '<div class="side"><h4>' + esc(name) + '</h4>' +
+			'<div class="row"><span>Elo rating</span><b>' + t.elo.toFixed(0) + '</b></div>' +
+			'<div class="row"><span>' + leagueName(t.league) + ' this season</span><b>' + s.w + '–' + s.d + '–' + s.l + ' (' + s.pts + ' pts)</b></div>' +
+			'<div class="row"><span>Goals for / against, last 10</span><b>' + (t.gf10 == null ? "–" : t.gf10.toFixed(1) + " / " + t.ga10.toFixed(1)) + '</b></div>' +
+			'<div class="row"><span>Shots on target for / against</span><b>' + (t.sot10 == null ? "–" : t.sot10.toFixed(1) + " / " + t.sota10.toFixed(1)) + '</b></div>' +
+			'<div class="row"><span>Last match</span><b>' + (t.last_match || "–") + '</b></div>' +
+			formPills(t) + "</div>";
+	}
+
+	function h2hBlock(a, b) {
+		const key = [a, b].sort().join("|");
+		const rows = model.h2h[key];
+		if (!rows || !rows.length) return '<p class="muted">No meetings between these two in the dataset.</p>';
+		let wa = 0, wb = 0, d = 0;
+		const items = rows.slice().reverse().map(([date, home, hg, ag]) => {
+			const away = home === a ? b : a;
+			const winner = hg > ag ? home : hg < ag ? away : null;
+			if (winner === a) wa++; else if (winner === b) wb++; else d++;
+			return '<span class="chip">' + date.slice(0, 7) + " · " + esc(home) + " <b>" + hg + "–" + ag + "</b> " + esc(away) + "</span>";
+		});
+		return '<div><div class="small" style="margin-bottom:6px">Head-to-head, last ' + rows.length + ': ' + esc(a) + ' <b>' + wa + '</b> · draws <b>' + d + '</b> · ' + esc(b) + ' <b>' + wb + '</b></div><div class="chips">' + items.join("") + "</div></div>";
+	}
+
+	function renderPrediction(home, away, opts) {
+		const r = SportsEngine.predict(model, home, away, opts);
+		const p = r.probs;
+		const lg = leagueName(r.league);
+		const ctx = model.leagues[r.league];
+		const fav = p.H >= p.A ? home : away;
+		const favP = Math.max(p.H, p.A);
+		const verdict = favP > 0.6 ? "clear favourite" : favP > 0.45 ? "favourite" : "slight favourite, close to a coin-flip";
+		const note = home !== away && model.teams[home].league !== model.teams[away].league
+			? "<p class=\"muted\">Cross-league fixture: the model treats it as a " + esc(lg) + " home game. Elo carries across the English divisions, elsewhere it is a rougher guess.</p>" : "";
+		const html =
+			'<div class="card">' +
+			'<div class="fixture"><span class="t">' + esc(home) + '</span><span class="vs">home vs</span><span class="t">' + esc(away) + '</span><span class="lg">' + esc(lg) + (opts && opts.on ? " · " + opts.on.toISOString().slice(0, 10) : "") + "</span></div>" +
+			'<div class="bar"><span class="h" style="flex:' + p.H + '">' + pct(p.H) + '</span><span class="d" style="flex:' + p.D + '">' + pct(p.D) + '</span><span class="a" style="flex:' + p.A + '">' + pct(p.A) + "</span></div>" +
+			'<div class="legend"><span><i style="background:var(--vio-lift)"></i>' + esc(home) + " win · fair odds " + r.fair_odds.H.toFixed(2) + '</span><span><i style="background:#9a9aa3"></i>draw · ' + r.fair_odds.D.toFixed(2) + '</span><span><i style="background:var(--teal)"></i>' + esc(away) + " win · " + r.fair_odds.A.toFixed(2) + "</span></div>" +
+			"<p><b>" + esc(fav) + "</b> is the " + verdict + " at " + pct(favP) + ". " +
+			"League context: home sides win " + pct(ctx.home_win) + " of " + esc(lg) + " games and " + ctx.goals_per_game.toFixed(2) + " goals a game is typical.</p>" +
+			'<div class="grid">' +
+			'<div class="stat"><div class="k">Expected goals</div><div class="v">' + r.xg.home.toFixed(2) + " – " + r.xg.away.toFixed(2) + "</div></div>" +
+			'<div class="stat"><div class="k">Over 2.5 goals</div><div class="v">' + pct(r.over_2_5) + "</div></div>" +
+			'<div class="stat"><div class="k">Both teams score</div><div class="v">' + pct(r.btts) + "</div></div>" +
+			'<div class="stat"><div class="k">Elo gap</div><div class="v">' + (r.elo.home - r.elo.away > 0 ? "+" : "") + (r.elo.home - r.elo.away).toFixed(0) + " <small>home</small></div></div>" +
+			"</div>" +
+			'<div><div class="small" style="margin-bottom:6px">Most likely scorelines</div><div class="chips">' + r.top_scores.map((s) => '<span class="chip"><b>' + s.score + "</b> " + pct(s.p, 1) + "</span>").join("") + "</div></div>" +
+			'<div class="two">' + sideCard(home) + sideCard(away) + "</div>" +
+			h2hBlock(home, away) + note +
+			'<div class="note">Probabilities from a logistic model on Elo, form, shots and rest; goals from Poisson regressions. On the held-out ' + esc(model.meta.test_season) + " season it beat naive baselines but trailed the bookmaker (see <b>model</b>). Analysis, not betting advice.</div>" +
+			"</div>";
+		say(html);
+	}
+
+	function renderTeam(name) {
+		const t = model.teams[name];
+		const lgTeams = Object.keys(model.teams).filter((k) => model.teams[k].league === t.league).sort((a, b) => model.teams[b].elo - model.teams[a].elo);
+		const rank = lgTeams.indexOf(name) + 1;
+		say('<div class="card">' + sideCard(name) +
+			"<p class=\"small\">Ranked <b>#" + rank + "</b> of " + lgTeams.length + " in " + esc(leagueName(t.league)) + " by Elo. Points per game: <b>" + (t.ppg5 == null ? "–" : t.ppg5.toFixed(2)) + "</b> over the last 5, <b>" + (t.ppg10 == null ? "–" : t.ppg10.toFixed(2)) + "</b> over the last 10, <b>" + (t.sppg == null ? "–" : t.sppg.toFixed(2)) + "</b> this season.</p>" +
+			'<p class="muted">Ask “' + esc(name) + ' vs &lt;team&gt;” for a prediction.</p></div>');
+	}
+
+	function renderTable(lg) {
+		const rows = Object.keys(model.teams).filter((k) => model.teams[k].league === lg).map((k) => ({ name: k, ...model.teams[k].season, elo: model.teams[k].elo }));
+		rows.sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.name.localeCompare(b.name));
+		if (!rows.some((r) => r.p > 0)) return say("No matches recorded yet this season for the " + esc(leagueName(lg)) + ".");
+		say('<div class="card"><b>' + esc(leagueName(lg)) + ' table</b><span class="muted">results through ' + esc(model.meta.data_through) + '</span><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th><th>Elo</th></tr>' +
+			rows.map((r, i) => "<tr><td>" + (i + 1) + '</td><td class="l">' + esc(r.name) + "</td><td>" + r.p + "</td><td>" + r.w + "</td><td>" + r.d + "</td><td>" + r.l + "</td><td>" + r.gf + "</td><td>" + r.ga + "</td><td>" + (r.gf - r.ga > 0 ? "+" : "") + (r.gf - r.ga) + "</td><td><b>" + r.pts + "</b></td><td>" + r.elo.toFixed(0) + "</td></tr>").join("") +
+			"</table></div></div>");
+	}
+
+	function renderRatings(lg) {
+		const rows = Object.keys(model.teams).filter((k) => !lg || model.teams[k].league === lg).sort((a, b) => model.teams[b].elo - model.teams[a].elo).slice(0, lg ? 30 : 20);
+		say('<div class="card"><b>' + (lg ? esc(leagueName(lg)) : "All leagues, top 20") + ' power rankings (Elo)</b><div class="tablewrap"><table><tr><th>#</th><th class="l">Team</th><th class="l">League</th><th>Elo</th><th>PPG last 10</th><th>Form</th></tr>' +
+			rows.map((k, i) => { const t = model.teams[k]; return "<tr><td>" + (i + 1) + '</td><td class="l">' + esc(k) + '</td><td class="l">' + esc(leagueName(t.league)) + "</td><td><b>" + t.elo.toFixed(0) + "</b></td><td>" + (t.ppg10 == null ? "–" : t.ppg10.toFixed(2)) + "</td><td>" + formPills(t) + "</td></tr>"; }).join("") +
+			"</table></div><p class=\"muted\">Elo: 1500 is average across the pool, +100 is roughly a 64% win expectation on neutral ground.</p></div>");
+	}
+
+	function renderModel() {
+		const m = model.metrics, meta = model.meta;
+		const order = [["base_rate", "always the base rate"], ["elo_only", "Elo difference only"], ["gradient_boosting_ref", "gradient boosting (reference)"], ["model", "this model"], ["poisson_goals", "Poisson goals model"], ["bookmaker", "bookmaker implied odds"], ["blend_model_bookmaker", "50/50 model + bookmaker"]];
+		say('<div class="card"><b>How good is it?</b>' +
+			"<p class=\"small\">Trained on " + meta.n_matches_trained.toLocaleString() + " matches from " + meta.seasons[0] + " to " + meta.seasons[meta.seasons.length - 1] + " across " + Object.keys(meta.leagues).length + " leagues (data through " + esc(meta.data_through) + ", retrained " + esc(meta.trained_at.slice(0, 10)) + "). Scored on the untouched <b>" + esc(meta.test_season) + "</b> season. Lower is better for log loss, Brier and RPS.</p>" +
+			'<div class="tablewrap"><table><tr><th class="l">Model</th><th>Log loss</th><th>Brier</th><th>RPS</th><th>Accuracy</th></tr>' +
+			order.filter(([k]) => m[k]).map(([k, label]) => '<tr class="' + (k === "model" ? "hl" : "") + '"><td class="l">' + label + "</td><td>" + m[k].log_loss.toFixed(3) + "</td><td>" + m[k].brier.toFixed(3) + "</td><td>" + m[k].rps.toFixed(3) + "</td><td>" + pct(m[k].accuracy, 1) + "</td></tr>").join("") +
+			"</table></div>" +
+			"<p class=\"small\">Honest reading: the model clearly beats naive baselines and matches a tuned gradient-boosting model on the same features, but the betting market is still better, because it prices in injuries, line-ups and news that result data cannot see. Blending with the market does not beat the market either. Use it for analysis, not for finding an edge.</p>" +
+			'<p class="muted">Features: Elo (K ' + meta.elo.k + ", home advantage " + meta.elo.home_adv + " pts), points per game over 5/10 matches, goals and shots on target for/against over 10, season points and goal difference per game, rest days, league. Source: <a href=\"" + esc(meta.source) + '" target="_blank" rel="noopener">football-data.co.uk</a>. Pipeline: <a href="https://github.com/henrythebozo/GodMode/tree/gh-pages/sportsbot" target="_blank" rel="noopener">sportsbot/</a> in the repo.</p></div>');
+	}
+
+	function renderHelp() {
+		say("<p>I predict football matches from a model trained on ~50,000 results. Things you can ask:</p>" +
+			'<div class="chips" style="margin-top:8px">' +
+			["Arsenal vs Chelsea", "Liverpool at Man City", "Real Madrid v Barcelona on 2026-10-25", "table premier league", "ratings bundesliga", "form Napoli", "h2h Inter Milan", "model", "leagues"].map((s) => '<span class="chip">' + s + "</span>").join("") +
+			"</div><p class=\"muted\" style=\"margin-top:8px\">“X at Y” means Y is at home. Covered: Premier League, Championship, La Liga, Bundesliga, Serie A, Ligue 1.</p>");
+	}
+
+	function renderLeagues() {
+		say('<div class="card"><b>League context (last five seasons)</b><div class="tablewrap"><table><tr><th class="l">League</th><th>Home win</th><th>Draw</th><th>Away win</th><th>Goals / game</th><th>Teams tracked</th></tr>' +
+			Object.keys(model.leagues).map((lg) => { const c = model.leagues[lg]; const n = Object.values(model.teams).filter((t) => t.league === lg).length; return '<tr><td class="l">' + esc(c.name) + "</td><td>" + pct(c.home_win, 1) + "</td><td>" + pct(c.draw, 1) + "</td><td>" + pct(c.away_win, 1) + "</td><td>" + c.goals_per_game.toFixed(2) + "</td><td>" + n + "</td></tr>"; }).join("") +
+			"</table></div></div>");
+	}
+
+	// --------------------------------------------------------------- dispatcher
+	function handle(text) {
+		const s = norm(text);
+		if (!s) return;
+		if (/^(help|\?|what can you do|hi|hello|hey|yo)$/.test(s)) return renderHelp();
+		if (/\b(model|metrics|accuracy|how good|how accurate|backtest|log loss)\b/.test(s)) return renderModel();
+		if (/^leagues?$/.test(s) || /\b(which leagues|league context|home advantage)\b/.test(s)) return renderLeagues();
+
+		const lg = findLeague(s);
+		if (/\b(table|standings|league table)\b/.test(s)) return lg ? renderTable(lg) : say("Which league? e.g. <b>table premier league</b>, <b>table serie a</b>.");
+		if (/\b(ratings?|rankings?|power|elo|best teams?|strongest)\b/.test(s) && !/\bvs?\b/.test(s)) return renderRatings(lg);
+
+		let on = null;
+		const dm = s.match(/\bon (\d{4})-(\d{2})-(\d{2})\b/);
+		if (dm) on = new Date(Date.UTC(+dm[1], +dm[2] - 1, +dm[3]));
+
+		let teams = findTeams(s);
+		if (teams.length === 0) {
+			// maybe a partial single name, e.g. "arsen"
+			const cleaned = s.replace(/\b(form|h2h|head to head|rating|about|who wins|predict|prediction|vs|v|versus|on \d{4}-\d{2}-\d{2})\b/g, " ").trim();
+			const r = cleaned ? resolveOne(cleaned) : {};
+			if (r.team) teams = [{ team: r.team, at: 0, end: 0 }];
+			else if (r.ambiguous && r.ambiguous.length) return say("Did you mean " + r.ambiguous.map((t) => "<b>" + esc(t) + "</b>").join(", ") + "?");
+			else return say("I don't recognise a team there. Try two teams, like <b>Arsenal vs Chelsea</b>, or <b>help</b>.");
+		}
+		if (teams.length === 1) return renderTeam(teams[0].team);
+		if (teams.length > 2) return say("One fixture at a time please. I found " + teams.map((t) => "<b>" + esc(t.team) + "</b>").join(", ") + ".");
+
+		let [a, b] = teams;
+		const between = (" " + s + " ").slice(a.end, b.at + 1);
+		if (/\b(at|@|away (at|to)|travel(s)? to|visit(s)?)\b/.test(between) || /\bat\s*$/.test(between)) [a, b] = [b, a];
+		if (a.team === b.team) return say("A team can't play itself.");
+		renderPrediction(a.team, b.team, on ? { on } : undefined);
+	}
+
+	// --------------------------------------------------------------- boot
+	function setSuggestions(list) {
+		sugg.innerHTML = "";
+		list.forEach((t) => {
+			const b = document.createElement("button");
+			b.type = "button"; b.textContent = t;
+			b.addEventListener("click", () => { q.value = t; $("#composer").requestSubmit(); });
+			sugg.appendChild(b);
+		});
+	}
+
+	$("#composer").addEventListener("submit", (e) => {
+		e.preventDefault();
+		const text = q.value.trim();
+		if (!text || !model) return;
+		push("user", esc(text));
+		q.value = "";
+		try { handle(text); } catch (err) { say('<span style="color:var(--err)">Something broke: ' + esc(err.message) + "</span>"); console.error(err); }
+		q.focus();
+	});
+
+	fetch("model.json", { cache: "no-cache" })
+		.then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+		.then((m) => {
+			model = m;
+			buildIndex();
+			const dl = $("#teams");
+			Object.keys(model.teams).sort().forEach((t) => { const o = document.createElement("option"); o.value = t; dl.appendChild(o); });
+			status.textContent = "results through " + model.meta.data_through;
+			status.classList.add("ok");
+			q.disabled = send.disabled = false;
+			setSuggestions(["Arsenal vs Chelsea", "Liverpool at Man City", "Real Madrid v Barcelona", "Bayern Munich vs Dortmund", "table premier league", "ratings", "model"]);
+			say("<p>Hey. I'm a football prediction bot trained on " + model.meta.n_matches_trained.toLocaleString() + " matches across six leagues, with results through <b>" + esc(model.meta.data_through) + "</b>.</p><p>Give me a fixture like <b>Arsenal vs Chelsea</b> and I'll return win/draw/loss odds, expected goals, likely scorelines and both teams' form. Type <b>help</b> for everything else, or <b>model</b> to see how it scores against the bookmakers.</p>");
+			q.focus();
+			const initial = new URLSearchParams(location.search).get("q");
+			if (initial) { q.value = initial; $("#composer").requestSubmit(); }
+		})
+		.catch((err) => {
+			status.textContent = "model failed to load";
+			status.classList.add("err");
+			say('<span style="color:var(--err)">Could not load model.json (' + esc(err.message) + "). If you opened this file directly, serve the folder over HTTP instead.</span>");
+		});
+})();
+</script>
+</body>
+</html>
