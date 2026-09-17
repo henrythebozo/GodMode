@@ -17,6 +17,28 @@
 4. **HOST MATCH** hosts on the port from Settings → Network (default 27015) and waits in the lobby.
    Friends on the LAN see it in the main menu's auto-discovered server list; others type the IP.
 
+## Browser build (localhost or GitHub Pages)
+
+A Web export lives in `play/`. It is bots-only (browsers cannot open the ENet sockets used for
+online play) but the full match loop, buy menu, settings and bots work.
+
+```
+./serve_web.sh            # then open http://localhost:8080/play/
+./serve_web.sh 9000       # custom port
+```
+
+Hosted copy (GitHub Pages, this branch): https://henrythebozo.github.io/GodMode/play/
+
+Rebuild it after code or asset changes (needs the Godot export templates installed once via
+Editor → Manage Export Templates, or the `.tpz` unpacked into `~/.local/share/godot/export_templates/4.4.1.stable/`):
+
+```
+godot --headless --path breachline --export-release Web ../play/index.html
+```
+
+Click the canvas once so the game can capture the mouse; Esc releases it. The export uses the
+no-threads template so it runs from any static host without cross-origin isolation headers.
+
 ## Command line
 
 ```

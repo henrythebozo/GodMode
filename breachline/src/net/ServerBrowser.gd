@@ -12,7 +12,13 @@ var servers: Dictionary = {}     # "ip:port" -> info dict
 var _refresh_timer := 0.0
 
 
+func _ready() -> void:
+	set_process(false)   # only runs while a beacon or discovery is active (never on the web)
+
+
 func start_server_beacon() -> void:
+	if OS.has_feature("web"):
+		return
 	_is_server = true
 	_udp.close()
 	if _udp.bind(DISCOVERY_PORT, "*") != OK:
@@ -21,6 +27,8 @@ func start_server_beacon() -> void:
 
 
 func start_client_discovery() -> void:
+	if OS.has_feature("web"):
+		return
 	_is_server = false
 	_udp.close()
 	_udp.bind(0, "*")

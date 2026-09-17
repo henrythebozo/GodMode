@@ -17,6 +17,8 @@ are original and produced by the scripts in this repository.
 * `docs/` – [SETUP](docs/SETUP.md) · [CONTROLS](docs/CONTROLS.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) · [MULTIPLAYER](docs/MULTIPLAYER.md) · [BLENDER_PIPELINE](docs/BLENDER_PIPELINE.md) · [ASSET_LICENSES](docs/ASSET_LICENSES.md) · [KNOWN_LIMITATIONS](docs/KNOWN_LIMITATIONS.md)
 * [PROGRESS.md](PROGRESS.md) – feature checklist with what has actually been tested
 
+**Play in the browser (bots only):** https://henrythebozo.github.io/GodMode/play/ — or locally with `./serve_web.sh` and open http://localhost:8080/play/
+
 Quick start (Godot 4.4 binary on your PATH as `godot`):
 
 ```

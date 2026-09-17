@@ -138,21 +138,30 @@ func _bot_count() -> int:
 
 
 # ============================================================================= lifecycle
+## Browsers cannot open ENet sockets, so on the web the game runs an in-process "offline host":
+## the same server code path with no network peer (bots only).
+func network_available() -> bool:
+	return not OS.has_feature("web")
+
+
 func host(port: int, listen: bool, pname: String) -> bool:
 	shutdown()
-	peer = ENetMultiplayerPeer.new()
-	var err := peer.create_server(port, 32)
-	if err != OK:
-		Events.connection_state_changed.emit("error", "Could not bind port %d" % port)
-		return false
-	multiplayer.multiplayer_peer = peer
+	if network_available():
+		peer = ENetMultiplayerPeer.new()
+		var err := peer.create_server(port, 32)
+		if err != OK:
+			Events.connection_state_changed.emit("error", "Could not bind port %d" % port)
+			return false
+		multiplayer.multiplayer_peer = peer
+		browser.start_server_beacon()
+	else:
+		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
 	mode = Mode.SERVER
 	listen_port = port
 	listen_server = listen
 	local_id = 1
 	local_player_name = pname
 	server_tick = 0
-	browser.start_server_beacon()
 	if listen:
 		_server_register_player(1, pname, session_token, false)
 	Events.connection_state_changed.emit("hosting", "Listening on port %d" % port)
@@ -161,6 +170,9 @@ func host(port: int, listen: bool, pname: String) -> bool:
 
 func join(ip: String, port: int, pname: String) -> bool:
 	shutdown()
+	if not network_available():
+		Events.connection_state_changed.emit("error", "Online play is not available in the browser build")
+		return false
 	peer = ENetMultiplayerPeer.new()
 	var err := peer.create_client(ip, port)
 	if err != OK:
@@ -1217,6 +1229,8 @@ func _render_entity_event(id: int, action: String, d: Dictionary) -> void:
 
 # ============================================================================= client loop
 func _client_tick(dt: float) -> void:
+	if peer == null:
+		return
 	if _reconnect_timer > 0.0:
 		_reconnect_timer -= dt
 		if _reconnect_timer <= 0.0:

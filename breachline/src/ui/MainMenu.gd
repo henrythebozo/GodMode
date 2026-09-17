@@ -47,7 +47,8 @@ func _ready() -> void:
 	nrow.add_child(name_edit)
 	left.add_child(nrow)
 	left.add_child(UIKit.button("PLAY WITH BOTS", _play_offline, 260))
-	left.add_child(UIKit.button("HOST MATCH", _host, 260))
+	if Net.network_available():
+		left.add_child(UIKit.button("HOST MATCH", _host, 260))
 	left.add_child(UIKit.button("SETTINGS", func(): Events.open_menu.emit("settings"), 260))
 	left.add_child(UIKit.button("QUIT", func(): get_tree().quit(), 260))
 	status = UIKit.label("", UIKit.DIM)
@@ -56,6 +57,12 @@ func _ready() -> void:
 	right.add_theme_constant_override("separation", 8)
 	right.size_flags_horizontal = SIZE_EXPAND_FILL
 	root.add_child(right)
+	if not Net.network_available():
+		right.add_child(UIKit.title("BROWSER BUILD", 28))
+		right.add_child(UIKit.label("Online play needs the desktop build. Bots, settings and the full match loop work here.", UIKit.DIM))
+		right.add_child(UIKit.label("Tip: click the game once so it can capture the mouse. Esc releases it.", UIKit.DIM))
+		Audio.play_music("ambient/menu_theme.wav")
+		return
 	right.add_child(UIKit.title("JOIN", 28))
 	var jrow := HBoxContainer.new()
 	ip_edit = LineEdit.new()

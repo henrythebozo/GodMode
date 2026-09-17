@@ -133,7 +133,7 @@ func _refresh() -> void:
 	for id in ids:
 		var i: Dictionary = Net.infos[id]
 		var box: VBoxContainer = {Teams.ATTACKERS: attackers_box, Teams.DEFENDERS: defenders_box}.get(i.team, spectators_box)
-		var txt := "%s%s%s" % [i.name, "  ✓" if i.ready else "", "" if i.connected else "  (reconnecting)"]
+		var txt := "%s%s%s" % [i.name, "  [ready]" if i.ready else "", "" if i.connected else "  (reconnecting)"]
 		if id == Net.local_id:
 			txt = "▶ " + txt
 		var l := UIKit.label(txt, UIKit.OK if i.ready else UIKit.TEXT)

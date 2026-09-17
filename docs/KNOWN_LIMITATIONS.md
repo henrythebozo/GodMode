@@ -17,6 +17,11 @@ mouse and keyboard on real hardware has **not** been possible in the development
 * Decoy grenade plays synthesised gunfire; it does not show on a radar (no radar/minimap yet).
 * No radar/minimap, no voice chat, no demo recording.
 
+## Browser build
+* Bots only: ENet is unavailable in browsers, so HOST/JOIN are hidden. WebRTC transport is the
+  path to online play in the browser and is not implemented.
+* Runs on WebGL 2 via the Compatibility renderer; expect lower frame rates than the desktop build.
+
 ## Multiplayer
 * Prediction/interpolation are prototypes (see docs/MULTIPLAYER.md); no extrapolation on packet loss.
 * No internet master server; LAN discovery + direct IP only.

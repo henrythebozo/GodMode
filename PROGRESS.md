@@ -44,6 +44,10 @@ rendered screenshot) · **[~]** implemented, only partially verified · **[ ]** 
 - [x] Accessibility: colour-vision palettes, subtitles, UI scale/large text, reduced motion, blood toggle, flash intensity, separate audio sliders
 - [x] Spatial audio for footsteps, gunshots (near/distant), reloads, grenades, ambience, announcer hooks with subtitle
 
+## Browser build
+- [x] Web export (`play/`, no-threads template, Compatibility renderer) with in-process offline host for bots-only play — verified in headless Chromium: menu → lobby → match, movement, firing, HUD, no script errors
+- [x] `serve_web.sh` localhost server; hosted on GitHub Pages from this branch
+
 ## Documentation
 - [x] README, SETUP, CONTROLS, ARCHITECTURE, MULTIPLAYER, BLENDER_PIPELINE, ASSET_LICENSES, KNOWN_LIMITATIONS
 

@@ -23,7 +23,8 @@ func attach(p: Player) -> void:
 	player = p
 	yaw = p.yaw
 	pitch = p.pitch
-	capture_mouse(true)
+	# the mouse is captured when gameplay starts (set_ui_blocking(false)); capturing here would race
+	# the lobby's release on the web platform and leave the pointer locked
 
 
 func capture_mouse(c: bool) -> void:

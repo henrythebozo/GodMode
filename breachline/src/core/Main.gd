@@ -114,6 +114,8 @@ func _start_offline(autostart: bool) -> void:
 	if not Net.host(int(Settings.get_value("network", "port", Net.DEFAULT_PORT)), true, pname):
 		# port busy (e.g. a second local instance): try a random port so offline play still works
 		Net.host(randi_range(30000, 40000), true, pname)
+	if not Net.network_available():
+		Net.server_name = "Browser session"
 	_load_map(DEFAULT_MAP)
 	var per_team := int(Settings.get_value("gameplay", "bots_per_team", 4))
 	var diff := int(Settings.get_value("gameplay", "bot_difficulty", 1))
