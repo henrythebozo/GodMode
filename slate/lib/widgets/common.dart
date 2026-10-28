@@ -186,6 +186,7 @@ class SlateTextField extends StatefulWidget {
     this.enabled = true,
     this.onChanged,
     this.suffix,
+    this.inputFormatters,
   });
 
   final String label;
@@ -202,6 +203,7 @@ class SlateTextField extends StatefulWidget {
   final bool enabled;
   final ValueChanged<String>? onChanged;
   final Widget? suffix;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<SlateTextField> createState() => _SlateTextFieldState();
@@ -230,6 +232,7 @@ class _SlateTextFieldState extends State<SlateTextField> {
           autocorrect: !widget.obscure,
           enableSuggestions: !widget.obscure,
           validator: widget.validator,
+          inputFormatters: widget.inputFormatters,
           onFieldSubmitted: widget.onSubmitted,
           onChanged: widget.onChanged,
           style: SlateText.small.copyWith(fontWeight: FontWeight.w500),

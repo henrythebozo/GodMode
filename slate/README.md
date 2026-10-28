@@ -5,13 +5,20 @@ A black-and-white card and wallet app in Flutter, with a Supabase backend.
 - **Login / sign-up** with the liquid wave intro (the black splash lifts into the
   curved header, the wordmark glides to the corner, the form staggers in), email +
   password, Google / Apple / Facebook buttons, and password reset by email.
-- **Home**: greeting, available balance, brushed-metal card, recent transactions,
-  floating pill tab bar.
+- **Home**: greeting, available balance, a swipeable row of your cards (Slate's
+  own plus cards from other banks) ending in a round **+ Add** button, recent
+  transactions, floating pill tab bar.
+- **Add a card**: pick Amex Centurion ("the Black Card"), Amex Platinum, Amex Gold,
+  Chase Sapphire Reserve, Capital One Venture X, Citi Strata Premier, Discover it,
+  or "Other card" with any bank, network and colour, then type the last 4 digits.
+  Only those 4 digits are stored; the app never asks for a full number or code and
+  can't pay with these cards.
 - **Card plans**: Platinum / Silver / Gold carousel with the sliding title and
   "Choose Silver" button; ordering charges the first annual fee.
 - **Transfer**: send to another member by email (the name is confirmed before you
   can send), top up, and convert between USD / EUR / GBP wallets.
-- **Cards**: details, freeze / unfreeze. **Profile**: rename, reset password, log out.
+- **Cards**: every card with details; freeze Slate cards, remove added ones.
+  **Profile**: rename, reset password, log out.
 
 The layout was measured from the reference frames (iPhone 17 Pro Max, 440 × 956 pt):
 type is Plus Jakarta Sans, icons are Iconsax, and the login wave is a single cubic
@@ -19,13 +26,24 @@ Bézier fitted to the frame.
 
 ## Read this first
 
+- **Demo and live are separate builds.** Without Supabase settings the app is the
+  demo: Alex's account with $22,000, six cards across Slate, Amex, Chase and
+  Capital One, and a transaction history, all in memory. With Supabase settings
+  it's live: every account starts at $0 with no cards and no transactions, and
+  only shows what that member does. The fake accounts in `supabase/seed.sql`
+  exist only in a local database (`supabase db reset`); `supabase db push`, which
+  sets up a hosted project, never sends them.
+
 - **The money is simulated.** Balances live in your own Postgres. Top-ups don't
   charge anything and cards are pictures with a random last four digits. Moving
   real money needs a banking / card-issuing partner (Stripe Issuing, Marqeta, Unit
   and similar), identity checks (KYC) and the licences that come with them.
-- **The VISA mark** on the card is drawn from the app font as a stand-in. Showing a
-  card network's logo on a real product requires an agreement with that network.
-  It lives in one widget, `lib/widgets/visa_logo.dart`.
+- **Bank and network names are labels, the artwork is a stand-in.** Cards are drawn
+  in each product's colours with the bank's name in the app font; VISA / AMEX /
+  Discover marks are text and the Mastercard-style mark is two plain rings, not the
+  networks' logos. Naming a member's own cards is normal for a wallet; shipping
+  issuers' or networks' actual artwork needs their permission. Designs live in
+  `lib/widgets/card_designs.dart` and `lib/widgets/card_art.dart`.
 - **The visual design comes from DailyFlutterUI's TikTok videos**, not from your
   other project. Their handle no longer appears anywhere; the card and greeting
   show the member's own name.
@@ -40,10 +58,10 @@ flutter pub get
 flutter run
 ```
 
-With no Supabase settings the app runs on **demo data** kept in memory: the account
-from the screenshots ($22,000, a Platinum card). Any email plus a password of six
-or more characters logs in; `jamie@slate.app` and `sam@slate.app` can receive
-money. Data resets when the app restarts.
+With no Supabase settings the app runs as the **demo**, on data kept in memory: the
+account from the screenshots ($22,000, the Platinum card, cards from other banks).
+Any email plus a password of six or more characters logs in; `jamie@slate.app` and
+`sam@slate.app` can receive money. Data resets when the app restarts.
 
 ### With a local Supabase backend
 
@@ -103,7 +121,7 @@ two files, in `lib/main.dart` (`authRedirect`) and in `supabase/config.toml`.
 
 ## Backend
 
-Everything is in `supabase/migrations/20261028000000_slate_schema.sql`.
+Everything is in `supabase/migrations/` (the schema, then the added-cards table).
 
 | Table | What it holds |
 | --- | --- |
@@ -111,6 +129,7 @@ Everything is in `supabase/migrations/20261028000000_slate_schema.sql`.
 | `wallets` | Balance per member per currency, in cents. Can't go below zero. |
 | `cards` | Plan, holder name, last four digits, expiry, active / frozen. |
 | `transactions` | The ledger. Every balance change writes a row with the balance after it. |
+| `linked_cards` | Cards a member added from other banks: design, bank, card name, network, last 4. |
 | `card_plans`, `currencies` | Plans and prices; demo exchange rates. Edit these to change prices. |
 
 Members can only **read** their own rows (row level security) and change their own
@@ -126,6 +145,8 @@ ledger rows in one transaction:
 | `order_card(p_plan_id, p_request_id)` | One live card per plan; charges the annual fee. |
 | `set_card_frozen(p_card_id, p_frozen)` | Own cards only. |
 | `lookup_recipient(p_email)` | Returns the member's name, or null. |
+| `add_linked_card(p_design, p_issuer, p_product, p_network, p_last4, p_holder_name, p_nickname)` | Exactly 4 digits; up to 20 cards; the same card once. |
+| `remove_linked_card(p_card_id)` | Own cards only. |
 
 `p_request_id` makes a payment safe to retry: sending the same id twice returns the
 first result instead of moving money twice. The app sends a fresh id per attempt
@@ -136,7 +157,7 @@ and reuses it when retrying after a network error.
 ```sh
 flutter analyze
 flutter test                       # unit + widget tests on demo data
-supabase test db                   # 67 database tests: rules, RLS, idempotency
+supabase test db                   # 87 database tests: rules, RLS, idempotency, added cards
 ./supabase/tests/concurrency.sh    # many simultaneous transfers: no deadlocks, no overdraft
 SUPABASE_TEST_URL=http://127.0.0.1:54321 SUPABASE_TEST_KEY=sb_publishable_... \
   flutter test test/supabase_repository_test.dart   # the app's data layer against local Supabase

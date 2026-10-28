@@ -22,6 +22,7 @@ class DemoRepository implements SlateRepository {
   late Profile _profile;
   final Map<String, Wallet> _wallets = {};
   final List<PaymentCard> _cards = [];
+  final List<LinkedCard> _linked = [];
   final List<Txn> _txns = [];
   final Map<String, Object> _done = {}; // request id -> result
 
@@ -78,6 +79,30 @@ class DemoRepository implements SlateRepository {
       status: CardStatus.active,
       createdAt: at(8, 11, 0),
     ));
+    // Cards from other banks, for the row on the home screen.
+    LinkedCard linked(String design, String issuer, String product, CardNetwork network,
+            String last4, int daysAgo, {String? nickname}) =>
+        LinkedCard(
+          id: 'linked-$design',
+          designId: design,
+          issuer: issuer,
+          product: product,
+          network: network,
+          last4: last4,
+          holderName: 'Alex Carter',
+          nickname: nickname,
+          createdAt: at(daysAgo, 10, 0),
+        );
+    _linked.addAll([
+      linked('amex_centurion', 'American Express', 'Centurion', CardNetwork.amex, '1009', 7,
+          nickname: 'The Black Card'),
+      linked('amex_platinum', 'American Express', 'Platinum', CardNetwork.amex, '2003', 6),
+      linked('chase_sapphire_reserve', 'Chase', 'Sapphire Reserve', CardNetwork.visa, '7731', 5,
+          nickname: 'Travel'),
+      linked('capital_one_venture_x', 'Capital One', 'Venture X', CardNetwork.visa, '5560', 4),
+      linked('amex_gold', 'American Express', 'Gold', CardNetwork.amex, '3008', 3, nickname: 'Dining'),
+    ]);
+
     var n = 0;
     Txn row(TxnKind kind, int cents, int after, DateTime time,
         {String currency = 'USD', String description = '', String? who, String? group}) {
@@ -164,6 +189,11 @@ class DemoRepository implements SlateRepository {
       _cards.length,
       [for (final card in _cards) _renamed(card, name.trim())],
     );
+    _linked.replaceRange(
+      0,
+      _linked.length,
+      [for (final card in _linked) _renamedLinked(card, name.trim())],
+    );
     _becomeSignedIn();
     return false;
   }
@@ -176,6 +206,18 @@ class DemoRepository implements SlateRepository {
         expiryMonth: card.expiryMonth,
         expiryYear: card.expiryYear,
         status: card.status,
+        createdAt: card.createdAt,
+      );
+
+  LinkedCard _renamedLinked(LinkedCard card, String name) => LinkedCard(
+        id: card.id,
+        designId: card.designId,
+        issuer: card.issuer,
+        product: card.product,
+        network: card.network,
+        last4: card.last4,
+        holderName: name,
+        nickname: card.nickname,
         createdAt: card.createdAt,
       );
 
@@ -397,6 +439,58 @@ class DemoRepository implements SlateRepository {
     }
     _done[requestId] = card;
     return card;
+  }
+
+  @override
+  Future<List<LinkedCard>> fetchLinkedCards() async {
+    _requireSignedIn();
+    return List.of(_linked);
+  }
+
+  @override
+  Future<LinkedCard> addLinkedCard(NewLinkedCard card) async {
+    await _pause();
+    _requireSignedIn();
+    final design = card.designId.trim().toLowerCase();
+    final last4 = card.last4.trim();
+    if (!RegExp(r'^[a-z0-9_]{1,40}$').hasMatch(design)) {
+      throw const SlateException('Pick a card design.');
+    }
+    if (!RegExp(r'^[0-9]{4}$').hasMatch(last4)) {
+      throw const SlateException('Enter the last 4 digits of the card.');
+    }
+    if (card.issuer.trim().isEmpty || card.product.trim().isEmpty) {
+      throw const SlateException('Enter the bank and the card name.');
+    }
+    if (card.holderName.trim().isEmpty) throw const SlateException('Enter the name on the card.');
+    if (_linked.length >= 20) throw const SlateException('You can add up to 20 cards.');
+    if (_linked.any((c) => c.designId == design && c.last4 == last4)) {
+      throw const SlateException("You've already added this card.");
+    }
+    String clip(String s, int max) => s.length > max ? s.substring(0, max) : s;
+    final nickname = clip((card.nickname ?? '').trim(), 40);
+    final added = LinkedCard(
+      id: 'linked-${_random.nextInt(1 << 30)}',
+      designId: design,
+      issuer: clip(card.issuer.trim(), 40),
+      product: clip(card.product.trim(), 40),
+      network: card.network,
+      last4: last4,
+      holderName: clip(card.holderName.trim(), 60),
+      nickname: nickname.isEmpty ? null : nickname,
+      createdAt: DateTime.now(),
+    );
+    _linked.add(added);
+    return added;
+  }
+
+  @override
+  Future<void> removeLinkedCard(String cardId) async {
+    await _pause();
+    _requireSignedIn();
+    final before = _linked.length;
+    _linked.removeWhere((c) => c.id == cardId);
+    if (_linked.length == before) throw const SlateException('Card not found.');
   }
 
   @override

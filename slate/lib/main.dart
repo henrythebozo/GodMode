@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -58,11 +59,21 @@ class _CardAppState extends State<CardApp> {
         title: 'Slate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        scrollBehavior: const _DragAnywhere(),
         builder: _previewInsets,
         home: const SplashScreen(),
       ),
     );
   }
+}
+
+/// Lets a mouse drag the card row and carousels too (Flutter only scrolls by
+/// dragging with touch by default), for the web build on a laptop.
+class _DragAnywhere extends MaterialScrollBehavior {
+  const _DragAnywhere();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => PointerDeviceKind.values.toSet();
 }
 
 /// `--dart-define=PREVIEW_SAFE_AREA=62,34` fakes a phone's status bar and home

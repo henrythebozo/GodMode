@@ -43,13 +43,13 @@ void main() {
 
   test('sign in is required', () async {
     await repo.signOut();
-    expect(repo.fetchWallets, fails('You need to be signed in.'));
+    await expectLater(repo.fetchWallets, fails('You need to be signed in.'));
   });
 
   test('validates credentials like the auth server', () async {
     final fresh = DemoRepository(latency: Duration.zero);
-    expect(() => fresh.signIn(email: 'nope', password: 'slate1234'), fails('Enter a valid email address.'));
-    expect(() => fresh.signIn(email: 'a@b.co', password: '123'),
+    await expectLater(() => fresh.signIn(email: 'nope', password: 'slate1234'), fails('Enter a valid email address.'));
+    await expectLater(() => fresh.signIn(email: 'a@b.co', password: '123'),
         fails('Password should be at least 6 characters.'));
   });
 
@@ -70,15 +70,15 @@ void main() {
     });
 
     test('refuses what the SQL refuses', () async {
-      expect(() => repo.transfer(email: 'jamie@slate.app', cents: 2200001, currency: 'USD', requestId: 'a'),
+      await expectLater(() => repo.transfer(email: 'jamie@slate.app', cents: 2200001, currency: 'USD', requestId: 'a'),
           fails('Insufficient funds.'));
-      expect(() => repo.transfer(email: 'ALEX@slate.app', cents: 100, currency: 'USD', requestId: 'b'),
+      await expectLater(() => repo.transfer(email: 'ALEX@slate.app', cents: 100, currency: 'USD', requestId: 'b'),
           fails("You can't send money to yourself."));
-      expect(() => repo.transfer(email: 'who@slate.app', cents: 100, currency: 'USD', requestId: 'c'),
+      await expectLater(() => repo.transfer(email: 'who@slate.app', cents: 100, currency: 'USD', requestId: 'c'),
           fails('No Slate account uses that email.'));
-      expect(() => repo.transfer(email: 'jamie@slate.app', cents: 0, currency: 'USD', requestId: 'd'),
+      await expectLater(() => repo.transfer(email: 'jamie@slate.app', cents: 0, currency: 'USD', requestId: 'd'),
           fails('Enter an amount greater than zero.'));
-      expect(() => repo.transfer(email: 'jamie@slate.app', cents: 100, currency: 'XYZ', requestId: 'e'),
+      await expectLater(() => repo.transfer(email: 'jamie@slate.app', cents: 100, currency: 'XYZ', requestId: 'e'),
           fails("That currency isn't supported."));
       expect(await usd(), 2200000);
     });
@@ -91,7 +91,7 @@ void main() {
   });
 
   test('top-ups are limited per payment', () async {
-    expect(() => repo.topUp(cents: 2500001, currency: 'USD', requestId: 't'),
+    await expectLater(() => repo.topUp(cents: 2500001, currency: 'USD', requestId: 't'),
         fails('That amount is over the limit for one payment.'));
     await repo.topUp(cents: 50000, currency: 'USD', requestId: 't2');
     expect(await usd(), 2250000);
@@ -104,9 +104,9 @@ void main() {
     expect(wallets['GBP'], 7900);
     final legs = (await repo.fetchTransactions()).where((t) => t.groupId == out.groupId);
     expect(legs.map((t) => t.kind), unorderedEquals([TxnKind.conversionOut, TxnKind.conversionIn]));
-    expect(() => repo.convert(from: 'USD', to: 'usd', cents: 100, requestId: 'y'),
+    await expectLater(() => repo.convert(from: 'USD', to: 'usd', cents: 100, requestId: 'y'),
         fails('Pick two different currencies.'));
-    expect(() => repo.convert(from: 'USD', to: 'EUR', cents: 1, requestId: 'z'),
+    await expectLater(() => repo.convert(from: 'USD', to: 'EUR', cents: 1, requestId: 'z'),
         fails('That amount is too small to convert.'));
   });
 
@@ -118,9 +118,9 @@ void main() {
       expect(card.holderName, 'Alex Carter');
       expect(card.last4, matches(RegExp(r'^\d{4}$')));
       expect(await usd(), 2200000 - 9900);
-      expect(() => repo.orderCard(planId: 'silver', requestId: 'card-2'),
+      await expectLater(() => repo.orderCard(planId: 'silver', requestId: 'card-2'),
           fails('You already have a Silver card.'));
-      expect(() => repo.orderCard(planId: 'titanium', requestId: 'card-3'),
+      await expectLater(() => repo.orderCard(planId: 'titanium', requestId: 'card-3'),
           fails("That card plan doesn't exist."));
     });
 
@@ -128,7 +128,7 @@ void main() {
       final card = (await repo.fetchCards()).first;
       expect((await repo.setCardFrozen(cardId: card.id, frozen: true)).status, CardStatus.frozen);
       expect((await repo.setCardFrozen(cardId: card.id, frozen: false)).status, CardStatus.active);
-      expect(() => repo.setCardFrozen(cardId: 'nope', frozen: true), fails('Card not found.'));
+      await expectLater(() => repo.setCardFrozen(cardId: 'nope', frozen: true), fails('Card not found.'));
     });
   });
 }

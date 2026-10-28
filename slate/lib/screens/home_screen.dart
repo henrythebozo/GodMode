@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
-import '../data/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
-import '../widgets/slate_card.dart';
+import '../widgets/card_designs.dart';
+import '../widgets/card_row.dart';
 import '../widgets/slate_nav_bar.dart';
 import '../widgets/transaction_tile.dart';
+import 'add_card_screen.dart';
 import 'card_plans_screen.dart';
 import 'cards_screen.dart';
 import 'transactions_screen.dart';
@@ -33,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   )..forward();
   final _scroll = ScrollController();
   final _overscroll = ValueNotifier<double>(0);
+  final _row = GlobalKey<CardRowState>();
 
   @override
   void initState() {
@@ -63,13 +65,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   void _openAll({bool search = false}) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => TransactionsScreen(autofocusSearch: search)),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => TransactionsScreen(autofocusSearch: search)));
   }
 
   void _openPlans() {
     Navigator.of(context).push(CardPlansScreen.route());
+  }
+
+  Future<void> _addCard() async {
+    final card = await Navigator.of(context).push(AddCardScreen.route());
+    if (card == null || !mounted) return;
+    showSlateSnack(context, '${CardCatalog.forCard(card).name} added.', aboveNav: true);
+    // Wait for the row to rebuild with the new card, then glide to it.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _row.currentState?.showCard(card.id));
   }
 
   void _showActions() {
@@ -122,13 +131,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               children: [
                 Text('Move money', style: SlateText.headline.copyWith(fontSize: 24)),
                 const SizedBox(height: 12),
-                action(Iconsax.add_copy, 'Top up', 'Add money to your balance',
-                    () => widget.onAction(TransferMode.topUp)),
-                action(Iconsax.export_3_copy, 'Send', 'Pay another Slate member',
-                    () => widget.onAction(TransferMode.send)),
-                action(Iconsax.arrow_swap_horizontal_copy, 'Convert', 'Swap between currencies',
-                    () => widget.onAction(TransferMode.convert)),
-                action(Iconsax.card_add_copy, 'New card', 'Platinum, Silver or Gold', _openPlans),
+                action(
+                  Iconsax.add_copy,
+                  'Top up',
+                  'Add money to your balance',
+                  () => widget.onAction(TransferMode.topUp),
+                ),
+                action(
+                  Iconsax.export_3_copy,
+                  'Send',
+                  'Pay another Slate member',
+                  () => widget.onAction(TransferMode.send),
+                ),
+                action(
+                  Iconsax.arrow_swap_horizontal_copy,
+                  'Convert',
+                  'Swap between currencies',
+                  () => widget.onAction(TransferMode.convert),
+                ),
+                action(Iconsax.card_add_copy, 'Add a card', 'Amex, Chase and other banks', _addCard),
+                action(Iconsax.card_copy, 'Get a Slate card', 'Platinum, Silver or Gold', _openPlans),
               ],
             ),
           ),
@@ -141,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final safe = MediaQuery.paddingOf(context);
-    final card = state.primaryCard;
     final feed = state.feed;
     final recent = feed.take(8).toList();
 
@@ -169,17 +190,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               controller: _scroll,
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
               slivers: [
-                SliverToBoxAdapter(child: _header(state, card, safe)),
+                SliverToBoxAdapter(child: _header(state, safe)),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(24, 21, 24, 0),
                   sliver: SliverToBoxAdapter(
                     child: _rise(
                       0.35,
-                      SectionHeader(
-                        title: 'Recent transactions',
-                        action: 'See all',
-                        onAction: _openAll,
-                      ),
+                      SectionHeader(title: 'Recent transactions', action: 'See all', onAction: _openAll),
                     ),
                   ),
                 ),
@@ -211,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _header(AppState state, PaymentCard? card, EdgeInsets safe) {
+  Widget _header(AppState state, EdgeInsets safe) {
     final name = firstName(state.profile?.fullName ?? '');
     final balance = state.balanceOf('USD');
     return Container(
@@ -219,74 +236,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         color: SlateColors.ink,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
-      padding: EdgeInsets.fromLTRB(24, safe.top + 7, 24, 26),
+      // No side padding here: the card row runs edge to edge so the next card
+      // can peek in. Everything else is inset by 24.
+      padding: EdgeInsets.only(top: safe.top + 7, bottom: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Hello $name',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: SlateText.headline.copyWith(color: Colors.white, height: 1),
-                ),
-              ),
-              const SizedBox(width: 12),
-              RoundIconButton(
-                icon: Iconsax.search_normal_1_copy,
-                label: 'Search transactions',
-                onTap: () => _openAll(search: true),
-              ),
-              const SizedBox(width: 12),
-              RoundIconButton(icon: Iconsax.add_copy, label: 'Move money', onTap: _showActions),
-            ],
-          ),
-          const SizedBox(height: 31),
-          Text(
-            'Available balance',
-            style: SlateText.caption.copyWith(
-              color: SlateColors.onInkMuted,
-              fontSize: 13,
-              height: 1,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 11),
-          AnimatedBuilder(
-            animation: _intro,
-            builder: (context, _) {
-              // Count up on first appearance, then just show the number.
-              final t = Curves.easeOutExpo.transform((_intro.value / 0.85).clamp(0, 1));
-              final shown = (balance * t).round();
-              return Text(
-                formatMoney(t < 1 ? shown - shown % 100 : balance, 'USD', whole: true),
-                style: SlateText.balance.copyWith(height: 1),
-              );
-            },
-          ),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: _greeting(name, balance)),
           const SizedBox(height: 19),
           _rise(
             0.1,
-            Hero(
-              tag: 'home-card',
-              child: card == null
-                  ? EmptyCardSlot(onTap: _openPlans)
-                  : Pressable(
-                      onTap: () => showCardSheet(context, card),
-                      scale: 0.98,
-                      semanticLabel: '${state.planFor(card.planId)?.name ?? 'Your'} card ending ${card.last4}',
-                      child: SlateCard.fromCard(
-                        card,
-                        tierLabel: state.planFor(card.planId)?.name ?? 'Platinum',
-                      ),
-                    ),
+            CardRow(
+              key: _row,
+              cards: state.walletCards,
+              onOpen: (card) => showCardSheet(context, card),
+              onAdd: _addCard,
             ),
             distance: 40,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _greeting(String name, int balance) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Hello $name',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SlateText.headline.copyWith(color: Colors.white, height: 1),
+              ),
+            ),
+            const SizedBox(width: 12),
+            RoundIconButton(
+              icon: Iconsax.search_normal_1_copy,
+              label: 'Search transactions',
+              onTap: () => _openAll(search: true),
+            ),
+            const SizedBox(width: 12),
+            RoundIconButton(icon: Iconsax.add_copy, label: 'Move money', onTap: _showActions),
+          ],
+        ),
+        const SizedBox(height: 31),
+        Text(
+          'Available balance',
+          style: SlateText.caption.copyWith(
+            color: SlateColors.onInkMuted,
+            fontSize: 13,
+            height: 1,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 11),
+        AnimatedBuilder(
+          animation: _intro,
+          builder: (context, _) {
+            // Count up on first appearance, then just show the number.
+            final t = Curves.easeOutExpo.transform((_intro.value / 0.85).clamp(0, 1));
+            final shown = (balance * t).round();
+            return Text(
+              formatMoney(t < 1 ? shown - shown % 100 : balance, 'USD', whole: true),
+              style: SlateText.balance.copyWith(height: 1),
+            );
+          },
+        ),
+      ],
     );
   }
 

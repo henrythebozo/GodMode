@@ -55,7 +55,7 @@ void main() {
       .having((e) => e.code, 'code', code ?? anything));
 
   test('wrong password is a friendly error', () async {
-    expect(() => connect().signIn(email: 'demo@slate.app', password: 'nope-nope'),
+    await expectLater(() => connect().signIn(email: 'demo@slate.app', password: 'nope-nope'),
         fails("That email and password don't match.", 'invalid_credentials'));
   }, skip: skip);
 
@@ -94,13 +94,13 @@ void main() {
 
   test('money rules come back as readable errors', () async {
     final alex = await signedIn('demo@slate.app');
-    expect(() => alex.transfer(email: 'jamie@slate.app', cents: 99999999, currency: 'USD', requestId: newRequestId()),
+    await expectLater(() => alex.transfer(email: 'jamie@slate.app', cents: 99999999, currency: 'USD', requestId: newRequestId()),
         fails('Insufficient funds.', 'insufficient_funds'));
-    expect(() => alex.transfer(email: 'demo@slate.app', cents: 100, currency: 'USD', requestId: newRequestId()),
+    await expectLater(() => alex.transfer(email: 'demo@slate.app', cents: 100, currency: 'USD', requestId: newRequestId()),
         fails("You can't send money to yourself.", 'self_transfer'));
-    expect(() => alex.transfer(email: 'nobody@example.com', cents: 100, currency: 'USD', requestId: newRequestId()),
+    await expectLater(() => alex.transfer(email: 'nobody@example.com', cents: 100, currency: 'USD', requestId: newRequestId()),
         fails('No Slate account uses that email.', 'recipient_not_found'));
-    expect(() => alex.orderCard(planId: 'platinum', requestId: newRequestId()),
+    await expectLater(() => alex.orderCard(planId: 'platinum', requestId: newRequestId()),
         fails('You already have a Platinum card.', 'card_exists'));
     expect(await alex.lookupRecipient('JAMIE@slate.app'), 'Jamie Rivera');
     expect(await alex.lookupRecipient('demo@slate.app'), isNull);
@@ -116,8 +116,32 @@ void main() {
     expect((await repo.fetchProfile()).fullName, 'Ivy Test');
     expect(await usd(repo), 0);
     expect(await repo.fetchCards(), isEmpty);
+    expect(await repo.fetchLinkedCards(), isEmpty, reason: 'live accounts start with no cards');
     expect(await repo.fetchTransactions(), isEmpty, reason: 'row level security hides other members');
-    expect(() => repo.orderCard(planId: 'silver', requestId: newRequestId()), fails('Insufficient funds.'));
+
+    final linked = await repo.addLinkedCard(const NewLinkedCard(
+      designId: 'amex_platinum',
+      issuer: 'American Express',
+      product: 'Platinum',
+      network: CardNetwork.amex,
+      last4: '2003',
+      holderName: 'Ivy Test',
+    ));
+    expect((await repo.fetchLinkedCards()).single.id, linked.id);
+    await expectLater(
+      () => repo.addLinkedCard(const NewLinkedCard(
+        designId: 'amex_platinum',
+        issuer: 'American Express',
+        product: 'Platinum',
+        network: CardNetwork.amex,
+        last4: '2003',
+        holderName: 'Ivy Test',
+      )),
+      fails("You've already added this card.", 'card_exists'),
+    );
+    await repo.removeLinkedCard(linked.id);
+    expect(await repo.fetchLinkedCards(), isEmpty);
+    await expectLater(() => repo.orderCard(planId: 'silver', requestId: newRequestId()), fails('Insufficient funds.'));
 
     await repo.topUp(cents: 10000, currency: 'USD', requestId: newRequestId());
     final card = await repo.orderCard(planId: 'silver', requestId: newRequestId());

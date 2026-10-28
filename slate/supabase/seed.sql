@@ -1,4 +1,5 @@
--- Local development data only (`supabase db reset` runs this; `supabase db push` does not).
+-- Local development data only: `supabase db reset` runs this, `supabase db push`
+-- never does, so a live project gets none of these accounts, cards or transactions.
 -- Two members so transfers can be tried end to end:
 --   demo@slate.app  / slate1234  Alex Carter: $22,000, €1,306.40 and a Platinum card
 --   jamie@slate.app / slate1234  Jamie Rivera: $4,931
@@ -93,3 +94,12 @@ update public.wallets set balance_cents = 130640
 where user_id = '5ea7e000-0000-4000-8000-0000000000a1' and currency = 'EUR';
 update public.wallets set balance_cents = 493100
 where user_id = '5ea7e000-0000-4000-8000-0000000000b2' and currency = 'USD';
+
+-- Cards Alex added from other banks (display data only).
+insert into public.linked_cards (user_id, design, issuer, product, network, last4, holder_name, nickname, created_at)
+values
+  ('5ea7e000-0000-4000-8000-0000000000a1', 'amex_centurion', 'American Express', 'Centurion', 'amex', '1009', 'Alex Carter', 'The Black Card', now() - interval '7 days'),
+  ('5ea7e000-0000-4000-8000-0000000000a1', 'amex_platinum', 'American Express', 'Platinum', 'amex', '2003', 'Alex Carter', null, now() - interval '6 days'),
+  ('5ea7e000-0000-4000-8000-0000000000a1', 'chase_sapphire_reserve', 'Chase', 'Sapphire Reserve', 'visa', '7731', 'Alex Carter', 'Travel', now() - interval '5 days'),
+  ('5ea7e000-0000-4000-8000-0000000000a1', 'capital_one_venture_x', 'Capital One', 'Venture X', 'visa', '5560', 'Alex Carter', null, now() - interval '4 days'),
+  ('5ea7e000-0000-4000-8000-0000000000a1', 'amex_gold', 'American Express', 'Gold', 'amex', '3008', 'Alex Carter', 'Dining', now() - interval '3 days');

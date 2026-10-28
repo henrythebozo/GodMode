@@ -19,6 +19,7 @@ class AppState extends ChangeNotifier {
   Profile? profile;
   List<Wallet> wallets = const [];
   List<PaymentCard> cards = const [];
+  List<LinkedCard> linkedCards = const [];
   List<Txn> transactions = const [];
   List<CardPlan> plans = const [];
   List<Currency> currencies = const [];
@@ -50,6 +51,7 @@ class AppState extends ChangeNotifier {
     profile = null;
     wallets = const [];
     cards = const [];
+    linkedCards = const [];
     transactions = const [];
     loadError = null;
     notifyListeners();
@@ -70,6 +72,13 @@ class AppState extends ChangeNotifier {
     final active = live.where((c) => c.status == CardStatus.active).toList();
     return (active.isNotEmpty ? active : live).first;
   }
+
+  /// The row of cards on the home screen: Slate's cards first, then the ones
+  /// added from other banks, oldest first.
+  List<WalletCard> get walletCards => [
+        ...cards.where((c) => c.status != CardStatus.cancelled),
+        ...linkedCards,
+      ];
 
   /// Ledger rows as people think of them: a conversion is one entry (its
   /// debit), not two.
@@ -102,6 +111,7 @@ class AppState extends ChangeNotifier {
         repository.fetchTransactions(),
         if (plans.isEmpty) repository.fetchPlans() else Future.value(plans),
         if (currencies.isEmpty) repository.fetchCurrencies() else Future.value(currencies),
+        repository.fetchLinkedCards(),
       ]);
       profile = results[0] as Profile;
       wallets = results[1] as List<Wallet>;
@@ -109,6 +119,7 @@ class AppState extends ChangeNotifier {
       transactions = results[3] as List<Txn>;
       plans = results[4] as List<CardPlan>;
       currencies = results[5] as List<Currency>;
+      linkedCards = results[6] as List<LinkedCard>;
       loadError = null;
     } catch (e) {
       loadError = e.toString();
@@ -196,6 +207,19 @@ class AppState extends ChangeNotifier {
     cards = [for (final c in cards) c.id == updated.id ? updated : c];
     notifyListeners();
     return updated;
+  }
+
+  Future<LinkedCard> addLinkedCard(NewLinkedCard card) async {
+    final added = await repository.addLinkedCard(card);
+    linkedCards = [...linkedCards, added];
+    notifyListeners();
+    return added;
+  }
+
+  Future<void> removeLinkedCard(LinkedCard card) async {
+    await repository.removeLinkedCard(card.id);
+    linkedCards = [for (final c in linkedCards) if (c.id != card.id) c];
+    notifyListeners();
   }
 
   Future<void> updateName(String name) async {

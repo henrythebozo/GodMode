@@ -239,4 +239,27 @@ class SupabaseRepository implements SlateRepository {
             'p_card_id': cardId,
             'p_frozen': frozen,
           })));
+
+  @override
+  Future<List<LinkedCard>> fetchLinkedCards() => _guard(() async {
+        final rows = await client.from('linked_cards').select().order('created_at', ascending: true);
+        return rows.map(LinkedCard.fromJson).toList();
+      });
+
+  @override
+  Future<LinkedCard> addLinkedCard(NewLinkedCard card) =>
+      _guard(() async => LinkedCard.fromJson(await _rpc('add_linked_card', {
+            'p_design': card.designId,
+            'p_issuer': card.issuer,
+            'p_product': card.product,
+            'p_network': card.network.name,
+            'p_last4': card.last4,
+            'p_holder_name': card.holderName,
+            'p_nickname': card.nickname,
+          })));
+
+  @override
+  Future<void> removeLinkedCard(String cardId) => _guard(() async {
+        await client.rpc('remove_linked_card', params: {'p_card_id': cardId});
+      });
 }

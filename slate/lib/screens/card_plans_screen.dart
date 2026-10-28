@@ -11,7 +11,8 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
-import '../widgets/slate_card.dart';
+import '../widgets/card_art.dart';
+import '../widgets/card_designs.dart';
 
 /// "Choose Silver": portrait cards in a carousel, with the plan name and
 /// price sliding along above them.
@@ -181,7 +182,7 @@ class _CardPlansScreenState extends State<CardPlansScreen> with SingleTickerProv
       builder: (context, box) {
         final pageWidth = box.maxWidth * _viewport;
         // Card fills the page minus 6pt each side, unless the screen is short.
-        final cardWidth = (pageWidth - 12).clamp(0.0, box.maxHeight * 0.94 / SlateCard.aspectRatio);
+        final cardWidth = (pageWidth - 12).clamp(0.0, box.maxHeight * 0.94 / CardArt.aspectRatio);
         return PageView.builder(
           controller: _controllerFor(plans),
           itemCount: plans.length,
@@ -204,12 +205,8 @@ class _CardPlansScreenState extends State<CardPlansScreen> with SingleTickerProv
                       duration: const Duration(milliseconds: 400),
                       curve: Curves.easeOutCubic,
                     ),
-                    child: PortraitSlateCard(
-                      card: SlateCard(
-                        finish: plans[i].finish,
-                        holderName: holder,
-                        tierLabel: plans[i].name,
-                      ),
+                    child: PortraitCard(
+                      child: CardArt(design: CardCatalog.slatePlan(plans[i].id), holderName: holder),
                     ),
                   ),
                 ),

@@ -66,7 +66,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Move money'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('New card'));
+    await tester.tap(find.text('Get a Slate card'));
     await tester.pumpAndSettle();
     expect(pill('Choose Platinum'), findsOneWidget);
     expect(find.textContaining(r'$249', findRichText: true), findsOneWidget);
@@ -118,7 +118,7 @@ void main() {
     }
     await tester.tap(find.bySemanticsLabel('Move money'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('New card'));
+    await tester.tap(find.text('Get a Slate card'));
     await tester.pumpAndSettle();
     expect(pill('Choose Platinum'), findsOneWidget);
     semantics.dispose();

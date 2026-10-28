@@ -47,6 +47,11 @@ abstract class SlateRepository {
   });
   Future<PaymentCard> orderCard({required String planId, required String requestId});
   Future<PaymentCard> setCardFrozen({required String cardId, required bool frozen});
+
+  /// Cards the member added from other banks (display only).
+  Future<List<LinkedCard>> fetchLinkedCards();
+  Future<LinkedCard> addLinkedCard(NewLinkedCard card);
+  Future<void> removeLinkedCard(String cardId);
 }
 
 enum AuthSignal { signedIn, signedOut, passwordRecovery }
