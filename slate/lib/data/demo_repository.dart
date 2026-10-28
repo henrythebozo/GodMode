@@ -108,7 +108,7 @@ class DemoRepository implements SlateRepository {
         {String currency = 'USD', String description = '', String? who, String? group}) {
       n++;
       return Txn(
-        id: 'seed-$n',
+        id: newRequestId(),
         kind: kind,
         amountCents: cents,
         currency: currency,
@@ -321,7 +321,7 @@ class DemoRepository implements SlateRepository {
         : -cents);
     _wallets[currency] = wallet.withBalance(after);
     final txn = Txn(
-      id: 'local-${_txns.length + 1}-${_random.nextInt(1 << 30)}',
+      id: newRequestId(),
       kind: kind,
       amountCents: cents,
       currency: currency,
