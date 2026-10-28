@@ -1,0 +1,162 @@
+# Slate
+
+A black-and-white card and wallet app in Flutter, with a Supabase backend.
+
+- **Login / sign-up** with the liquid wave intro (the black splash lifts into the
+  curved header, the wordmark glides to the corner, the form staggers in), email +
+  password, Google / Apple / Facebook buttons, and password reset by email.
+- **Home**: greeting, available balance, brushed-metal card, recent transactions,
+  floating pill tab bar.
+- **Card plans**: Platinum / Silver / Gold carousel with the sliding title and
+  "Choose Silver" button; ordering charges the first annual fee.
+- **Transfer**: send to another member by email (the name is confirmed before you
+  can send), top up, and convert between USD / EUR / GBP wallets.
+- **Cards**: details, freeze / unfreeze. **Profile**: rename, reset password, log out.
+
+The layout was measured from the reference frames (iPhone 17 Pro Max, 440 × 956 pt):
+type is Plus Jakarta Sans, icons are Iconsax, and the login wave is a single cubic
+Bézier fitted to the frame.
+
+## Read this first
+
+- **The money is simulated.** Balances live in your own Postgres. Top-ups don't
+  charge anything and cards are pictures with a random last four digits. Moving
+  real money needs a banking / card-issuing partner (Stripe Issuing, Marqeta, Unit
+  and similar), identity checks (KYC) and the licences that come with them.
+- **The VISA mark** on the card is drawn from the app font as a stand-in. Showing a
+  card network's logo on a real product requires an agreement with that network.
+  It lives in one widget, `lib/widgets/visa_logo.dart`.
+- **The visual design comes from DailyFlutterUI's TikTok videos**, not from your
+  other project. Their handle no longer appears anywhere; the card and greeting
+  show the member's own name.
+
+## Run it
+
+You need Flutter 3.47 or newer.
+
+```sh
+cd slate
+flutter pub get
+flutter run
+```
+
+With no Supabase settings the app runs on **demo data** kept in memory: the account
+from the screenshots ($22,000, a Platinum card). Any email plus a password of six
+or more characters logs in; `jamie@slate.app` and `sam@slate.app` can receive
+money. Data resets when the app restarts.
+
+### With a local Supabase backend
+
+Needs Docker and the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started).
+
+```sh
+cd slate
+supabase start        # prints the API URL and the publishable key
+supabase db reset     # applies the migration and the demo seed
+flutter run \
+  --dart-define=SUPABASE_URL=http://127.0.0.1:54321 \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Log in as `demo@slate.app` / `slate1234` (or `jamie@slate.app` / `slate1234` to
+receive transfers). On a real phone, replace `127.0.0.1` with your computer's
+address on the Wi-Fi network; the Android emulator reaches your computer at
+`10.0.2.2`.
+
+### With a hosted Supabase project
+
+1. Create a project at [supabase.com](https://supabase.com) (the free plan allows
+   two active projects).
+2. Push the schema:
+   ```sh
+   cd slate
+   supabase login
+   supabase link --project-ref YOUR-PROJECT-REF
+   supabase db push
+   ```
+   `db push` applies `supabase/migrations/` only; the demo seed is local-only.
+3. In the dashboard, **Authentication → URL Configuration**, add
+   `com.henrythebozo.slate://login-callback` to the redirect URLs.
+4. Copy `env.example.json` to `env.json`, fill in the project URL and publishable
+   key (**Project Settings → API Keys**), then:
+   ```sh
+   flutter run --dart-define-from-file=env.json
+   ```
+
+Hosted projects ask new members to confirm their email before the first login;
+the app tells them to check their inbox.
+
+### Social sign-in
+
+The buttons use Supabase's OAuth flow, which opens the provider in a browser and
+returns through `com.henrythebozo.slate://login-callback` (already registered in
+`ios/Runner/Info.plist` and `android/app/src/main/AndroidManifest.xml`). Turn each
+provider on under **Authentication → Providers** with its client id and secret:
+Google (Google Cloud console), Apple (Apple Developer account, Services ID and key),
+Facebook (Meta for Developers app). Until a provider is turned on, its button
+opens a Supabase error page ("provider is not enabled"). Apple's App Store rules expect Sign in with Apple to be offered
+natively when other social logins are present; `sign_in_with_apple` plus
+`signInWithIdToken` is the usual way to do that.
+
+If you change the bundle id (`com.henrythebozo.slate`), change the scheme in those
+two files, in `lib/main.dart` (`authRedirect`) and in `supabase/config.toml`.
+
+## Backend
+
+Everything is in `supabase/migrations/20261028000000_slate_schema.sql`.
+
+| Table | What it holds |
+| --- | --- |
+| `profiles` | Name, one per auth user (created by a sign-up trigger, with an empty USD wallet). |
+| `wallets` | Balance per member per currency, in cents. Can't go below zero. |
+| `cards` | Plan, holder name, last four digits, expiry, active / frozen. |
+| `transactions` | The ledger. Every balance change writes a row with the balance after it. |
+| `card_plans`, `currencies` | Plans and prices; demo exchange rates. Edit these to change prices. |
+
+Members can only **read** their own rows (row level security) and change their own
+name. Every money movement is a database function called over the API, which
+checks the input, locks the wallets involved and writes the balance change and its
+ledger rows in one transaction:
+
+| Function | Rules |
+| --- | --- |
+| `top_up(p_amount_cents, p_currency, p_request_id)` | Up to $25,000 per top-up. |
+| `transfer(p_recipient_email, p_amount_cents, p_currency, p_note, p_request_id)` | Recipient must be a member and not you; no overdraft; up to $1,000,000. |
+| `convert_currency(p_from, p_to, p_amount_cents, p_request_id)` | Uses `currencies.usd_rate`, rounds down to the cent. |
+| `order_card(p_plan_id, p_request_id)` | One live card per plan; charges the annual fee. |
+| `set_card_frozen(p_card_id, p_frozen)` | Own cards only. |
+| `lookup_recipient(p_email)` | Returns the member's name, or null. |
+
+`p_request_id` makes a payment safe to retry: sending the same id twice returns the
+first result instead of moving money twice. The app sends a fresh id per attempt
+and reuses it when retrying after a network error.
+
+## Tests
+
+```sh
+flutter analyze
+flutter test                       # unit + widget tests on demo data
+supabase test db                   # 67 database tests: rules, RLS, idempotency
+./supabase/tests/concurrency.sh    # many simultaneous transfers: no deadlocks, no overdraft
+SUPABASE_TEST_URL=http://127.0.0.1:54321 SUPABASE_TEST_KEY=sb_publishable_... \
+  flutter test test/supabase_repository_test.dart   # the app's data layer against local Supabase
+```
+
+## Layout
+
+```
+lib/
+  main.dart                 picks Supabase or demo data, MaterialApp
+  theme/app_theme.dart      colours and type measured from the frames
+  data/                     models, repository interface, Supabase + demo implementations
+  state/app_state.dart      account data and actions (ChangeNotifier, no extra packages)
+  screens/                  splash, login, home, transactions, card plans, cards, transfer, profile
+  widgets/                  card artwork, VISA mark, nav bar, wave, buttons, fields, rows
+supabase/
+  migrations/               schema, row level security, functions
+  seed.sql                  local demo accounts
+  tests/                    pgTAP tests and the concurrency script
+```
+
+To compare against device screenshots in a browser, build for web with fake
+iPhone insets: `flutter build web --dart-define=PREVIEW_SAFE_AREA=62,34`.
