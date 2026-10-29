@@ -7,6 +7,7 @@ import 'package:iconsax_flutter/iconsax_flutter.dart';
 import '../data/models.dart';
 import 'card_art.dart';
 import 'card_designs.dart';
+import 'card_hero.dart';
 import 'common.dart';
 
 /// The swipeable row of cards on the home screen. Every card is as wide as
@@ -48,6 +49,13 @@ class CardRowState extends State<CardRow> {
     final index = widget.cards.indexWhere((c) => c.id == id);
     if (index < 0 || _pages == null || !_pages!.hasClients) return;
     _pages!.animateToPage(index, duration: const Duration(milliseconds: 550), curve: Curves.easeOutCubic);
+  }
+
+  /// Shows a card without animating, e.g. the one the carousel closed on.
+  void jumpToCard(String id) {
+    final index = widget.cards.indexWhere((c) => c.id == id);
+    if (index < 0 || _pages == null || !_pages!.hasClients) return;
+    _pages!.jumpToPage(index);
   }
 
   bool _isCurrent(int i) => (_page.value.round()) == i;
@@ -92,7 +100,7 @@ class CardRowState extends State<CardRow> {
                           // A tap on a peeking card brings it in; on the centred one, opens it.
                           onTap: () => _isCurrent(i) ? widget.onOpen(cards[i]) : _goTo(i),
                           semanticLabel: '${CardCatalog.forCard(cards[i]).name} ending ${cards[i].last4}',
-                          child: CardArt.of(cards[i]),
+                          child: CardHero(card: cards[i], child: CardArt.of(cards[i])),
                         )
                       : GestureDetector(
                           // Pages don't rebuild while scrolling, so decide at tap time.

@@ -51,10 +51,19 @@ enum CardPattern {
 
   /// Faint diagonal pinstripes.
   pinstripe,
+
+  /// Fine wavy lines across the whole face, as engraved on Amex metal cards.
+  engraved,
 }
 
-/// One card face the app can draw. Designs are stand-ins in each card's
-/// colours, not copies of the issuers' artwork.
+/// Which layout a face follows. Each known card is laid out like the real
+/// one; anything else uses [generic].
+enum CardStyle { slate, amex, chaseSapphire, ventureX, citiStrata, discoverIt, generic }
+
+enum ChipFinish { gold, silver }
+
+/// One card face the app can draw: laid out and coloured like the real card,
+/// with the issuer's marks drawn by the app rather than copied from them.
 class CardDesign {
   const CardDesign({
     required this.id,
@@ -62,9 +71,12 @@ class CardDesign {
     required this.product,
     required this.network,
     required this.material,
+    this.style = CardStyle.generic,
     this.chip = true,
+    this.chipFinish = ChipFinish.gold,
     this.showIssuer = true,
     this.pattern = CardPattern.none,
+    this.networkTier,
     this.nickname,
   });
 
@@ -73,12 +85,17 @@ class CardDesign {
   final String product;
   final CardNetwork network;
   final CardMaterial material;
+  final CardStyle style;
 
   /// Bank cards have an EMV chip; Slate's own cards are chipless, as in the
   /// reference design.
   final bool chip;
+  final ChipFinish chipFinish;
   final bool showIssuer;
   final CardPattern pattern;
+
+  /// Printed under the network mark on the back ("Infinite" on Visa Infinite cards).
+  final String? networkTier;
 
   /// How people know the card ("The Black Card"), shown in the picker.
   final String? nickname;
@@ -97,6 +114,7 @@ abstract final class CardCatalog {
     product: 'Platinum',
     network: CardNetwork.visa,
     material: CardMaterial.platinum,
+    style: CardStyle.slate,
     chip: false,
     showIssuer: false,
   );
@@ -106,6 +124,7 @@ abstract final class CardCatalog {
     product: 'Silver',
     network: CardNetwork.visa,
     material: CardMaterial.silver,
+    style: CardStyle.slate,
     chip: false,
     showIssuer: false,
   );
@@ -115,23 +134,27 @@ abstract final class CardCatalog {
     product: 'Gold',
     network: CardNetwork.visa,
     material: CardMaterial.gold,
+    style: CardStyle.slate,
     chip: false,
     showIssuer: false,
   );
 
+  // Colours sampled from each issuer's own card art.
   static const amexCenturion = CardDesign(
     id: 'amex_centurion',
     issuer: 'American Express',
     product: 'Centurion',
     network: CardNetwork.amex,
+    style: CardStyle.amex,
+    chipFinish: ChipFinish.silver,
     nickname: 'The Black Card',
-    pattern: CardPattern.guilloche,
+    pattern: CardPattern.engraved,
     material: CardMaterial(
-      gradient: [Color(0xFF2E2E30), Color(0xFF1B1B1C), Color(0xFF0F0F10)],
-      ink: Color(0xFFD9D9D9),
-      label: Color(0xFF8C8C8C),
+      gradient: [Color(0xFF2C2C2D), Color(0xFF1B1B1C), Color(0xFF111112)],
+      ink: Color(0xFFC4C4C4), // the engraving is bare titanium
+      label: Color(0xFF8E8E8E),
       brush: 0.35,
-      sheen: 0.07,
+      sheen: 0.06,
     ),
   );
   static const amexPlatinum = CardDesign(
@@ -139,12 +162,15 @@ abstract final class CardCatalog {
     issuer: 'American Express',
     product: 'Platinum',
     network: CardNetwork.amex,
-    pattern: CardPattern.guilloche,
+    style: CardStyle.amex,
+    chipFinish: ChipFinish.silver,
+    pattern: CardPattern.engraved,
     material: CardMaterial(
-      gradient: [Color(0xFFE7E7E4), Color(0xFFCECECB), Color(0xFFB5B5B2)],
-      ink: Color(0xFF242424),
-      label: Color(0xFF5E5E5E),
+      gradient: [Color(0xFFF0F0EE), Color(0xFFDADBD9), Color(0xFFC3C4C2)],
+      ink: Color(0xFF161616),
+      label: Color(0xFF4D4D4D),
       brush: 1,
+      sheen: 0.12,
     ),
   );
   static const amexGold = CardDesign(
@@ -152,12 +178,13 @@ abstract final class CardCatalog {
     issuer: 'American Express',
     product: 'Gold',
     network: CardNetwork.amex,
-    pattern: CardPattern.guilloche,
+    style: CardStyle.amex,
+    pattern: CardPattern.engraved,
     material: CardMaterial(
-      gradient: [Color(0xFFECDBA8), Color(0xFFD8BE78), Color(0xFFBD9D55)],
-      ink: Color(0xFF3A2D10),
-      label: Color(0xFF6F5B2D),
-      brush: 0.8,
+      gradient: [Color(0xFFEBDAA5), Color(0xFFDCC386), Color(0xFFC8AA63)],
+      ink: Color(0xFF1C160B),
+      label: Color(0xFF5E4C26),
+      brush: 0.9,
     ),
   );
   static const chaseSapphireReserve = CardDesign(
@@ -165,13 +192,15 @@ abstract final class CardCatalog {
     issuer: 'Chase',
     product: 'Sapphire Reserve',
     network: CardNetwork.visa,
-    pattern: CardPattern.pinstripe,
+    style: CardStyle.chaseSapphire,
+    chipFinish: ChipFinish.silver,
+    networkTier: 'Infinite',
     material: CardMaterial(
-      gradient: [Color(0xFF26467A), Color(0xFF162E52), Color(0xFF0B1A31)],
-      ink: Color(0xFFEFF3F9),
-      label: Color(0xFFA7B8D1),
-      brush: 0.3,
-      sheen: 0.12,
+      gradient: [Color(0xFF101C3E), Color(0xFF0A1229), Color(0xFF05091A)],
+      ink: Color(0xFFF2F3F6),
+      label: Color(0xFFB4BBCE),
+      brush: 0,
+      sheen: 0.03,
     ),
   );
   static const ventureX = CardDesign(
@@ -179,12 +208,15 @@ abstract final class CardCatalog {
     issuer: 'Capital One',
     product: 'Venture X',
     network: CardNetwork.visa,
-    pattern: CardPattern.pinstripe,
+    style: CardStyle.ventureX,
+    chipFinish: ChipFinish.silver,
+    networkTier: 'Infinite',
     material: CardMaterial(
-      gradient: [Color(0xFF41464C), Color(0xFF282C31), Color(0xFF17191C)],
-      ink: Color(0xFFF1F1F1),
-      label: Color(0xFFA5AAB0),
-      brush: 0.45,
+      gradient: [Color(0xFF1E5078), Color(0xFF164064), Color(0xFF0F2E4B)],
+      ink: Color(0xFFE8ECF1),
+      label: Color(0xFFC0C8D3),
+      brush: 0.12,
+      sheen: 0.08,
     ),
   );
   static const citiStrataPremier = CardDesign(
@@ -192,12 +224,14 @@ abstract final class CardCatalog {
     issuer: 'Citi',
     product: 'Strata Premier',
     network: CardNetwork.mastercard,
+    style: CardStyle.citiStrata,
+    chipFinish: ChipFinish.silver,
     material: CardMaterial(
-      gradient: [Color(0xFF3657B4), Color(0xFF223D8A), Color(0xFF15275D)],
+      gradient: [Color(0xFF6B6D71), Color(0xFF47494D), Color(0xFF2D2F33)],
       ink: Color(0xFFFFFFFF),
-      label: Color(0xFFB4C2E8),
-      brush: 0.2,
-      sheen: 0.12,
+      label: Color(0xFFD0D2D6),
+      brush: 0.3,
+      sheen: 0.08,
     ),
   );
   static const discoverIt = CardDesign(
@@ -205,11 +239,14 @@ abstract final class CardCatalog {
     issuer: 'Discover',
     product: 'it',
     network: CardNetwork.discover,
+    style: CardStyle.discoverIt,
+    chipFinish: ChipFinish.silver,
     material: CardMaterial(
-      gradient: [Color(0xFFF8F6F2), Color(0xFFEBE7E0), Color(0xFFDDD7CD)],
-      ink: Color(0xFF1E1E1E),
-      label: Color(0xFF7B756C),
-      brush: 0.25,
+      gradient: [Color(0xFF6CAAB3), Color(0xFF4C8B95), Color(0xFF326C76)],
+      ink: Color(0xFFFFFFFF),
+      label: Color(0xFFDCEBEE),
+      brush: 1.4,
+      sheen: 0.1,
     ),
   );
 

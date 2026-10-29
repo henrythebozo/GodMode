@@ -8,6 +8,11 @@ A black-and-white card and wallet app in Flutter, with a Supabase backend.
 - **Home**: greeting, available balance, a swipeable row of your cards (Slate's
   own plus cards from other banks) ending in a round **+ Add** button, recent
   transactions, floating pill tab bar.
+- **Card carousel**: tap the card on Home and it turns upright into a full-screen
+  ring of all your cards. Swiping spins the ring (a flick carries on through
+  several cards and lands on one), tapping the front card turns it over to its
+  back, **Details** opens freeze / remove, and pulling down or **Close** sends the
+  card back to the row.
 - **Add a card**: pick Amex Centurion ("the Black Card"), Amex Platinum, Amex Gold,
   Chase Sapphire Reserve, Capital One Venture X, Citi Strata Premier, Discover it,
   or "Other card" with any bank, network and colour, then type the last 4 digits.
@@ -38,12 +43,16 @@ Bézier fitted to the frame.
   charge anything and cards are pictures with a random last four digits. Moving
   real money needs a banking / card-issuing partner (Stripe Issuing, Marqeta, Unit
   and similar), identity checks (KYC) and the licences that come with them.
-- **Bank and network names are labels, the artwork is a stand-in.** Cards are drawn
-  in each product's colours with the bank's name in the app font; VISA / AMEX /
-  Discover marks are text and the Mastercard-style mark is two plain rings, not the
-  networks' logos. Naming a member's own cards is normal for a wallet; shipping
-  issuers' or networks' actual artwork needs their permission. Designs live in
-  `lib/widgets/card_designs.dart` and `lib/widgets/card_art.dart`.
+- **The bank cards are drawn to look like the real ones.** Amex Platinum, Gold and
+  Centurion, Sapphire Reserve, Venture X, Strata Premier and Discover it follow each
+  card's real layout and colours, with the issuers' and networks' marks (the
+  Centurion portrait included) redrawn in code rather than copied from their files.
+  That suits a demo or a portfolio. Shipping it in the App Store or Play Store
+  without the issuers' permission is a trademark risk (Apple's review guideline
+  5.2.1 rejects apps that use protected third-party marks without permission): for a
+  release, use card art the issuers license to you, or the plain "Other card"
+  layout. Designs live in `lib/widgets/card_designs.dart`, `card_art.dart` and
+  `card_marks.dart`.
 - **The visual design comes from DailyFlutterUI's TikTok videos**, not from your
   other project. Their handle no longer appears anywhere; the card and greeting
   show the member's own name.
@@ -171,8 +180,9 @@ lib/
   theme/app_theme.dart      colours and type measured from the frames
   data/                     models, repository interface, Supabase + demo implementations
   state/app_state.dart      account data and actions (ChangeNotifier, no extra packages)
-  screens/                  splash, login, home, transactions, card plans, cards, transfer, profile
-  widgets/                  card artwork, VISA mark, nav bar, wave, buttons, fields, rows
+  screens/                  splash, login, home, card carousel, transactions, card plans, cards, transfer, profile
+  widgets/                  card faces and backs, issuer and network marks, card row and hero,
+                            nav bar, wave, buttons, fields, rows
 supabase/
   migrations/               schema, row level security, functions
   seed.sql                  local demo accounts

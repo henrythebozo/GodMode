@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
+import '../data/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
@@ -11,8 +12,8 @@ import '../widgets/card_row.dart';
 import '../widgets/slate_nav_bar.dart';
 import '../widgets/transaction_tile.dart';
 import 'add_card_screen.dart';
+import 'card_carousel_screen.dart';
 import 'card_plans_screen.dart';
-import 'cards_screen.dart';
 import 'transactions_screen.dart';
 import 'transfer_screen.dart';
 
@@ -71,6 +72,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   void _openPlans() {
     Navigator.of(context).push(CardPlansScreen.route());
+  }
+
+  /// The tapped card stands up and the rest of the wallet fans out around it.
+  void _openCarousel(WalletCard card) {
+    final index = AppScope.read(context).walletCards.indexWhere((c) => c.id == card.id);
+    if (index < 0) return;
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(CardCarouselScreen.route(
+      initialIndex: index,
+      // Line the row up with the card the carousel ended on, so it lands there.
+      onClose: (id) => _row.currentState?.jumpToCard(id),
+    ));
   }
 
   Future<void> _addCard() async {
@@ -249,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             CardRow(
               key: _row,
               cards: state.walletCards,
-              onOpen: (card) => showCardSheet(context, card),
+              onOpen: _openCarousel,
               onAdd: _addCard,
             ),
             distance: 40,
