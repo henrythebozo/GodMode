@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:slate/data/demo_repository.dart';
@@ -6,6 +8,7 @@ import 'package:slate/main.dart';
 import 'package:slate/state/app_state.dart';
 import 'package:slate/widgets/card_art.dart';
 import 'package:slate/widgets/card_designs.dart';
+import 'package:slate/widgets/card_slots.dart';
 import 'package:slate/widgets/common.dart';
 
 void main() {
@@ -166,6 +169,24 @@ void main() {
     expect(find.bySemanticsLabel(RegExp(r'^A Very Long Credit Union.*card 7 of 7$')), findsOneWidget);
     expect(tester.takeException(), isNull);
     semantics.dispose();
+  });
+
+  test('every design has both pictures, and every slot table belongs to one', () {
+    final designs = [
+      CardCatalog.slatePlatinum,
+      CardCatalog.slateSilver,
+      CardCatalog.slateGold,
+      ...CardCatalog.addable,
+      for (final entry in CardCatalog.customColors.entries)
+        CardDesign(id: entry.key, issuer: 'Bank', product: 'Card', network: CardNetwork.visa, material: entry.value),
+    ];
+    for (final d in designs) {
+      expect(File(d.frontArt).existsSync(), isTrue, reason: d.frontArt);
+      expect(File(d.backArt).existsSync(), isTrue, reason: d.backArt);
+    }
+    for (final name in cardSlots.keys) {
+      expect(File('assets/cards/$name.webp').existsSync(), isTrue, reason: 'slots for $name');
+    }
   });
 
   testWidgets('every design draws its front and back without errors', (tester) async {

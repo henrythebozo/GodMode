@@ -43,16 +43,20 @@ Bézier fitted to the frame.
   charge anything and cards are pictures with a random last four digits. Moving
   real money needs a banking / card-issuing partner (Stripe Issuing, Marqeta, Unit
   and similar), identity checks (KYC) and the licences that come with them.
-- **The bank cards are drawn to look like the real ones.** Amex Platinum, Gold and
-  Centurion, Sapphire Reserve, Venture X, Strata Premier and Discover it follow each
-  card's real layout and colours, with the issuers' and networks' marks (the
-  Centurion portrait included) redrawn in code rather than copied from their files.
+- **The bank cards are AI renders of the real ones.** Amex Platinum, Gold and
+  Centurion, Sapphire Reserve, Venture X, Strata Premier and Discover it, front
+  and back, are photoreal pictures made with an image model from photos of the
+  real cards, with no name or number on them. The app writes the member's own
+  name and last four digits onto each picture where that card prints them. The
+  pictures are in `assets/cards/` (`<design>.webp` and `<design>_back.webp`), and
+  where the text goes is in `lib/widgets/card_slots.dart`. Image models misdraw
+  very small text: the faint "WORLD SERVICE" microtext in the Amex background
+  pattern is not real words up close, though at phone size it reads as texture.
   That suits a demo or a portfolio. Shipping it in the App Store or Play Store
   without the issuers' permission is a trademark risk (Apple's review guideline
   5.2.1 rejects apps that use protected third-party marks without permission): for a
   release, use card art the issuers license to you, or the plain "Other card"
-  layout. Designs live in `lib/widgets/card_designs.dart`, `card_art.dart` and
-  `card_marks.dart`.
+  colours, which carry no issuer marks.
 - **The visual design comes from DailyFlutterUI's TikTok videos**, not from your
   other project. Their handle no longer appears anywhere; the card and greeting
   show the member's own name.
@@ -181,8 +185,9 @@ lib/
   data/                     models, repository interface, Supabase + demo implementations
   state/app_state.dart      account data and actions (ChangeNotifier, no extra packages)
   screens/                  splash, login, home, card carousel, transactions, card plans, cards, transfer, profile
-  widgets/                  card faces and backs, issuer and network marks, card row and hero,
+  widgets/                  card faces (pictures + text slots), network marks, card row and hero,
                             nav bar, wave, buttons, fields, rows
+assets/cards/               card pictures, front and back
 supabase/
   migrations/               schema, row level security, functions
   seed.sql                  local demo accounts

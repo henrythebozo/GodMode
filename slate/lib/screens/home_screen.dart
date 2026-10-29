@@ -6,9 +6,10 @@ import '../data/models.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
-import '../widgets/common.dart';
+import '../widgets/card_art.dart';
 import '../widgets/card_designs.dart';
 import '../widgets/card_row.dart';
+import '../widgets/common.dart';
 import '../widgets/slate_nav_bar.dart';
 import '../widgets/transaction_tile.dart';
 import 'add_card_screen.dart';
@@ -41,6 +42,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _scroll.addListener(() => _overscroll.value = (-_scroll.offset).clamp(0, 1000));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load every card's pictures now, so the carousel never shows one loading.
+    precacheCardArt(context, AppScope.of(context).walletCards);
   }
 
   @override

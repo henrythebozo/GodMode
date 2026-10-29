@@ -24,6 +24,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # Card pictures (see README, "Card artwork").
+  assets:
+    - assets/cards/
+
   fonts:
     # Plus Jakarta Sans, SIL Open Font License 1.1 (assets/fonts/OFL.txt).
     - family: PlusJakartaSans
