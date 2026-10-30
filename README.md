@@ -25,6 +25,20 @@ branch → `main` / `docs`**. Or run it on localhost with `npm run web`
 (no install needed — plain Node) and open `http://localhost:8741`; the
 command also prints a Wi-Fi address you can open from your phone.
 
+### ✅ Tick — your schedule, ticked off
+
+[`docs/schedule.html`](docs/schedule.html) is a second page on the same site:
+snap or upload a photo of a timetable, rota or planner and it becomes a clean
+calendar you can tick off — week strip with progress rings, a check animation,
+a soft sound, and confetti when the day is done. Weekly timetables repeat every
+week; dated items land on their dates. Tap **Edit** (or long-press a card) to fix
+anything the photo reading got wrong.
+
+The photo is read by Claude (or OpenRouter/OpenAI) using a key you paste on
+the page, or the keys Henry OS already has saved on this site. Your schedule and
+ticks stay in the browser. Open it at `…/schedule.html` and add it to your home
+screen like the main app.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.

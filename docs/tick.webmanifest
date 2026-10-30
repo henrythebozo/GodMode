@@ -1,0 +1,21 @@
+{
+	"name": "Tick — your schedule, ticked off",
+	"short_name": "Tick",
+	"description": "Snap a photo of your schedule and get a clean calendar you can tick off.",
+	"start_url": "schedule.html",
+	"display": "standalone",
+	"background_color": "#f6f5f1",
+	"theme_color": "#f6f5f1",
+	"icons": [
+		{
+			"src": "tick-180.png",
+			"sizes": "180x180",
+			"type": "image/png"
+		},
+		{
+			"src": "tick-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}
