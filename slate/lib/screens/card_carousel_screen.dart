@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:iconsax_flutter/iconsax_flutter.dart';
 
@@ -12,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/card_art.dart';
 import '../widgets/card_designs.dart';
 import '../widgets/card_hero.dart';
+import '../widgets/carousel_parts.dart';
 import '../widgets/common.dart';
 import 'cards_screen.dart';
 
@@ -254,7 +254,7 @@ class _CardCarouselScreenState extends State<CardCarouselScreen> with TickerProv
                 child: PageView.builder(
                   controller: _pages,
                   pageSnapping: false,
-                  physics: _SpinPhysics(extent: box.maxWidth * _swipe),
+                  physics: CardSpinPhysics(extent: box.maxWidth * _swipe),
                   itemCount: cards.length,
                   onPageChanged: _onPage,
                   itemBuilder: (_, _) => const SizedBox.expand(),
@@ -301,7 +301,7 @@ class _CardCarouselScreenState extends State<CardCarouselScreen> with TickerProv
           ),
         ),
         const SizedBox(height: 16),
-        _Dots(count: count, page: _page),
+        PageDots(count: count, page: _page, color: Colors.white),
       ],
     );
   }
@@ -380,70 +380,6 @@ class _Ring extends StatelessWidget {
         placed.sort((a, b) => b.$1.compareTo(a.$1)); // farthest first
         return Stack(alignment: Alignment.center, children: [for (final (_, card) in placed) card]);
       },
-    );
-  }
-}
-
-/// A flick keeps the ring spinning through several cards, then lands exactly
-/// on one.
-class _SpinPhysics extends ScrollPhysics {
-  const _SpinPhysics({required this.extent, super.parent});
-
-  /// Pixels of swipe per card.
-  final double extent;
-
-  @override
-  _SpinPhysics applyTo(ScrollPhysics? ancestor) => _SpinPhysics(extent: extent, parent: buildParent(ancestor));
-
-  @override
-  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
-    // Pulled past either end (iOS lets you), or flicked against one: the
-    // platform physics bounce or clamp it back.
-    if (position.outOfRange ||
-        (velocity <= 0 && position.pixels <= position.minScrollExtent) ||
-        (velocity >= 0 && position.pixels >= position.maxScrollExtent)) {
-      return super.createBallisticSimulation(position, velocity);
-    }
-    final tolerance = toleranceFor(position);
-    final landing = FrictionSimulation(0.05, position.pixels, velocity).finalX;
-    final target = ((landing / extent).round() * extent).clamp(position.minScrollExtent, position.maxScrollExtent);
-    final ahead = (target - position.pixels) * velocity > 0;
-    if (velocity.abs() > tolerance.velocity && ahead && (target - position.pixels).abs() > tolerance.distance) {
-      return FrictionSimulation.through(position.pixels, target, velocity, tolerance.velocity * velocity.sign);
-    }
-    if ((target - position.pixels).abs() < tolerance.distance && velocity.abs() < tolerance.velocity) return null;
-    return ScrollSpringSimulation(spring, position.pixels, target, velocity, tolerance: tolerance);
-  }
-}
-
-class _Dots extends StatelessWidget {
-  const _Dots({required this.count, required this.page});
-
-  final int count;
-  final ValueListenable<double> page;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 6,
-      child: ValueListenableBuilder<double>(
-        valueListenable: page,
-        builder: (context, page, _) => Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < count; i++)
-              Container(
-                width: 6 + 10 * (1 - (page - i).abs().clamp(0.0, 1.0)),
-                height: 6,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  color: Color.lerp(Colors.white, Colors.white.withValues(alpha: 0.25), (page - i).abs().clamp(0.0, 1.0)),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }

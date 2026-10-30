@@ -22,7 +22,10 @@ A black-and-white card and wallet app in Flutter, with a Supabase backend.
   "Choose Silver" button; ordering charges the first annual fee.
 - **Transfer**: send to another member by email (the name is confirmed before you
   can send), top up, and convert between USD / EUR / GBP wallets.
-- **Cards**: every card with details; freeze Slate cards, remove added ones.
+- **Cards**: your cards stood upright in a row you slide through (a flick runs
+  on through several). Each card you slide past is caught in a gust and spins
+  round before it settles; tap the front card to turn it over. **Details**
+  freezes Slate cards or removes added ones, **+** adds a card.
   **Profile**: rename, reset password, log out.
 
 The layout was measured from the reference frames (iPhone 17 Pro Max, 440 × 956 pt):

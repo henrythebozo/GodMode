@@ -166,7 +166,6 @@ void main() {
       final repo = await launch(tester);
       await tester.tap(find.bySemanticsLabel('Cards'));
       await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(find.bySemanticsLabel('Add a card'), 300);
       await tester.tap(find.bySemanticsLabel('Add a card'));
       await tester.pumpAndSettle();
 
@@ -191,8 +190,12 @@ void main() {
       final added = (await repo.fetchLinkedCards()).last;
       expect((added.issuer, added.product, added.designId), ('Wells Fargo', 'Autograph', 'custom_green'));
 
-      await tester.scrollUntilVisible(find.bySemanticsLabel('Wells Fargo Autograph ending 1111'), 300);
-      await tester.tap(find.bySemanticsLabel('Wells Fargo Autograph ending 1111'));
+      // The shelf slides to the new card; once the "added" note above the
+      // buttons has gone, Details opens its sheet.
+      expect(find.bySemanticsLabel('Wells Fargo Autograph ending 1111, card 7 of 7'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Details'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(PillButton, 'Remove card'));
       await tester.pump();
