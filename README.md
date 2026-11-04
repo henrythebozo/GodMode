@@ -25,6 +25,17 @@ branch → `main` / `docs`**. Or run it on localhost with `npm run web`
 (no install needed — plain Node) and open `http://localhost:8741`; the
 command also prints a Wi-Fi address you can open from your phone.
 
+## 📞 GodMode Call (video-call your assistant)
+
+There is also a **FaceTime-style voice + vision assistant** in [`call/`](call/) — a
+separate, self-contained Node app. Tap **Call**, talk naturally (ElevenLabs Agents over
+WebRTC), and point your camera at something to ask "what am I looking at?" or "how much
+is this worth?". Snapshots are sent to a vision model (Claude by default) **only when you
+ask a visual question**, and all secret API keys stay on the server — the browser only
+gets a short-lived token. Unlike Henry OS, this one needs a backend, so it has its own
+`npm install` / `npm start`. See [`call/README.md`](call/README.md) for setup, the
+required ElevenLabs agent configuration, and cost notes.
+
 ## Installation
 
 **Install [here](https://github.com/smol-ai/GodMode/releases/latest)!** And then log in to Google on any one of the providers + refreshing logs you into most of the rest.
