@@ -22,9 +22,12 @@ export function fakeClient(replies) {
 					const index = calls.length;
 					calls.push({ params: structuredClone(params), options });
 					const reply =
-						typeof replies === 'function' ? replies(params, index) : replies[index];
+						typeof replies === 'function'
+							? replies(params, index)
+							: replies[index];
 					const handlers = {};
-					const fire = (event, ...args) => (handlers[event] || []).forEach((cb) => cb(...args));
+					const fire = (event, ...args) =>
+						(handlers[event] || []).forEach((cb) => cb(...args));
 					return {
 						on(event, cb) {
 							(handlers[event] ||= []).push(cb);
@@ -34,17 +37,28 @@ export function fakeClient(replies) {
 							await Promise.resolve();
 							if (reply?.before) await reply.before();
 							if (options?.signal?.aborted) throw abortError();
-							if (!reply) throw new Error('fake client: no reply scripted for call ' + index);
+							if (!reply)
+								throw new Error(
+									'fake client: no reply scripted for call ' + index,
+								);
 							if (reply.error) throw reply.error;
 							for (const d of reply.thinking || []) fire('thinking', d);
 							for (const b of reply.blocks || []) fire('contentBlock', b);
 							for (const d of reply.text || []) fire('text', d);
 							const content = reply.content || [
 								...(reply.thinking
-									? [{ type: 'thinking', thinking: reply.thinking.join(''), signature: 'sig' }]
+									? [
+											{
+												type: 'thinking',
+												thinking: reply.thinking.join(''),
+												signature: 'sig',
+											},
+										]
 									: []),
 								...(reply.blocks || []),
-								...(reply.text ? [{ type: 'text', text: reply.text.join('') }] : []),
+								...(reply.text
+									? [{ type: 'text', text: reply.text.join('') }]
+									: []),
 							];
 							return {
 								id: 'msg_' + index,

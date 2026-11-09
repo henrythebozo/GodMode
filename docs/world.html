@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, viewport-fit=cover"
+		/>
+		<title>World — Henry OS</title>
+		<meta name="theme-color" content="#000000" />
+		<link rel="manifest" href="manifest.webmanifest" />
+		<meta name="mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<link rel="apple-touch-icon" href="icon-180.png" />
+		<link rel="icon" type="image/png" href="icon-512.png" />
+		<link rel="stylesheet" href="world/world.css" />
+		<script>
+			// The town is part of Henry OS: signed out, go and sign in there
+			// before any of the 3D or API code is fetched.
+			try {
+				if (!JSON.parse(localStorage.getItem('henryos.session')))
+					location.replace('index.html');
+			} catch {
+				location.replace('index.html');
+			}
+		</script>
+	</head>
+	<body>
+		<canvas
+			id="town"
+			aria-label="A town of six buildings, one per agent"
+		></canvas>
+		<div id="labels"></div>
+
+		<header id="bar">
+			<a
+				class="circ"
+				id="back"
+				href="index.html"
+				title="Back to Henry OS"
+				aria-label="Back to Henry OS"
+			>
+				<svg
+					width="17"
+					height="17"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2.2"
+				>
+					<path d="m15 5-7 7 7 7" />
+				</svg>
+			</a>
+			<div class="where">
+				<span class="name">World</span>
+				<span id="phase" aria-live="polite">Ready</span>
+			</div>
+			<button
+				class="circ"
+				id="resultBtn"
+				type="button"
+				title="Show the result"
+				aria-label="Show the result"
+				hidden
+			>
+				<svg
+					width="17"
+					height="17"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path d="M7 3h7l4 4v14H7z" />
+					<path d="M14 3v4h4M10 13h5M10 17h5" />
+				</svg>
+			</button>
+			<button
+				class="circ"
+				id="settingsBtn"
+				type="button"
+				title="Mission settings"
+				aria-label="Mission settings"
+			>
+				<svg
+					width="17"
+					height="17"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+					<circle cx="16" cy="7" r="2" />
+					<circle cx="8" cy="17" r="2" />
+				</svg>
+			</button>
+		</header>
+
+		<ol id="steps" aria-label="Mission progress">
+			<li data-step="plan">Plan</li>
+			<li data-step="work">Work</li>
+			<li data-step="write">Write</li>
+			<li data-step="review">Review</li>
+		</ol>
+
+		<div id="nokey" hidden>
+			<h2>Add your Anthropic key</h2>
+			<p>
+				The agents are real Claude calls made from this browser with your own
+				key. Add it in Henry OS settings, under “Your own vendor keys”, then
+				come back.
+			</p>
+			<a class="primary" href="index.html#keys">Open settings</a>
+		</div>
+
+		<div id="dock">
+			<nav id="roster" aria-label="Agents"></nav>
+			<div id="suggest"></div>
+			<form class="composer" id="missionForm">
+				<textarea
+					id="mission"
+					rows="1"
+					placeholder="Give the town a mission"
+					aria-label="Mission"
+				></textarea>
+				<button
+					class="send"
+					id="run"
+					type="submit"
+					title="Start the mission"
+					aria-label="Start the mission"
+				>
+					<svg
+						class="go"
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="currentColor"
+					>
+						<path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z" />
+					</svg>
+					<svg
+						class="halt"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="currentColor"
+					>
+						<rect x="5" y="5" width="14" height="14" rx="2.5" />
+					</svg>
+				</button>
+			</form>
+			<p id="status" role="status"></p>
+		</div>
+
+		<aside id="panel" class="sheet" aria-label="Agent details" hidden>
+			<header>
+				<i class="dot"></i>
+				<div class="who">
+					<b id="panelName"></b>
+					<span id="panelPlace"></span>
+				</div>
+				<span class="state" id="panelState"></span>
+				<button
+					class="circ small"
+					id="panelClose"
+					type="button"
+					title="Close"
+					aria-label="Close"
+				>
+					<svg
+						width="15"
+						height="15"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.4"
+					>
+						<path d="M6 6l12 12M18 6 6 18" />
+					</svg>
+				</button>
+			</header>
+			<div class="seg" role="tablist">
+				<button type="button" role="tab" data-tab="thoughts">Thoughts</button>
+				<button type="button" role="tab" data-tab="work">Work</button>
+				<button type="button" role="tab" data-tab="brief">Brief</button>
+			</div>
+			<div class="body" id="panelBody" tabindex="0"></div>
+			<footer id="panelUsage"></footer>
+		</aside>
+
+		<aside id="result" class="sheet" aria-label="Mission result" hidden>
+			<header>
+				<div class="who">
+					<b>Result</b>
+					<span id="resultMeta"></span>
+				</div>
+				<button class="ghost" id="copyBtn" type="button">Copy</button>
+				<button class="ghost" id="downloadBtn" type="button">Download</button>
+				<button
+					class="circ small"
+					id="resultClose"
+					type="button"
+					title="Close"
+					aria-label="Close"
+				>
+					<svg
+						width="15"
+						height="15"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2.4"
+					>
+						<path d="M6 6l12 12M18 6 6 18" />
+					</svg>
+				</button>
+			</header>
+			<ul id="resultNotes" hidden></ul>
+			<div class="body md" id="resultBody" tabindex="0"></div>
+		</aside>
+
+		<dialog id="settings">
+			<h2>Mission settings</h2>
+			<p>Every agent in a mission runs on the model you pick here.</p>
+			<div id="modelList" role="radiogroup" aria-label="Model"></div>
+			<label class="check">
+				<input type="checkbox" id="webSearch" />
+				<span>Let the Researcher search the web</span>
+			</label>
+			<p class="fine">
+				Costs are billed to your Anthropic key. The figure shown after a mission
+				is an estimate from token counts and leaves out web search fees.
+			</p>
+			<div class="row">
+				<button class="primary" id="settingsDone" type="button">Done</button>
+			</div>
+		</dialog>
+
+		<script type="module" src="world/main.js"></script>
+	</body>
+</html>

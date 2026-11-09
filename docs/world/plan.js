@@ -12,7 +12,8 @@ export const PLAN_SCHEMA = {
 	properties: {
 		brief: {
 			type: 'string',
-			description: 'One or two sentences: what this mission is really asking for.',
+			description:
+				'One or two sentences: what this mission is really asking for.',
 		},
 		deliverable: {
 			type: 'string',
@@ -47,7 +48,8 @@ export const REVIEW_SCHEMA = {
 		approved: { type: 'boolean' },
 		summary: {
 			type: 'string',
-			description: 'One or two sentences on how well the draft serves the mission.',
+			description:
+				'One or two sentences on how well the draft serves the mission.',
 		},
 		issues: {
 			type: 'array',
@@ -99,7 +101,10 @@ export function parsePlan(text, goal) {
 		const agent = clean(item?.agent);
 		const task = clean(item?.task);
 		if (!SPECIALISTS.includes(agent) || !task) continue;
-		byAgent.set(agent, byAgent.has(agent) ? byAgent.get(agent) + '\n\n' + task : task);
+		byAgent.set(
+			agent,
+			byAgent.has(agent) ? byAgent.get(agent) + '\n\n' + task : task,
+		);
 	}
 	return {
 		brief: clean(data.brief) || goal,
@@ -137,7 +142,10 @@ export function parseReview(text) {
 export function planToMarkdown(plan) {
 	const lines = [plan.brief, '', `**Deliverable:** ${plan.deliverable}`, ''];
 	if (plan.fallback) {
-		lines.push('*The plan could not be read, so every specialist is working the mission directly.*', '');
+		lines.push(
+			'*The plan could not be read, so every specialist is working the mission directly.*',
+			'',
+		);
 	}
 	if (!plan.assignments.length) {
 		lines.push('No specialist is needed. The Writer takes this one alone.');

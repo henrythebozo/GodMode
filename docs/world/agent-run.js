@@ -55,22 +55,46 @@ function apiDetail(err) {
 function toAgentError(err, model) {
 	const status = err?.status;
 	if (status === 401) {
-		return new AgentError('auth', 'Anthropic rejected the API key. Check it in Henry OS settings.', err);
+		return new AgentError(
+			'auth',
+			'Anthropic rejected the API key. Check it in Henry OS settings.',
+			err,
+		);
 	}
 	if (status === 403) {
-		return new AgentError('auth', `This API key is not allowed to do that: ${apiDetail(err)} Check it in Henry OS settings.`, err);
+		return new AgentError(
+			'auth',
+			`This API key is not allowed to do that: ${apiDetail(err)} Check it in Henry OS settings.`,
+			err,
+		);
 	}
 	if (status === 404) {
-		return new AgentError('api', `Anthropic does not recognise the model "${model}".`, err);
+		return new AgentError(
+			'api',
+			`Anthropic does not recognise the model "${model}".`,
+			err,
+		);
 	}
 	if (status === 429) {
-		return new AgentError('api', 'Anthropic rate limit reached. Wait a minute, then run the mission again.', err);
+		return new AgentError(
+			'api',
+			'Anthropic rate limit reached. Wait a minute, then run the mission again.',
+			err,
+		);
 	}
 	if (status >= 500) {
-		return new AgentError('api', 'Anthropic is overloaded right now. Try again shortly.', err);
+		return new AgentError(
+			'api',
+			'Anthropic is overloaded right now. Try again shortly.',
+			err,
+		);
 	}
 	if (status) return new AgentError('api', apiDetail(err), err);
-	return new AgentError('api', 'Could not reach Anthropic. Check your connection.', err);
+	return new AgentError(
+		'api',
+		'Could not reach Anthropic. Check your connection.',
+		err,
+	);
 }
 
 function refusalMessage(details) {
@@ -127,8 +151,14 @@ export async function runAgent({
 		stream.on('thinking', (delta) => emit({ type: 'thinking', delta }));
 		stream.on('text', (delta) => emit({ type: 'text', delta }));
 		stream.on('contentBlock', (block) => {
-			if (block.type === 'server_tool_use') {
-				emit({ type: 'tool', name: block.name, query: block.input?.query || '' });
+			// web search also runs code server-side to filter its results; only the
+			// searches themselves mean anything to the person watching
+			if (
+				block.type === 'server_tool_use' &&
+				block.name === 'web_search' &&
+				block.input?.query
+			) {
+				emit({ type: 'tool', name: block.name, query: block.input.query });
 			} else if (block.type === 'fallback') {
 				emit({
 					type: 'note',
@@ -166,7 +196,8 @@ export async function runAgent({
 			if (block.type !== 'text') continue;
 			text += block.text;
 			for (const c of block.citations || []) {
-				if (c.url && !sources.has(c.url)) sources.set(c.url, { url: c.url, title: c.title || c.url });
+				if (c.url && !sources.has(c.url))
+					sources.set(c.url, { url: c.url, title: c.title || c.url });
 			}
 		}
 		if (message.stop_reason === 'pause_turn') {
@@ -174,13 +205,24 @@ export async function runAgent({
 				truncated = true;
 				break;
 			}
-			messages.push({ role: 'assistant', content: echoContent(message.content) });
+			messages.push({
+				role: 'assistant',
+				content: echoContent(message.content),
+			});
 			continue;
 		}
 		truncated = message.stop_reason === 'max_tokens';
 		break;
 	}
 
-	if (!text.trim()) throw new AgentError('empty', 'Claude returned no text for this step.');
-	return { text, sources: [...sources.values()], truncated, usage, servedBy, note };
+	if (!text.trim())
+		throw new AgentError('empty', 'Claude returned no text for this step.');
+	return {
+		text,
+		sources: [...sources.values()],
+		truncated,
+		usage,
+		servedBy,
+		note,
+	};
 }

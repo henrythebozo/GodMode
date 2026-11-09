@@ -18,11 +18,29 @@
  */
 import { runAgent, AgentError } from './agent-run.js';
 import { addUsage, mergeUsage } from './models.js';
-import { PLAN_SCHEMA, REVIEW_SCHEMA, parsePlan, parseReview, planToMarkdown, reviewToMarkdown } from './plan.js';
-import { SYSTEM, plannerMessage, specialistMessage, writerMessage, criticMessage, revisionMessage } from './prompts.js';
+import {
+	PLAN_SCHEMA,
+	REVIEW_SCHEMA,
+	parsePlan,
+	parseReview,
+	planToMarkdown,
+	reviewToMarkdown,
+} from './plan.js';
+import {
+	SYSTEM,
+	plannerMessage,
+	specialistMessage,
+	writerMessage,
+	criticMessage,
+	revisionMessage,
+} from './prompts.js';
 import { SPECIALISTS, PLAZA, agentById } from './roster.js';
 
-const WEB_SEARCH = { type: 'web_search_20260209', name: 'web_search', max_uses: 5 };
+const WEB_SEARCH = {
+	type: 'web_search_20260209',
+	name: 'web_search',
+	max_uses: 5,
+};
 
 // How hard each role thinks and how much room it gets. The Planner is a
 // routing decision; the Writer may be producing a long document.
@@ -42,11 +60,21 @@ const endsMission = (err) => err?.kind === 'aborted' || err?.kind === 'auth';
 
 function withSources(out) {
 	if (!out.sources.length) return out.text;
-	const links = out.sources.map((s) => `- [${s.title.replace(/[[\]]/g, '')}](${s.url})`);
+	const links = out.sources.map(
+		(s) => `- [${s.title.replace(/[[\]]/g, '')}](${s.url})`,
+	);
 	return `${out.text}\n\n**Sources**\n\n${links.join('\n')}`;
 }
 
-export async function runMission({ goal, client, model, emit = () => {}, signal, today = '', webSearch = true }) {
+export async function runMission({
+	goal,
+	client,
+	model,
+	emit = () => {},
+	signal,
+	today = '',
+	webSearch = true,
+}) {
 	const notes = [];
 	let usage = addUsage();
 	let plan = null;
@@ -87,7 +115,8 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 			});
 			usage = mergeUsage(usage, out.usage);
 			emit({ type: 'usage', id, usage: out.usage });
-			if (out.truncated) note(`${nameOf(id)} ran out of room, so its work is cut short.`, id);
+			if (out.truncated)
+				note(`${nameOf(id)} ran out of room, so its work is cut short.`, id);
 			return out;
 		} catch (err) {
 			if (err?.kind !== 'aborted') emit({ type: 'state', id, state: 'error' });
@@ -124,7 +153,10 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 			plan = parsePlan('', goal);
 		}
 		if (plan.fallback) {
-			note('The Planner’s plan could not be read, so every specialist worked the mission directly.', 'planner');
+			note(
+				'The Planner’s plan could not be read, so every specialist worked the mission directly.',
+				'planner',
+			);
 		}
 		finish('planner', planToMarkdown(plan));
 
@@ -132,13 +164,15 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 		emit({ type: 'phase', phase: 'work' });
 		const assigned = plan.assignments;
 		for (const id of SPECIALISTS) {
-			if (!assigned.some((a) => a.agent === id)) emit({ type: 'state', id, state: 'skipped' });
+			if (!assigned.some((a) => a.agent === id))
+				emit({ type: 'state', id, state: 'skipped' });
 		}
 		for (const { agent } of assigned) {
 			emit({ type: 'state', id: agent, state: 'queued' });
 			emit({ type: 'handoff', from: 'planner', to: agent });
 		}
-		if (!assigned.length) emit({ type: 'handoff', from: 'planner', to: 'writer' });
+		if (!assigned.length)
+			emit({ type: 'handoff', from: 'planner', to: 'writer' });
 
 		const settled = await Promise.all(
 			assigned.map(async ({ agent, task }) => {
@@ -160,11 +194,14 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 		const ending = settled.find((s) => endsMission(s.err));
 		if (ending) throw ending.err;
 		const failures = settled.filter((s) => s.err);
-		if (assigned.length && failures.length === assigned.length) throw failures[0].err;
+		if (assigned.length && failures.length === assigned.length)
+			throw failures[0].err;
 		for (const { agent, err } of failures) {
 			note(`${nameOf(agent)} could not finish: ${err.message}`, agent);
 		}
-		const work = settled.map(({ agent, text, err }) => (err ? { agent, failed: err.message } : { agent, text }));
+		const work = settled.map(({ agent, text, err }) =>
+			err ? { agent, failed: err.message } : { agent, text },
+		);
 
 		// 3. Write
 		emit({ type: 'phase', phase: 'write' });
@@ -186,11 +223,18 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 				quiet: true,
 			});
 			review = parseReview(out.text);
-			if (review.fallback) note('The Critic’s review could not be read, so the draft went through unreviewed.', 'critic');
+			if (review.fallback)
+				note(
+					'The Critic’s review could not be read, so the draft went through unreviewed.',
+					'critic',
+				);
 			finish('critic', reviewToMarkdown(review));
 		} catch (err) {
 			if (endsMission(err)) throw err;
-			note(`The Critic could not review the draft (${err.message}), so it went through unreviewed.`, 'critic');
+			note(
+				`The Critic could not review the draft (${err.message}), so it went through unreviewed.`,
+				'critic',
+			);
 		}
 
 		if (review && !review.approved) {
@@ -206,7 +250,10 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 				revised = true;
 			} catch (err) {
 				if (endsMission(err)) throw err;
-				note(`The revision failed (${err.message}), so this is the first draft.`, 'writer');
+				note(
+					`The revision failed (${err.message}), so this is the first draft.`,
+					'writer',
+				);
 			}
 			finish('writer', draft);
 		}
@@ -216,7 +263,10 @@ export async function runMission({ goal, client, model, emit = () => {}, signal,
 		return outcome('done', { result: draft });
 	} catch (err) {
 		if (err?.kind === 'aborted' || signal?.aborted) return outcome('stopped');
-		const message = err instanceof AgentError ? err.message : `Something went wrong: ${err?.message || err}`;
+		const message =
+			err instanceof AgentError
+				? err.message
+				: `Something went wrong: ${err?.message || err}`;
 		return outcome('failed', { message });
 	}
 }

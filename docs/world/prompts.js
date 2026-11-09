@@ -66,7 +66,8 @@ export function specialistMessage({ goal, task, today }) {
 
 /** `work` is one entry per assigned specialist: { agent, text } or { agent, failed }. */
 function workSection(work) {
-	if (!work.length) return 'No specialist was assigned to this mission. Handle it yourself.';
+	if (!work.length)
+		return 'No specialist was assigned to this mission. Handle it yourself.';
 	return work
 		.map(({ agent, text, failed }) => {
 			const name = agentById(agent)?.name || agent;

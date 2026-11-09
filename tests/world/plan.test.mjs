@@ -67,7 +67,11 @@ test('a specialist assigned twice gets one combined task', () => {
 
 test('blank tasks are dropped', () => {
 	const plan = parsePlan(
-		JSON.stringify({ brief: 'b', deliverable: 'd', assignments: [{ agent: 'analyst', task: '   ' }] }),
+		JSON.stringify({
+			brief: 'b',
+			deliverable: 'd',
+			assignments: [{ agent: 'analyst', task: '   ' }],
+		}),
 		GOAL,
 	);
 	assert.deepEqual(plan.assignments, []);
@@ -75,7 +79,10 @@ test('blank tasks are dropped', () => {
 });
 
 test('a readable plan with no assignments is allowed: the Writer works alone', () => {
-	const plan = parsePlan(JSON.stringify({ brief: 'b', deliverable: 'A haiku', assignments: [] }), GOAL);
+	const plan = parsePlan(
+		JSON.stringify({ brief: 'b', deliverable: 'A haiku', assignments: [] }),
+		GOAL,
+	);
 	assert.equal(plan.fallback, false);
 	assert.deepEqual(plan.assignments, []);
 });
@@ -87,12 +94,19 @@ test('an unreadable plan falls back to every specialist working the mission', ()
 		plan.assignments.map((a) => a.agent),
 		['researcher', 'analyst', 'engineer'],
 	);
-	for (const a of plan.assignments) assert.match(a.task, /Plan a launch for my app/);
+	for (const a of plan.assignments)
+		assert.match(a.task, /Plan a launch for my app/);
 });
 
 test('a plan wrapped in a code fence is still read', () => {
 	const plan = parsePlan(
-		'```json\n' + JSON.stringify({ brief: 'b', deliverable: 'd', assignments: [{ agent: 'analyst', task: 't' }] }) + '\n```',
+		'```json\n' +
+			JSON.stringify({
+				brief: 'b',
+				deliverable: 'd',
+				assignments: [{ agent: 'analyst', task: 't' }],
+			}) +
+			'\n```',
 		GOAL,
 	);
 	assert.equal(plan.fallback, false);
@@ -100,14 +114,22 @@ test('a plan wrapped in a code fence is still read', () => {
 });
 
 test('a review that rejects with issues is kept as a rejection', () => {
-	const review = parseReview(JSON.stringify({ approved: false, summary: 'Two gaps', issues: ['No budget', ' '] }));
+	const review = parseReview(
+		JSON.stringify({
+			approved: false,
+			summary: 'Two gaps',
+			issues: ['No budget', ' '],
+		}),
+	);
 	assert.equal(review.approved, false);
 	assert.deepEqual(review.issues, ['No budget']);
 	assert.equal(review.fallback, false);
 });
 
 test('a rejection with nothing actionable counts as approved', () => {
-	const review = parseReview(JSON.stringify({ approved: false, summary: 'Meh', issues: [] }));
+	const review = parseReview(
+		JSON.stringify({ approved: false, summary: 'Meh', issues: [] }),
+	);
 	assert.equal(review.approved, true);
 });
 
@@ -121,12 +143,14 @@ test('an unreadable review approves the draft and says it could not be read', ()
 test('both schemas forbid extra properties, as structured outputs require', () => {
 	assert.equal(PLAN_SCHEMA.additionalProperties, false);
 	assert.equal(REVIEW_SCHEMA.additionalProperties, false);
-	assert.equal(PLAN_SCHEMA.properties.assignments.items.additionalProperties, false);
-	assert.deepEqual(PLAN_SCHEMA.properties.assignments.items.properties.agent.enum, [
-		'researcher',
-		'analyst',
-		'engineer',
-	]);
+	assert.equal(
+		PLAN_SCHEMA.properties.assignments.items.additionalProperties,
+		false,
+	);
+	assert.deepEqual(
+		PLAN_SCHEMA.properties.assignments.items.properties.agent.enum,
+		['researcher', 'analyst', 'engineer'],
+	);
 });
 
 test('planToMarkdown names each assigned specialist', () => {
@@ -142,7 +166,12 @@ test('planToMarkdown names each assigned specialist', () => {
 });
 
 test('reviewToMarkdown lists the issues of a rejection', () => {
-	const md = reviewToMarkdown({ approved: false, summary: 'Two gaps', issues: ['No budget'], fallback: false });
+	const md = reviewToMarkdown({
+		approved: false,
+		summary: 'Two gaps',
+		issues: ['No budget'],
+		fallback: false,
+	});
 	assert.match(md, /Two gaps/);
 	assert.match(md, /No budget/);
 });

@@ -20,6 +20,31 @@ Ask once and every model answers at the same time, then Claude writes a Council
 briefing — the combined answer, what each model said, and where they disagree.
 Keys are stored only in your browser.
 
+### World: a town of Claude agents
+
+[`docs/world.html`](docs/world.html) (the buildings button in the Henry OS
+sidebar) is a 3D town where six Claude agents work one mission together. Type a
+goal: the Planner in the Town Hall decides which specialists it needs, the
+Researcher (Library, with live web search), Analyst (Observatory) and Engineer
+(Workshop) work in parallel, the Writer (Print Shop) assembles the deliverable
+and the Critic (Watchtower) reviews it, sending it back once if it falls short.
+Tap any building to watch that agent's reasoning and work as it streams.
+
+- It needs your own **Anthropic** key, the same one saved in Henry OS settings.
+  An OpenRouter key alone will not run it.
+- Every agent is a real API call billed to that key. Pick the model (Opus 5.5,
+  Sonnet 5.5 or Haiku 5.5) from the settings button; the page shows token
+  counts and an estimated cost after each mission.
+- "Thoughts" are Claude's summarized reasoning. The API does not return the raw
+  chain of thought.
+
+For development: `npm run test:world` runs the mission engine's unit tests
+(plain Node, nothing to install), `npm run smoke:world` drives the page in a
+real browser against a canned API (needs Playwright), and
+`npm run vendor:world` rebuilds the two libraries committed under
+`docs/vendor/`. The design is written up in
+[`specs/2026-11-09-agent-world-design.md`](specs/2026-11-09-agent-world-design.md).
+
 To host it free with GitHub Pages: repo **Settings → Pages → Deploy from a
 branch → `main` / `docs`**. Or run it on localhost with `npm run web`
 (no install needed — plain Node) and open `http://localhost:8741`; the

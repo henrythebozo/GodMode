@@ -37,7 +37,8 @@ export const DEFAULT_MODEL = 'claude-opus-5-5';
 
 export function modelById(id) {
 	return (
-		MODELS.find((m) => m.id === id) || MODELS.find((m) => m.id === DEFAULT_MODEL)
+		MODELS.find((m) => m.id === id) ||
+		MODELS.find((m) => m.id === DEFAULT_MODEL)
 	);
 }
 

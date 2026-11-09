@@ -10,26 +10,26 @@ in its own building, and gets one finished deliverable.
 
 ## Decisions
 
-| Decision | Choice | Why |
-| --- | --- | --- |
-| What agents work on | One shared mission per run | Chosen by the owner. Produces something usable |
-| Agents | Real Claude API calls on the person's own key | Scripted thoughts would be a screensaver |
-| Key | Anthropic key only, the one Henry OS already saves | Reasoning summaries and web search come from Anthropic's API directly |
-| Key entry | Stays in Henry OS settings (`index.html#keys`) | One place owns keys and account sync |
-| Home | Separate page, linked from the Henry OS sidebar | `index.html` is already 2,500 lines; the 3D library should not load for chat |
-| Libraries | three.js and the Anthropic SDK, committed under `docs/vendor/` | The page holds API keys, so it runs no code fetched from a CDN |
-| Default model | `claude-opus-5-5`, with Sonnet 5.5 and Haiku 5.5 selectable | Cost is the person's call |
+| Decision            | Choice                                                         | Why                                                                          |
+| ------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| What agents work on | One shared mission per run                                     | Chosen by the owner. Produces something usable                               |
+| Agents              | Real Claude API calls on the person's own key                  | Scripted thoughts would be a screensaver                                     |
+| Key                 | Anthropic key only, the one Henry OS already saves             | Reasoning summaries and web search come from Anthropic's API directly        |
+| Key entry           | Stays in Henry OS settings (`index.html#keys`)                 | One place owns keys and account sync                                         |
+| Home                | Separate page, linked from the Henry OS sidebar                | `index.html` is already 2,500 lines; the 3D library should not load for chat |
+| Libraries           | three.js and the Anthropic SDK, committed under `docs/vendor/` | The page holds API keys, so it runs no code fetched from a CDN               |
+| Default model       | `claude-opus-5-5`, with Sonnet 5.5 and Haiku 5.5 selectable    | Cost is the person's call                                                    |
 
 ## The team
 
-| Agent | Building | Job | Output |
-| --- | --- | --- | --- |
-| Planner | Town Hall | Picks which specialists the mission needs and briefs them | JSON plan |
-| Researcher | Library | Facts that must be current or sourced; has web search | Markdown |
-| Analyst | Observatory | Options, numbers, trade-offs, risks | Markdown |
-| Engineer | Workshop | Technical parts: code, architecture, procedures | Markdown |
-| Writer | Print Shop | Assembles the deliverable for the person | Markdown |
-| Critic | Watchtower | Reviews the draft against the mission | JSON verdict |
+| Agent      | Building    | Job                                                       | Output       |
+| ---------- | ----------- | --------------------------------------------------------- | ------------ |
+| Planner    | Town Hall   | Picks which specialists the mission needs and briefs them | JSON plan    |
+| Researcher | Library     | Facts that must be current or sourced; has web search     | Markdown     |
+| Analyst    | Observatory | Options, numbers, trade-offs, risks                       | Markdown     |
+| Engineer   | Workshop    | Technical parts: code, architecture, procedures           | Markdown     |
+| Writer     | Print Shop  | Assembles the deliverable for the person                  | Markdown     |
+| Critic     | Watchtower  | Reviews the draft against the mission                     | JSON verdict |
 
 ## Mission flow
 
@@ -58,7 +58,7 @@ between agents. The only multi-turn case is resuming a paused web-search turn.
 - Progress is shown as states and steps, not a percentage. A model call has no
   honest percentage.
 - "Thoughts" are Claude's summarized reasoning (`thinking.display:
-  "summarized"`). The API does not return raw chain-of-thought.
+"summarized"`). The API does not return raw chain-of-thought.
 
 ## Request shape
 
@@ -71,19 +71,19 @@ server-side; Haiku 5.5 has no server-side fallback and does not send it.
 
 ## Code layout
 
-| File | Responsibility |
-| --- | --- |
-| `docs/world.html`, `docs/world/world.css` | Page shell and styles |
-| `docs/world/roster.js` | The six agents: identity, building, colour, position |
-| `docs/world/prompts.js` | System prompts and message builders |
-| `docs/world/plan.js` | Plan and review schemas, parsing, fallbacks |
-| `docs/world/models.js` | Model list, prices, cost estimate |
-| `docs/world/agent-run.js` | One agent call: streaming, paused turns, refusals |
-| `docs/world/mission.js` | The flow above. No DOM, no three.js |
-| `docs/world/markdown.js` | Small escaping markdown renderer |
-| `docs/world/store.js` | localStorage access |
-| `docs/world/scene.js`, `buildings.js` | The 3D town |
-| `docs/world/ui.js`, `main.js` | HUD and wiring |
+| File                                      | Responsibility                                       |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `docs/world.html`, `docs/world/world.css` | Page shell and styles                                |
+| `docs/world/roster.js`                    | The six agents: identity, building, colour, position |
+| `docs/world/prompts.js`                   | System prompts and message builders                  |
+| `docs/world/plan.js`                      | Plan and review schemas, parsing, fallbacks          |
+| `docs/world/models.js`                    | Model list, prices, cost estimate                    |
+| `docs/world/agent-run.js`                 | One agent call: streaming, paused turns, refusals    |
+| `docs/world/mission.js`                   | The flow above. No DOM, no three.js                  |
+| `docs/world/markdown.js`                  | Small escaping markdown renderer                     |
+| `docs/world/store.js`                     | localStorage access                                  |
+| `docs/world/scene.js`, `buildings.js`     | The 3D town                                          |
+| `docs/world/ui.js`, `main.js`             | HUD and wiring                                       |
 
 `mission.js` and `agent-run.js` take the API client as an argument, so tests
 drive them with a fake client.

@@ -893,6 +893,11 @@
 			</svg>
 			New chat
 		</button>
+		<a class="circ" id="worldBtn" href="world.html" title="World: a town of Claude agents" aria-label="World">
+			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<path d="M3 21h18M5 21V10l5-4v15M10 21V4l9 5v12M14 13h1M14 17h1" />
+			</svg>
+		</a>
 		<button class="circ" id="keyBtn" title="Settings">
 			<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<circle cx="12" cy="12" r="3" />
@@ -1306,7 +1311,7 @@ function setAuthMode(makeAccount) {
 function openApp() {
 	document.body.classList.remove('locked');
 	lockEl.remove();
-	if (!anyKey()) openSettings();
+	if (!anyKey() || cameForKeys()) openSettings();
 	promptEl.focus();
 }
 
@@ -2159,6 +2164,9 @@ function anyKey() {
 	return store.key || store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey;
 }
 
+// The World page sends people here as index.html#keys to add an Anthropic key.
+const cameForKeys = () => location.hash === '#keys';
+
 function openSettings() {
 	const who = session.value;
 	document.getElementById('acctWho').textContent = who ? 'Signed in as ' + who.email : 'Not signed in';
@@ -2168,7 +2176,7 @@ function openSettings() {
 	kimiKeyInput.value = store.kimiKey;
 	pplxKeyInput.value = store.pplxKey;
 	enterToSendEl.checked = store.enterToSend;
-	if (store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey) {
+	if (store.oaiKey || store.anthKey || store.kimiKey || store.pplxKey || cameForKeys()) {
 		document.getElementById('directKeys').open = true;
 	}
 	if (!settingsEl.open) settingsEl.showModal();
@@ -2185,6 +2193,12 @@ document.getElementById('saveKeyBtn').addEventListener('click', () => {
 	settingsEl.close();
 	applyDefaultModels();
 	loadDirectModels();
+	if (cameForKeys() && store.anthKey) {
+		// save to the account first: leaving now would drop the delayed sync
+		clearTimeout(pushTimer);
+		pushSettings().finally(() => { location.href = 'world.html'; });
+		return;
+	}
 	syncSettings();
 });
 
@@ -2538,7 +2552,7 @@ if (session.value) {
 	adoptAccountSettings()
 		.catch(() => {})
 		.then(() => {
-			if (!anyKey()) openSettings();
+			if (!anyKey() || cameForKeys()) openSettings();
 		});
 } else if (!anyKey() && !document.body.classList.contains('locked')) {
 	openSettings();

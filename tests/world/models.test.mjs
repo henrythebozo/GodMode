@@ -39,12 +39,19 @@ test('addUsage sums API usage objects without mutating the total', () => {
 });
 
 test('addUsage tolerates a missing usage object', () => {
-	assert.deepEqual(addUsage(undefined, undefined), { input: 0, output: 0, searches: 0 });
+	assert.deepEqual(addUsage(undefined, undefined), {
+		input: 0,
+		output: 0,
+		searches: 0,
+	});
 });
 
 test('cost is input and output tokens at the model price per million', () => {
 	// Opus 5.5: $4 in, $20 out per million tokens
-	const cost = estimateCost({ input: 1_000_000, output: 500_000, searches: 0 }, 'claude-opus-5-5');
+	const cost = estimateCost(
+		{ input: 1_000_000, output: 500_000, searches: 0 },
+		'claude-opus-5-5',
+	);
 	assert.equal(cost, 14);
 });
 
@@ -63,7 +70,10 @@ test('formatTokens shortens thousands', () => {
 test('mergeUsage adds two running totals', async () => {
 	const { mergeUsage } = await import('../../docs/world/models.js');
 	assert.deepEqual(
-		mergeUsage({ input: 1, output: 2, searches: 3 }, { input: 10, output: 20, searches: 30 }),
+		mergeUsage(
+			{ input: 1, output: 2, searches: 3 },
+			{ input: 10, output: 20, searches: 30 },
+		),
 		{ input: 11, output: 22, searches: 33 },
 	);
 });

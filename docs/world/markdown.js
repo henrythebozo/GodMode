@@ -60,7 +60,9 @@ function cells(line) {
 }
 
 export function renderMarkdown(src) {
+	// NUL is this file's placeholder for lifted code spans, so none may come in from outside
 	const lines = String(src || '')
+		.replace(/\u0000/g, '')
 		.replace(/\r\n?/g, '\n')
 		.split('\n');
 	const out = [];
@@ -76,7 +78,8 @@ export function renderMarkdown(src) {
 		if (FENCE.test(line)) {
 			flush();
 			const body = [];
-			for (i++; i < lines.length && !FENCE.test(lines[i]); i++) body.push(lines[i]);
+			for (i++; i < lines.length && !FENCE.test(lines[i]); i++)
+				body.push(lines[i]);
 			out.push(`<pre><code>${escapeHtml(body.join('\n'))}</code></pre>`);
 			continue;
 		}
@@ -95,14 +98,20 @@ export function renderMarkdown(src) {
 			flush();
 			const head = cells(line);
 			const rows = [];
-			for (i += 2; i < lines.length && lines[i].includes('|'); i++) rows.push(cells(lines[i]));
+			for (i += 2; i < lines.length && lines[i].includes('|'); i++)
+				rows.push(cells(lines[i]));
 			i--;
 			out.push(
 				'<table><thead><tr>' +
 					head.map((c) => `<th>${inline(c)}</th>`).join('') +
 					'</tr></thead><tbody>' +
 					rows
-						.map((r) => '<tr>' + r.map((c) => `<td>${inline(c)}</td>`).join('') + '</tr>')
+						.map(
+							(r) =>
+								'<tr>' +
+								r.map((c) => `<td>${inline(c)}</td>`).join('') +
+								'</tr>',
+						)
 						.join('') +
 					'</tbody></table>',
 			);
@@ -113,7 +122,11 @@ export function renderMarkdown(src) {
 			out.push('<hr>');
 			continue;
 		}
-		const listKind = BULLET.test(line) ? BULLET : NUMBER.test(line) ? NUMBER : null;
+		const listKind = BULLET.test(line)
+			? BULLET
+			: NUMBER.test(line)
+				? NUMBER
+				: null;
 		if (listKind) {
 			flush();
 			const items = [];
@@ -121,18 +134,22 @@ export function renderMarkdown(src) {
 				const item = lines[i].match(listKind);
 				if (item) items.push(item[1]);
 				// an indented line under an item continues that item
-				else if (/^\s+\S/.test(lines[i]) && items.length) items[items.length - 1] += ' ' + lines[i].trim();
+				else if (/^\s+\S/.test(lines[i]) && items.length)
+					items[items.length - 1] += ' ' + lines[i].trim();
 				else break;
 			}
 			i--;
 			const tag = listKind === BULLET ? 'ul' : 'ol';
-			out.push(`<${tag}>${items.map((t) => `<li>${inline(t)}</li>`).join('')}</${tag}>`);
+			out.push(
+				`<${tag}>${items.map((t) => `<li>${inline(t)}</li>`).join('')}</${tag}>`,
+			);
 			continue;
 		}
 		if (QUOTE.test(line)) {
 			flush();
 			const quoted = [];
-			for (; i < lines.length && QUOTE.test(lines[i]); i++) quoted.push(lines[i].match(QUOTE)[1]);
+			for (; i < lines.length && QUOTE.test(lines[i]); i++)
+				quoted.push(lines[i].match(QUOTE)[1]);
 			i--;
 			out.push(`<blockquote>${quoted.map(inline).join('<br>')}</blockquote>`);
 			continue;
