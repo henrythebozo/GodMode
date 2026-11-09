@@ -377,6 +377,161 @@ async function runOnce(browser, name, viewport, { watchAgent }) {
 	await context.close();
 }
 
+const SESSION = {
+	access_token: 't',
+	refresh_token: 'r',
+	expires_at: Date.now() + 3600000,
+	email: 'smoke@example.com',
+	user_id: 'u',
+};
+
+/** A signed-in phone-sized page with a key saved, answering the API as `reply` says. */
+async function signedIn(browser, reply) {
+	const context = await browser.newContext({
+		viewport: { width: 390, height: 844 },
+	});
+	await context.addInitScript((session) => {
+		localStorage.setItem('henryos.session', JSON.stringify(session));
+		localStorage.setItem('godmode.key.anthropic', 'sk-ant-smoke-test');
+	}, SESSION);
+	const page = await context.newPage();
+	await page.route('https://api.anthropic.com/**', async (route) => {
+		if (route.request().method() === 'OPTIONS')
+			return route.fulfill({ status: 204, headers: CORS });
+		return reply(route);
+	});
+	await page.goto(`${BASE}/world.html`);
+	await page.waitForSelector('#roster [data-agent="planner"]');
+	return { context, page };
+}
+
+async function rejectedKey(browser) {
+	console.log('\nAnthropic rejects the key');
+	const { context, page } = await signedIn(browser, (route) =>
+		route.fulfill({
+			status: 401,
+			headers: { ...CORS, 'content-type': 'application/json' },
+			body: JSON.stringify({
+				type: 'error',
+				error: { type: 'authentication_error', message: 'invalid x-api-key' },
+			}),
+		}),
+	);
+	await page.fill('#mission', 'Anything');
+	await page.click('#run');
+	await page.waitForSelector('#status.err');
+	const said = await page.locator('#status').innerText();
+	check(
+		/rejected the API key/.test(said) && /settings/i.test(said),
+		`a rejected key says so and where to fix it (“${said}”)`,
+	);
+	check(
+		(await page
+			.locator('#roster [data-agent="planner"]')
+			.getAttribute('data-state')) === 'error',
+		'the agent that failed is marked as failed',
+	);
+	check(
+		!(await page.locator('#run').evaluate((b) => b.classList.contains('stop'))),
+		'the mission is no longer running',
+	);
+	check(
+		await page.locator('#mission').isEnabled(),
+		'the mission can be edited and run again',
+	);
+	await context.close();
+}
+
+async function stopped(browser) {
+	console.log('\nstopping a mission');
+	let calls = 0;
+	const { context, page } = await signedIn(browser, async (route) => {
+		calls++;
+		// never answer in time: the person stops the mission first
+		await new Promise((r) => setTimeout(r, 4000));
+		return route.abort().catch(() => {});
+	});
+	await page.fill('#mission', 'Anything');
+	await page.click('#run');
+	await page.waitForSelector(
+		'#roster [data-agent="planner"][data-state="thinking"]',
+	);
+	check(
+		await page.locator('#mission').isDisabled(),
+		'the mission cannot be edited while it runs',
+	);
+	await page.click('#run');
+	await page.waitForFunction(() =>
+		/^Stopped/.test(document.querySelector('#status').textContent),
+	);
+	check(true, 'stopping says the mission was stopped');
+	check(
+		(await page
+			.locator('#roster [data-agent="planner"]')
+			.getAttribute('data-state')) === 'idle',
+		'the agent that was working goes back to idle',
+	);
+	await page.waitForTimeout(600);
+	check(calls === 1, `nothing further is sent after stopping (${calls} call)`);
+	await context.close();
+}
+
+async function keyHandOff(browser) {
+	console.log('\nadding a key from Henry OS settings');
+	const context = await browser.newContext({
+		viewport: { width: 390, height: 844 },
+	});
+	await context.addInitScript((session) => {
+		localStorage.setItem('henryos.session', JSON.stringify(session));
+	}, SESSION);
+	const page = await context.newPage();
+	// Henry OS talks to its account store and model lists; none of that is under test
+	await page.route(
+		(url) => !url.href.startsWith(BASE),
+		(route) =>
+			route.fulfill({
+				status: 200,
+				headers: { ...CORS, 'content-type': 'application/json' },
+				body: '[]',
+			}),
+	);
+	await page.goto(`${BASE}/index.html`);
+	check(
+		(await page.locator('#worldBtn').getAttribute('href')) === 'world.html',
+		'Henry OS links to the World',
+	);
+	await page.goto(`${BASE}/world.html`);
+	await page.click('#nokey a');
+	await page.waitForURL(/index\.html#keys$/);
+	const opened = await page
+		.waitForSelector('#settings[open] #anthKeyInput', {
+			state: 'visible',
+			timeout: 8000,
+		})
+		.then(
+			() => true,
+			() => false,
+		);
+	check(opened, 'arriving for a key opens settings on the Anthropic field');
+	if (opened) {
+		await page.fill('#anthKeyInput', 'sk-ant-added-here');
+		await page.click('#saveKeyBtn');
+		const back = await page.waitForURL(/world\.html$/, { timeout: 8000 }).then(
+			() => true,
+			() => false,
+		);
+		check(back, 'saving the key returns to the World');
+		if (back) {
+			await page.waitForSelector('#roster [data-agent="planner"]');
+			check(
+				await page.locator('#nokey').isHidden(),
+				'the World no longer asks for a key',
+			);
+		}
+	}
+	await context.close();
+}
+
 async function noKey(browser) {
 	console.log('\nno key saved');
 	const context = await browser.newContext({
@@ -445,6 +600,9 @@ async function noKey(browser) {
 			{ watchAgent: false },
 		);
 		await noKey(browser);
+		await rejectedKey(browser);
+		await stopped(browser);
+		await keyHandOff(browser);
 	} catch (err) {
 		failures.push('smoke run crashed: ' + err.message);
 		console.error(err);
